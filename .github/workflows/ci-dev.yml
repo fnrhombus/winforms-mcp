@@ -16,6 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
+        ref: dev
         fetch-depth: 0
 
     - name: Setup .NET
