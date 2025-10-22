@@ -126,7 +126,7 @@ jobs:
       id: bump-type
       shell: pwsh
       run: |
-        $analysis = "${{ steps.version-analysis.outcome == 'success' && steps.version-analysis.outputs.result || 'patch' }}"
+        $analysis = "${{ steps.version-analysis.outputs.result }}"
         $bumpType = $analysis.Trim().ToLower()
 
         if ($bumpType -notmatch '^(major|minor|patch)$') {
