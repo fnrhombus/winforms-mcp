@@ -1,0 +1,256 @@
+name: CI - Dev Branch
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ dev ]
+
+jobs:
+  build-test-coverage:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore Rhombus.WinFormsMcp.sln
+
+    - name: Build
+      run: dotnet build Rhombus.WinFormsMcp.sln --configuration Release --no-restore
+
+    - name: Run tests with coverage
+      run: dotnet test Rhombus.WinFormsMcp.sln --configuration Release --no-build --logger "console;verbosity=detailed" --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+    - name: Install ReportGenerator
+      run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+    - name: Generate coverage report
+      run: reportgenerator -reports:./coverage/**/coverage.cobertura.xml -targetdir:./coverage/report -reporttypes:HtmlInline_AzurePipelines;Cobertura;TextSummary
+
+    - name: Check coverage with exceptions
+      shell: pwsh
+      run: |
+        $coverageFile = Get-ChildItem -Path "./coverage" -Filter "coverage.cobertura.xml" -Recurse | Select-Object -First 1
+        if (-not $coverageFile) {
+          Write-Error "Coverage file not found"
+          exit 1
+        }
+
+        [xml]$coverage = Get-Content $coverageFile.FullName
+
+        # Extract overall coverage metrics
+        $lineCoverage = [decimal]$coverage.coverage.'line-rate' * 100
+        Write-Host "Overall Line Coverage: $lineCoverage%"
+
+        # Check for uncovered lines
+        $uncoveredLines = @()
+
+        foreach ($package in $coverage.coverage.packages.package) {
+          foreach ($class in $package.classes.class) {
+            $filename = $class.filename
+
+            foreach ($line in $class.lines.line) {
+              if ($line.hits -eq "0") {
+                $lineNumber = $line.number
+
+                # Read the source file to check for exception comment
+                if (Test-Path $filename) {
+                  $sourceLines = Get-Content $filename
+                  $sourceLine = $sourceLines[$lineNumber - 1]
+
+                  # Check if line or previous line has COVERAGE_EXCEPTION comment
+                  $hasException = $false
+                  if ($sourceLine -match "//\s*COVERAGE_EXCEPTION:") {
+                    $hasException = $true
+                  } elseif ($lineNumber -gt 1 -and $sourceLines[$lineNumber - 2] -match "//\s*COVERAGE_EXCEPTION:") {
+                    $hasException = $true
+                  }
+
+                  if (-not $hasException) {
+                    $uncoveredLines += "${filename}:${lineNumber}"
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        if ($uncoveredLines.Count -gt 0) {
+          Write-Error "Found $($uncoveredLines.Count) uncovered lines without COVERAGE_EXCEPTION comments:"
+          $uncoveredLines | ForEach-Object { Write-Error "  $_" }
+          Write-Host ""
+          Write-Host "To fix: Add test coverage OR add comment on/before the line:"
+          Write-Host "  // COVERAGE_EXCEPTION: <reason why this line cannot be tested>"
+          exit 1
+        }
+
+        Write-Host "✓ All uncovered lines have COVERAGE_EXCEPTION comments" -ForegroundColor Green
+
+    - name: Analyze commits for version bump
+      id: version-analysis
+      uses: anthropics/claude-code-action@v1
+      with:
+        prompt: |
+          Analyze the following git commits and code changes to determine the appropriate semantic version bump type (major, minor, or patch) according to semver.org rules:
+
+          MAJOR: Incompatible API changes, breaking changes
+          MINOR: New functionality added in a backwards compatible manner
+          PATCH: Backwards compatible bug fixes
+
+          Git log since last version:
+          ```
+          $(git log --oneline --no-merges origin/master..HEAD)
+          ```
+
+          Code changes:
+          ```
+          $(git diff origin/master..HEAD --stat)
+          ```
+
+          Respond with ONLY one word: "major", "minor", or "patch"
+        model: claude-haiku-4-5-20251001
+
+    - name: Determine version bump type
+      id: bump-type
+      shell: pwsh
+      run: |
+        $analysis = "${{ steps.version-analysis.outputs.result }}"
+        $bumpType = $analysis.Trim().ToLower()
+
+        if ($bumpType -notmatch '^(major|minor|patch)$') {
+          Write-Host "Claude analysis result: $analysis"
+          Write-Host "Defaulting to patch version bump"
+          $bumpType = "patch"
+        }
+
+        Write-Host "Version bump type: $bumpType"
+        echo "bump_type=$bumpType" >> $env:GITHUB_OUTPUT
+
+    - name: Bump version
+      id: bump
+      shell: pwsh
+      run: |
+        # Read current version
+        $version = (Get-Content VERSION).Trim()
+        Write-Host "Current version: $version"
+
+        # Remove -beta suffix if present
+        $version = $version -replace '-beta$', ''
+
+        # Parse version
+        $parts = $version.Split('.')
+        $major = [int]$parts[0]
+        $minor = [int]$parts[1]
+        $patch = [int]$parts[2]
+
+        # Bump based on type
+        $bumpType = "${{ steps.bump-type.outputs.bump_type }}"
+        switch ($bumpType) {
+          "major" {
+            $major++
+            $minor = 0
+            $patch = 0
+          }
+          "minor" {
+            $minor++
+            $patch = 0
+          }
+          "patch" {
+            $patch++
+          }
+        }
+
+        # Create new version with beta suffix
+        $newVersion = "$major.$minor.$patch-beta"
+        Write-Host "New version: $newVersion"
+
+        # Write to VERSION file
+        $newVersion | Out-File -FilePath VERSION -NoNewline -Encoding utf8
+
+        # Update npm package.json
+        $packageJson = Get-Content npm/package.json | ConvertFrom-Json
+        $packageJson.version = $newVersion
+        $packageJson | ConvertTo-Json -Depth 10 | Out-File -FilePath npm/package.json -Encoding utf8
+
+        # Update .csproj version
+        $csprojPath = "src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj"
+        $csproj = [xml](Get-Content $csprojPath)
+        $versionNode = $csproj.SelectSingleNode("//PropertyGroup/Version")
+        if ($versionNode) {
+          $versionNode.InnerText = $newVersion
+          $csproj.Save($csprojPath)
+        }
+
+        echo "new_version=$newVersion" >> $env:GITHUB_OUTPUT
+        echo "bump_type=$bumpType" >> $env:GITHUB_OUTPUT
+
+    - name: Commit version bump
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add VERSION npm/package.json src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj
+        git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} (${{ steps.bump.outputs.bump_type }})"
+        git push
+      if: github.event_name == 'push'
+
+    - name: Create NuGet package
+      run: dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c Release -p:Version=${{ steps.bump.outputs.new_version }}
+
+    - name: Create NPM distribution
+      run: |
+        mkdir -p npm/dist
+        # Copy binaries
+        $exeFile = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows" -Filter "Rhombus.WinFormsMcp.Server.exe" | Select-Object -First 1
+        $dllFiles = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows" -Filter "*.dll"
+        if ($exeFile) {
+          Copy-Item -Path $exeFile.FullName -Destination "npm/dist/" -Force
+        }
+        foreach ($dll in $dllFiles) {
+          Copy-Item -Path $dll.FullName -Destination "npm/dist/" -Force
+        }
+      shell: pwsh
+
+    - name: Publish beta to NPM
+      run: |
+        npm config set @rhom6us:registry https://registry.npmjs.org/
+        npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
+        cd npm
+        npm publish --access public --tag beta || echo "NPM publish failed or already exists, continuing..."
+      if: env.NPM_TOKEN != '' && github.event_name == 'push'
+      env:
+        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      continue-on-error: true
+
+    - name: NuGet login (OIDC)
+      uses: NuGet/login@v1
+      id: nuget-login
+      with:
+        user: butler.software
+      if: github.event_name == 'push'
+
+    - name: Publish beta to NuGet
+      run: |
+        $nupkg = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release" -Filter "Rhombus.WinFormsMcp.${{ steps.bump.outputs.new_version }}.nupkg" | Select-Object -First 1
+        if ($nupkg) {
+          Write-Host "Publishing $($nupkg.Name) to NuGet with beta tag..."
+          dotnet nuget push $nupkg.FullName --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        }
+      shell: pwsh
+      if: github.event_name == 'push'
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: ./coverage/report/

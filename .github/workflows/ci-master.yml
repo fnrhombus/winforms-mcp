@@ -1,0 +1,150 @@
+name: CI - Master Branch (Release)
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: windows-2022
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Extract and prepare version
+      id: version
+      shell: pwsh
+      run: |
+        # Read version from VERSION file
+        $version = (Get-Content VERSION).Trim()
+        Write-Host "Version from file: $version"
+
+        # Remove -beta suffix for stable release
+        $stableVersion = $version -replace '-beta$', ''
+        Write-Host "Stable version: $stableVersion"
+
+        # Update VERSION file
+        $stableVersion | Out-File -FilePath VERSION -NoNewline -Encoding utf8
+
+        # Update npm package.json
+        $packageJson = Get-Content npm/package.json | ConvertFrom-Json
+        $packageJson.version = $stableVersion
+        $packageJson | ConvertTo-Json -Depth 10 | Out-File -FilePath npm/package.json -Encoding utf8
+
+        # Update .csproj version
+        $csprojPath = "src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj"
+        $csproj = [xml](Get-Content $csprojPath)
+        $versionNode = $csproj.SelectSingleNode("//PropertyGroup/Version")
+        if ($versionNode) {
+          $versionNode.InnerText = $stableVersion
+          $csproj.Save($csprojPath)
+        }
+
+        echo "version=$stableVersion" >> $env:GITHUB_OUTPUT
+
+    - name: Commit version update
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add VERSION npm/package.json src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj
+        git diff --staged --quiet || git commit -m "chore: release version ${{ steps.version.outputs.version }}"
+        git tag "v${{ steps.version.outputs.version }}"
+        git push
+        git push origin "v${{ steps.version.outputs.version }}"
+
+    - name: Restore dependencies
+      run: dotnet restore Rhombus.WinFormsMcp.sln
+
+    - name: Build
+      run: dotnet build Rhombus.WinFormsMcp.sln --configuration Release --no-restore
+
+    - name: Run tests
+      run: dotnet test Rhombus.WinFormsMcp.sln --configuration Release --no-build --logger "console;verbosity=minimal"
+
+    - name: Create NuGet package
+      run: dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c Release -p:Version=${{ steps.version.outputs.version }}
+
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.version.outputs.version }}
+        release_name: Release ${{ steps.version.outputs.version }}
+        body: |
+          ## Rhombus.WinFormsMcp ${{ steps.version.outputs.version }}
+
+          ### Releases
+          - **NuGet**: `Rhombus.WinFormsMcp` v${{ steps.version.outputs.version }}
+          - **NPM**: `@rhom6us/winforms-mcp` v${{ steps.version.outputs.version }}
+
+          ### Installation
+
+          #### NuGet
+          ```
+          Install-Package Rhombus.WinFormsMcp -Version ${{ steps.version.outputs.version }}
+          ```
+
+          #### NPM
+          ```
+          npm install @rhom6us/winforms-mcp@${{ steps.version.outputs.version }}
+          npx @rhom6us/winforms-mcp
+          ```
+
+          ### Changes
+          See [CHANGELOG.md](https://github.com/rhom6us/winforms-mcp/blob/master/CHANGELOG.md) for details.
+        draft: false
+        prerelease: false
+
+    - name: Create NPM distribution
+      run: |
+        mkdir -p npm/dist
+        # Copy binaries
+        $exeFile = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows" -Filter "Rhombus.WinFormsMcp.Server.exe" | Select-Object -First 1
+        $dllFiles = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows" -Filter "*.dll"
+        if ($exeFile) {
+          Copy-Item -Path $exeFile.FullName -Destination "npm/dist/" -Force
+        }
+        foreach ($dll in $dllFiles) {
+          Copy-Item -Path $dll.FullName -Destination "npm/dist/" -Force
+        }
+      shell: pwsh
+
+    - name: Publish to NPM
+      run: |
+        npm config set @rhom6us:registry https://registry.npmjs.org/
+        npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
+        cd npm
+        npm publish --access public || echo "NPM publish failed or already exists"
+      if: env.NPM_TOKEN != ''
+      env:
+        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      continue-on-error: true
+
+    - name: NuGet login (OIDC)
+      uses: NuGet/login@v1
+      id: nuget-login
+      with:
+        user: butler.software
+
+    - name: Publish to NuGet
+      run: |
+        $nupkg = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release" -Filter "Rhombus.WinFormsMcp.${{ steps.version.outputs.version }}.nupkg" | Select-Object -First 1
+        if ($nupkg) {
+          Write-Host "Publishing $($nupkg.Name) to NuGet..."
+          dotnet nuget push $nupkg.FullName --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        } else {
+          throw "No .nupkg file found"
+        }
+      shell: pwsh

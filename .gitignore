@@ -36,6 +36,8 @@ bld/
 TestResults/
 *.trx
 *.coverage
+coverage/
+*.cobertura.xml
 
 # NuGet
 *.nupkg
