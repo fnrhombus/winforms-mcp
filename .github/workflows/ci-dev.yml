@@ -98,72 +98,40 @@ jobs:
         Write-Host "✓ All uncovered lines have COVERAGE_EXCEPTION comments" -ForegroundColor Green
 
     - name: Analyze commits for version bump
+      id: version-analysis
+      uses: anthropics/claude-code-action@v1
+      with:
+        prompt: |
+          Analyze the following git commits and code changes to determine the appropriate semantic version bump type (major, minor, or patch) according to semver.org rules:
+
+          MAJOR: Incompatible API changes, breaking changes
+          MINOR: New functionality added in a backwards compatible manner
+          PATCH: Backwards compatible bug fixes
+
+          Git log since last version:
+          ```
+          $(git log --oneline --no-merges origin/master..HEAD)
+          ```
+
+          Code changes:
+          ```
+          $(git diff origin/master..HEAD --stat)
+          ```
+
+          Respond with ONLY one word: "major", "minor", or "patch"
+        model: claude-haiku-4-5-20251001
+
+    - name: Determine version bump type
       id: bump-type
       shell: pwsh
       run: |
-        # Get git log and diff for analysis
-        $gitLog = git log --oneline --no-merges origin/master..HEAD
-        $gitDiff = git diff origin/master..HEAD --stat
+        $analysis = "${{ steps.version-analysis.outputs.result }}"
+        $bumpType = $analysis.Trim().ToLower()
 
-        # Prepare prompt for Claude
-        $prompt = @"
-Analyze the following git commits and code changes to determine the appropriate semantic version bump type (major, minor, or patch) according to semver.org rules:
-
-MAJOR: Incompatible API changes, breaking changes
-MINOR: New functionality added in a backwards compatible manner
-PATCH: Backwards compatible bug fixes
-
-Git log since last version:
-$gitLog
-
-Code changes:
-$gitDiff
-
-Respond with ONLY one word: "major", "minor", or "patch"
-"@
-
-        # Call Anthropic API
-        $apiKey = "${{ secrets.ANTHROPIC_API_KEY }}"
-        if ([string]::IsNullOrEmpty($apiKey)) {
-          Write-Host "ANTHROPIC_API_KEY not set, defaulting to patch version bump"
+        if ($bumpType -notmatch '^(major|minor|patch)$') {
+          Write-Host "Claude analysis result: $analysis"
+          Write-Host "Defaulting to patch version bump"
           $bumpType = "patch"
-        } else {
-          $body = @{
-            model = "claude-haiku-4-5-20251001"
-            max_tokens = 10
-            messages = @(
-              @{
-                role = "user"
-                content = $prompt
-              }
-            )
-          } | ConvertTo-Json -Depth 10
-
-          try {
-            $response = Invoke-RestMethod `
-              -Uri "https://api.anthropic.com/v1/messages" `
-              -Method Post `
-              -Headers @{
-                "x-api-key" = $apiKey
-                "anthropic-version" = "2023-06-01"
-                "content-type" = "application/json"
-              } `
-              -Body $body
-
-            $analysis = $response.content[0].text.Trim().ToLower()
-            Write-Host "Claude analysis result: $analysis"
-
-            if ($analysis -match '^(major|minor|patch)$') {
-              $bumpType = $analysis
-            } else {
-              Write-Host "Invalid response, defaulting to patch"
-              $bumpType = "patch"
-            }
-          } catch {
-            Write-Host "API call failed: $_"
-            Write-Host "Defaulting to patch version bump"
-            $bumpType = "patch"
-          }
         }
 
         Write-Host "Version bump type: $bumpType"
