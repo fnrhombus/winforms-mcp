@@ -37,7 +37,7 @@ jobs:
       run: dotnet tool install -g dotnet-reportgenerator-globaltool
 
     - name: Generate coverage report
-      run: reportgenerator -reports:./coverage/**/coverage.cobertura.xml -targetdir:./coverage/report -reporttypes:HtmlInline_AzurePipelines;Cobertura;TextSummary
+      run: reportgenerator -reports:./coverage/**/coverage.cobertura.xml -targetdir:./coverage/report -reporttypes:"HtmlInline_AzurePipelines;Cobertura;TextSummary"
 
     - name: Check coverage with exceptions
       shell: pwsh
