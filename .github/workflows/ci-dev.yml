@@ -101,6 +101,7 @@ jobs:
       id: version-analysis
       uses: anthropics/claude-code-action@v1
       with:
+        anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
         prompt: |
           Analyze the following git commits and code changes to determine the appropriate semantic version bump type (major, minor, or patch) according to semver.org rules:
 
@@ -119,7 +120,7 @@ jobs:
           ```
 
           Respond with ONLY one word: "major", "minor", or "patch"
-        model: claude-haiku-4-5-20251001
+        claude_args: "--model claude-haiku-4-5-20251001"
 
     - name: Determine version bump type
       id: bump-type
