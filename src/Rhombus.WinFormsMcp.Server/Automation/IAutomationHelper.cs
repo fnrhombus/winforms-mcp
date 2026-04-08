@@ -116,4 +116,36 @@ public interface IAutomationHelper : IDisposable
     /// Get all child elements
     /// </summary>
     AutomationElement[]? GetAllChildren(AutomationElement element);
+
+    /// <summary>
+    /// Get the status of a process including whether it is running, responding, exit code, and captured stderr.
+    /// </summary>
+    Dictionary<string, object?> GetProcessStatus(int pid);
+
+    /// <summary>
+    /// Select an item in a combo box, list box, or similar selection control.
+    /// Handles the expand-find-select pattern automatically.
+    /// </summary>
+    /// <param name="element">The selection control element (combo box, list box, etc.)</param>
+    /// <param name="value">Text of the item to select (optional if index provided)</param>
+    /// <param name="index">Zero-based index of the item to select (optional if value provided)</param>
+    /// <returns>The text of the selected item</returns>
+    string SelectItem(AutomationElement element, string? value = null, int? index = null);
+
+    /// <summary>
+    /// Navigate and click a menu item in a menu bar or context menu.
+    /// </summary>
+    /// <param name="menuPath">Array of menu item names forming the path (e.g. ["File", "Save As"])</param>
+    /// <param name="pid">Optional process ID to scope the search to a specific window</param>
+    void ClickMenuItem(string[] menuPath, int? pid = null);
+
+    /// <summary>
+    /// Build a tree of UI automation elements starting from a root element.
+    /// Each node includes name, controlType, automationId, boundingRectangle, isEnabled, isOffscreen, and children.
+    /// </summary>
+    /// <param name="root">Root element to start traversal from</param>
+    /// <param name="depth">Maximum depth to traverse (default 3)</param>
+    /// <param name="maxElements">Maximum total elements to include (default 50)</param>
+    /// <param name="cacheElement">Optional callback to cache each discovered element; returns the assigned elementId</param>
+    List<Dictionary<string, object?>> GetElementTree(AutomationElement root, int depth = 3, int maxElements = 50, Func<AutomationElement, string>? cacheElement = null);
 }
