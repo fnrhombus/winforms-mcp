@@ -285,10 +285,10 @@ fnWindowsMCP/
 │   └── fnWindowsMCP.TestApp/    # Test WinForms app
 ├── tests/
 │   └── fnWindowsMCP.Tests/      # NUnit tests
-├── examples/
-│   └── EXAMPLES.md              # Detailed examples
-├── README.md                    # Full documentation
-└── QUICKSTART.md               # This file
+├── docs/
+│   ├── EXAMPLES.md              # Detailed examples
+│   └── QUICKSTART.md            # This file
+└── README.md                    # Full documentation
 ```
 
 ## Available Tools
@@ -331,9 +331,9 @@ fnWindowsMCP/
 
 ## Next Steps
 
-1. Read [EXAMPLES.md](examples/EXAMPLES.md) for detailed workflows
+1. Read [EXAMPLES.md](EXAMPLES.md) for detailed workflows
 2. Run the [TestApp](src/fnWindowsMCP.TestApp/) to explore controls
-3. Check the [API Reference](README.md#mcp-tool-reference)
+3. Check the [API Reference](../README.md#mcp-tool-reference)
 4. Run the [test suite](tests/fnWindowsMCP.Tests/) to verify
 
 ## Performance Tips
@@ -363,4 +363,4 @@ Then Claude Code can call the automation tools directly!
 
 ---
 
-Happy automating! For more help, see [README.md](README.md) or [EXAMPLES.md](examples/EXAMPLES.md).
+Happy automating! For more help, see [README.md](../README.md) or [EXAMPLES.md](EXAMPLES.md).

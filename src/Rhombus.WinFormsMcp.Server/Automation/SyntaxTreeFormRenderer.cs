@@ -12,7 +12,7 @@ namespace Rhombus.WinFormsMcp.Server.Automation;
 /// Parses the InitializeComponent() method via Roslyn's syntax tree, then executes
 /// statements via reflection to create real WinForms controls and render them with DrawToBitmap.
 /// </summary>
-public class FormRenderer
+public class SyntaxTreeFormRenderer
 {
     private static bool _visualStylesInitialized;
     private readonly Dictionary<string, Type?> _typeCache = new();

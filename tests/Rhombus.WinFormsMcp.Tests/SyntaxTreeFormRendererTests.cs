@@ -8,14 +8,14 @@ namespace Rhombus.WinFormsMcp.Tests;
 
 [TestFixture]
 [Apartment(ApartmentState.STA)]
-public class FormRendererTests
+public class SyntaxTreeFormRendererTests
 {
-    private FormRenderer _renderer = null!;
+    private SyntaxTreeFormRenderer _renderer = null!;
 
     [SetUp]
     public void Setup()
     {
-        _renderer = new FormRenderer();
+        _renderer = new SyntaxTreeFormRenderer();
     }
 
     #region Type Resolution

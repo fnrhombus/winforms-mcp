@@ -29,10 +29,10 @@ Install globally:
 npm install -g @rhom6us/winforms-mcp
 ```
 
-Or use directly with `npx`:
+Or use directly with `npx` (the `-y` flag auto-confirms the install prompt):
 
 ```bash
-npx @rhom6us/winforms-mcp
+npx -y @rhom6us/winforms-mcp
 ```
 
 ### Option 3: Direct Download
@@ -69,7 +69,20 @@ New-Item -Path "$env:USERPROFILE\.claude\mcp.json" -ItemType File
 
 Edit `~/.claude/mcp.json` and add the server configuration. Choose one based on your installation method:
 
-**For NuGet/Direct Installation:**
+**Via npx (recommended, no install needed):**
+
+```json
+{
+  "mcpServers": {
+    "winforms-mcp": {
+      "command": "npx",
+      "args": ["-y", "@rhom6us/winforms-mcp"]
+    }
+  }
+}
+```
+
+**Via dotnet (path to published DLL):**
 
 ```json
 {
@@ -77,45 +90,21 @@ Edit `~/.claude/mcp.json` and add the server configuration. Choose one based on 
     "winforms-mcp": {
       "command": "dotnet",
       "args": [
-        "path/to/Rhombus.WinFormsMcp.Server.dll"
-      ],
-      "env": {
-        "HEADLESS": "true"
-      }
+        "C:\\path\\to\\Rhombus.WinFormsMcp.Server.dll"
+      ]
     }
   }
 }
 ```
 
-**For NPM Global Installation:**
-
-```json
-{
-  "mcpServers": {
-    "winforms-mcp": {
-      "command": "npx",
-      "args": [
-        "@rhom6us/winforms-mcp"
-      ],
-      "env": {
-        "HEADLESS": "true"
-      }
-    }
-  }
-}
-```
-
-**For Local Executable:**
+**Via local executable (direct download):**
 
 ```json
 {
   "mcpServers": {
     "winforms-mcp": {
       "command": "C:\\path\\to\\Rhombus.WinFormsMcp.Server.exe",
-      "args": [],
-      "env": {
-        "HEADLESS": "true"
-      }
+      "args": []
     }
   }
 }
@@ -286,7 +275,7 @@ If you get connection errors when using tools:
    dotnet path/to/Rhombus.WinFormsMcp.Server.dll
 
    # For NPM
-   npx @rhom6us/winforms-mcp
+   npx -y @rhom6us/winforms-mcp
 
    ```
 

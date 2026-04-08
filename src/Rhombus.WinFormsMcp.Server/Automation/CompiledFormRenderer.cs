@@ -170,7 +170,50 @@ public class CompiledFormRenderer
             csproj.Root!.Add(itemGroup);
         }
 
+        // Reference the source project's built assembly for custom controls
+        var projectDll = FindProjectOutputDll(sourceCsprojPath);
+        if (projectDll != null)
+        {
+            var refGroup = new XElement("ItemGroup",
+                new XElement("Reference",
+                    new XAttribute("Include", Path.GetFileNameWithoutExtension(projectDll)),
+                    new XElement("HintPath", projectDll)));
+            csproj.Root!.Add(refGroup);
+        }
+
         csproj.Save(Path.Combine(tempDir, "TempFormRender.csproj"));
+    }
+
+    /// <summary>
+    /// Find the built DLL for a project by scanning its bin directory.
+    /// </summary>
+    internal static string? FindProjectOutputDll(string csprojPath)
+    {
+        var csprojDir = Path.GetDirectoryName(csprojPath)!;
+        var projectName = Path.GetFileNameWithoutExtension(csprojPath);
+
+        var searchDirs = new[]
+        {
+            Path.Combine(csprojDir, "bin", "Debug"),
+            Path.Combine(csprojDir, "bin", "Release"),
+        };
+
+        foreach (var searchDir in searchDirs)
+        {
+            if (!Directory.Exists(searchDir)) continue;
+
+            var tfmDirs = Directory.GetDirectories(searchDir)
+                .OrderByDescending(Directory.GetLastWriteTime);
+
+            foreach (var tfmDir in tfmDirs)
+            {
+                var dll = Path.Combine(tfmDir, $"{projectName}.dll");
+                if (File.Exists(dll))
+                    return dll;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

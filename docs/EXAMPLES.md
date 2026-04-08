@@ -1,723 +1,579 @@
-# fnWindowsMCP Usage Examples
+# Rhombus.WinFormsMcp -- Example Workflows
 
-This document provides practical examples of using fnWindowsMCP to automate WinForms applications.
+Real-world examples of using the WinForms MCP server through Claude Code conversations. These show what you say to Claude, and what Claude does behind the scenes using the MCP tools.
 
 ## Table of Contents
 
-1. [Basic Application Launch](#basic-application-launch)
-2. [Finding and Interacting with Controls](#finding-and-interacting-with-controls)
-3. [Form Filling Workflow](#form-filling-workflow)
-4. [Screenshot-Based Validation](#screenshot-based-validation)
-5. [Error Handling](#error-handling)
-6. [Advanced Scenarios](#advanced-scenarios)
-
-## Basic Application Launch
-
-### Launching Notepad
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "launch_app",
-    "arguments": {
-      "path": "notepad.exe"
-    }
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "content": [{"type": "text", "text": "{\"success\": true, \"pid\": 5432, \"processName\": \"notepad\"}"}]
-  }
-}
-```
-
-### Launching with Arguments
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "launch_app",
-    "arguments": {
-      "path": "C:\\Program Files\\MyApp\\MyApp.exe",
-      "arguments": "--debug --loglevel verbose",
-      "workingDirectory": "C:\\Program Files\\MyApp"
-    }
-  }
-}
-```
-
-## Finding and Interacting with Controls
-
-### Finding a Button by Name
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 3,
-  "method": "tools/call",
-  "params": {
-    "name": "find_element",
-    "arguments": {
-      "name": "OK"
-    }
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 3,
-  "result": {
-    "content": [{"type": "text", "text": "{\"success\": true, \"elementId\": \"elem_1\", \"name\": \"OK\", \"controlType\": \"Button\"}"}]
-  }
-}
-```
-
-### Clicking an Element
-
-Using the element ID from the previous response:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 4,
-  "method": "tools/call",
-  "params": {
-    "name": "click_element",
-    "arguments": {
-      "elementId": "elem_1"
-    }
-  }
-}
-```
-
-### Double-Click Operation
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 5,
-  "method": "tools/call",
-  "params": {
-    "name": "click_element",
-    "arguments": {
-      "elementId": "elem_1",
-      "doubleClick": true
-    }
-  }
-}
-```
-
-## Form Filling Workflow
-
-### Complete Form Fill Example
-
-**Scenario:** Fill a registration form with Name, Email, and Country
-
-#### Step 1: Find the Name TextBox
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "find_element",
-    "arguments": {
-      "name": "txtName"
-    }
-  }
-}
-```
-
-Response: `{"success": true, "elementId": "elem_1"}`
-
-#### Step 2: Enter Name
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "type_text",
-    "arguments": {
-      "elementId": "elem_1",
-      "text": "John Doe",
-      "clearFirst": true
-    }
-  }
-}
-```
-
-#### Step 3: Find Email TextBox and Enter Value
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 3,
-  "method": "tools/call",
-  "params": {
-    "name": "find_element",
-    "arguments": {
-      "name": "txtEmail"
-    }
-  }
-}
-```
-
-Response: `{"success": true, "elementId": "elem_2"}`
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 4,
-  "method": "tools/call",
-  "params": {
-    "name": "type_text",
-    "arguments": {
-      "elementId": "elem_2",
-      "text": "john@example.com",
-      "clearFirst": true
-    }
-  }
-}
-```
-
-#### Step 4: Find ComboBox and Select Option
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 5,
-  "method": "tools/call",
-  "params": {
-    "name": "find_element",
-    "arguments": {
-      "name": "cmbCountry"
-    }
-  }
-}
-```
-
-Response: `{"success": true, "elementId": "elem_3"}`
-
-Click to open dropdown:
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 6,
-  "method": "tools/call",
-  "params": {
-    "name": "click_element",
-    "arguments": {
-      "elementId": "elem_3"
-    }
-  }
-}
-```
-
-Send arrow keys to select option:
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 7,
-  "method": "tools/call",
-  "params": {
-    "name": "send_keys",
-    "arguments": {
-      "keys": "{DOWN}{DOWN}{ENTER}"
-    }
-  }
-}
-```
-
-#### Step 5: Find Submit Button and Click
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 8,
-  "method": "tools/call",
-  "params": {
-    "name": "find_element",
-    "arguments": {
-      "name": "btnSubmit"
-    }
-  }
-}
-```
-
-Response: `{"success": true, "elementId": "elem_4"}`
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 9,
-  "method": "tools/call",
-  "params": {
-    "name": "click_element",
-    "arguments": {
-      "elementId": "elem_4"
-    }
-  }
-}
-```
-
-## Screenshot-Based Validation
-
-### Taking Full Application Screenshot
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "take_screenshot",
-    "arguments": {
-      "outputPath": "C:\\temp\\application_state.png"
-    }
-  }
-}
-```
-
-### Taking Screenshot of Specific Element
-
-First, find the element:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "find_element",
-    "arguments": {
-      "className": "DataGridView"
-    }
-  }
-}
-```
-
-Response: `{"success": true, "elementId": "elem_1"}`
-
-Then capture the element:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "take_screenshot",
-    "arguments": {
-      "outputPath": "C:\\temp\\datagrid_state.png",
-      "elementId": "elem_1"
-    }
-  }
-}
-```
-
-### Validation Workflow with Screenshots
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "wait_for_element",
-    "arguments": {
-      "automationId": "successMessage",
-      "timeoutMs": 5000
-    }
-  }
-}
-```
-
-If found, capture the result:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "take_screenshot",
-    "arguments": {
-      "outputPath": "C:\\temp\\success_screen.png"
-    }
-  }
-}
-```
-
-## Error Handling
-
-### Checking Element Existence
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "element_exists",
-    "arguments": {
-      "automationId": "errorMessage"
-    }
-  }
-}
-```
-
-**Response (element exists):**
-```json
-{"success": true, "exists": true}
-```
-
-**Response (element not found):**
-```json
-{"success": true, "exists": false}
-```
-
-### Waiting for Element with Timeout
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "wait_for_element",
-    "arguments": {
-      "automationId": "loadingSpinner",
-      "timeoutMs": 3000
-    }
-  }
-}
-```
-
-**Response (found):**
-```json
-{"success": true, "found": true}
-```
-
-**Response (timeout):**
-```json
-{"success": true, "found": false}
-```
-
-### Error Response Example
-
-```json
-{
-  "success": false,
-  "error": "Element not found in session"
-}
-```
-
-## Advanced Scenarios
-
-### Multi-Window Application
-
-Some applications have multiple windows. Example workflow:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "launch_app",
-    "arguments": {
-      "path": "C:\\Program Files\\MyApp\\MyApp.exe"
-    }
-  }
-}
-```
-
-Response: `{"pid": 5432}`
-
-Click a button that opens a child window:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "find_element",
-    "arguments": {
-      "name": "btnOpenSettings"
-    }
-  }
-}
-```
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 3,
-  "method": "tools/call",
-  "params": {
-    "name": "click_element",
-    "arguments": {
-      "elementId": "elem_1"
-    }
-  }
-}
-```
-
-Wait for the settings window to appear:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 4,
-  "method": "tools/call",
-  "params": {
-    "name": "wait_for_element",
-    "arguments": {
-      "name": "Settings",
-      "timeoutMs": 3000
-    }
-  }
-}
-```
-
-### Data Grid Interaction
-
-#### Navigate DataGrid
-
-Assuming DataGrid element is identified:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "find_element",
-    "arguments": {
-      "name": "dataGridView1"
-    }
-  }
-}
-```
-
-Response: `{"elementId": "elem_1"}`
-
-Click on DataGrid to focus it:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "click_element",
-    "arguments": {
-      "elementId": "elem_1"
-    }
-  }
-}
-```
-
-Navigate with arrow keys:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 3,
-  "method": "tools/call",
-  "params": {
-    "name": "send_keys",
-    "arguments": {
-      "keys": "{RIGHT}{RIGHT}{DOWN}{DOWN}"
-    }
-  }
-}
-```
-
-### Drag and Drop
-
-#### Scenario: Drag item from list box to another
-
-Find source element:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "find_element",
-    "arguments": {
-      "name": "Item1"
-    }
-  }
-}
-```
-
-Response: `{"elementId": "elem_1"}`
-
-Find target element:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "find_element",
-    "arguments": {
-      "name": "targetListBox"
-    }
-  }
-}
-```
-
-Response: `{"elementId": "elem_2"}`
-
-Perform drag and drop:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 3,
-  "method": "tools/call",
-  "params": {
-    "name": "drag_drop",
-    "arguments": {
-      "sourceElementId": "elem_1",
-      "targetElementId": "elem_2"
-    }
-  }
-}
-```
-
-### Getting Control Properties
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "get_property",
-    "arguments": {
-      "elementId": "elem_1",
-      "propertyName": "name"
-    }
-  }
-}
-```
-
-Response:
-```json
-{"success": true, "propertyName": "name", "value": "buttonOK"}
-```
-
-Available properties:
-- `name` - Element's Name
-- `automationid` - Element's AutomationId
-- `classname` - Element's ClassName
-- `controltype` - Element's ControlType
-- `isoffscreen` - Is element off-screen
-- `isenabled` - Is element enabled
-
-### Setting ComboBox to Specific Value
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "find_element",
-    "arguments": {
-      "name": "cmbStatus"
-    }
-  }
-}
-```
-
-Response: `{"elementId": "elem_1"}`
-
-Click to open:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "click_element",
-    "arguments": {
-      "elementId": "elem_1"
-    }
-  }
-}
-```
-
-Type to search (if supported):
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 3,
-  "method": "tools/call",
-  "params": {
-    "name": "type_text",
-    "arguments": {
-      "elementId": "elem_1",
-      "text": "Completed"
-    }
-  }
-}
-```
-
-Or navigate with keys:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 4,
-  "method": "tools/call",
-  "params": {
-    "name": "send_keys",
-    "arguments": {
-      "keys": "{DOWN}{DOWN}{ENTER}"
-    }
-  }
-}
-```
-
-## Tips and Best Practices
-
-1. **Always use `wait_for_element` before interaction** - Ensures element is loaded
-2. **Capture screenshots for validation** - Visual confirmation of state changes
-3. **Use element_exists to branch logic** - Check for error messages or success states
-4. **Set timeouts appropriately** - Longer for slow operations, shorter for quick checks
-5. **Clear fields before entering data** - Use `clearFirst: true` to avoid appending
-6. **Handle modal dialogs** - Use `wait_for_element` to detect dialog appearance
-7. **Test with TestApp first** - Familiarize yourself with the provided test controls
-8. **Close applications properly** - Always call `close_app` to clean up resources
+1. [Designing a Form from Scratch](#1-designing-a-form-from-scratch)
+2. [Previewing an Existing Form](#2-previewing-an-existing-form)
+3. [Iterating on Form Design](#3-iterating-on-form-design)
+4. [Testing a Running App with FlaUI](#4-testing-a-running-app-with-flaui)
+5. [Validating UI Changes](#5-validating-ui-changes)
 
 ---
 
-For more information, see the main [README.md](../README.md).
+## 1. Designing a Form from Scratch
+
+You want Claude to create a login form. Claude writes the standard Visual Studio three-file convention, then previews it instantly without building.
+
+```
+> User: Create a login form with username, password, and a submit button.
+>       Put it in src/MyApp/Forms/LoginForm.
+```
+
+Claude creates three files following Visual Studio conventions:
+
+**LoginForm.cs** -- the code-behind with constructor and event handlers:
+
+```csharp
+namespace MyApp.Forms
+{
+    public partial class LoginForm : Form
+    {
+        public LoginForm()
+        {
+            InitializeComponent();
+        }
+
+        private void btnSubmit_Click(object sender, EventArgs e)
+        {
+            // TODO: authentication logic
+        }
+    }
+}
+```
+
+**LoginForm.Designer.cs** -- all layout and control creation:
+
+```csharp
+namespace MyApp.Forms
+{
+    partial class LoginForm
+    {
+        private System.ComponentModel.IContainer components = null;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+                components.Dispose();
+            base.Dispose(disposing);
+        }
+
+        private void InitializeComponent()
+        {
+            this.lblUsername = new System.Windows.Forms.Label();
+            this.lblPassword = new System.Windows.Forms.Label();
+            this.txtUsername = new System.Windows.Forms.TextBox();
+            this.txtPassword = new System.Windows.Forms.TextBox();
+            this.btnSubmit = new System.Windows.Forms.Button();
+            this.SuspendLayout();
+            //
+            // lblUsername
+            //
+            this.lblUsername.AutoSize = true;
+            this.lblUsername.Location = new System.Drawing.Point(30, 30);
+            this.lblUsername.Name = "lblUsername";
+            this.lblUsername.Size = new System.Drawing.Size(63, 15);
+            this.lblUsername.Text = "Username:";
+            //
+            // txtUsername
+            //
+            this.txtUsername.Location = new System.Drawing.Point(130, 27);
+            this.txtUsername.Name = "txtUsername";
+            this.txtUsername.Size = new System.Drawing.Size(200, 23);
+            //
+            // lblPassword
+            //
+            this.lblPassword.AutoSize = true;
+            this.lblPassword.Location = new System.Drawing.Point(30, 70);
+            this.lblPassword.Name = "lblPassword";
+            this.lblPassword.Size = new System.Drawing.Size(60, 15);
+            this.lblPassword.Text = "Password:";
+            //
+            // txtPassword
+            //
+            this.txtPassword.Location = new System.Drawing.Point(130, 67);
+            this.txtPassword.Name = "txtPassword";
+            this.txtPassword.Size = new System.Drawing.Size(200, 23);
+            //
+            // btnSubmit
+            //
+            this.btnSubmit.Location = new System.Drawing.Point(130, 110);
+            this.btnSubmit.Name = "btnSubmit";
+            this.btnSubmit.Size = new System.Drawing.Size(100, 30);
+            this.btnSubmit.Text = "Log In";
+            this.btnSubmit.Click += new System.EventHandler(this.btnSubmit_Click);
+            //
+            // LoginForm
+            //
+            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(370, 170);
+            this.Controls.Add(this.btnSubmit);
+            this.Controls.Add(this.txtPassword);
+            this.Controls.Add(this.lblPassword);
+            this.Controls.Add(this.txtUsername);
+            this.Controls.Add(this.lblUsername);
+            this.Name = "LoginForm";
+            this.Text = "Login";
+            this.ResumeLayout(false);
+            this.PerformLayout();
+        }
+
+        private System.Windows.Forms.Label lblUsername;
+        private System.Windows.Forms.Label lblPassword;
+        private System.Windows.Forms.TextBox txtUsername;
+        private System.Windows.Forms.TextBox txtPassword;
+        private System.Windows.Forms.Button btnSubmit;
+    }
+}
+```
+
+Claude then previews the form immediately -- no build required:
+
+```
+Claude calls render_form:
+  designerFilePath: "C:\project\src\MyApp\Forms\LoginForm.Designer.cs"
+  outputPath: "C:\temp\login-preview.png"
+```
+
+Claude sees the rendered PNG and responds:
+
+```
+Here's the login form. It has a Username field, Password field, and a Log In
+button. The layout is clean with left-aligned labels and consistent spacing.
+Let me know if you want any changes.
+```
+
+*[rendered preview of the login form]*
+
+---
+
+## 2. Previewing an Existing Form
+
+You point Claude at an existing form and ask for a preview. Claude picks the right renderer based on what controls the form uses.
+
+### Standard controls only -- use `render_form`
+
+```
+> User: Show me what Forms/SettingsForm.Designer.cs looks like.
+```
+
+Claude reads the designer file and sees it only uses standard controls (`Label`, `TextBox`, `CheckBox`, `Button`). Since there are no custom or third-party controls, Claude picks the fastest renderer:
+
+```
+Claude calls render_form:
+  designerFilePath: "C:\project\Forms\SettingsForm.Designer.cs"
+  outputPath: "C:\temp\settings-preview.png"
+
+Completed in ~150ms
+```
+
+### Custom or third-party controls -- use `render_form_inprocess`
+
+```
+> User: Preview Forms/DashboardForm.Designer.cs for me.
+```
+
+Claude reads the file and notices it uses `Telerik.WinControls.UI.RadGridView` and a custom `MyApp.Controls.StatusIndicator`. Standard `render_form` would silently skip these controls (they'd show as blank space), so Claude uses the in-process renderer instead:
+
+```
+Claude calls render_form_inprocess:
+  sourceFilePath: "C:\project\Forms\DashboardForm.Designer.cs"
+
+Completed in ~450ms, returns base64 PNG
+```
+
+Claude responds:
+
+```
+Here's the dashboard. The RadGridView and your custom StatusIndicator control
+both rendered correctly. The grid takes up most of the form with the status
+indicator in the bottom-right corner.
+
+Note: I used render_form_inprocess because your form uses third-party Telerik
+controls and a custom UserControl. The standard render_form would have shown
+blank space where those controls are.
+```
+
+### Fallback -- use `render_form_compiled`
+
+```
+> User: I can't get a preview of MainForm -- it keeps failing.
+```
+
+Claude tries `render_form_inprocess` first but it fails because the project has never been built (no DLLs in `bin/`). Claude falls back:
+
+```
+Claude calls render_form_compiled:
+  sourceFilePath: "C:\project\Forms\MainForm.Designer.cs"
+
+Completed in ~2800ms
+```
+
+```
+The in-process renderer failed because there's no build output yet. I used
+render_form_compiled instead, which generates a temporary project and builds
+it from scratch. It's slower (~3 seconds) but doesn't need pre-existing
+build output.
+
+Here's the preview. Once you've done an initial build, I can switch to the
+faster render_form_inprocess for subsequent previews.
+```
+
+### Decision summary
+
+| Renderer | Speed | When to use |
+|---|---|---|
+| `render_form` | ~150ms | Form only uses `System.Windows.Forms` controls |
+| `render_form_inprocess` | ~450ms | Form has custom/third-party controls; project has been built |
+| `render_form_compiled` | ~2800ms | Fallback when in-process fails (no build output, exotic config) |
+
+---
+
+## 3. Iterating on Form Design
+
+The fast edit-render loop. You describe changes, Claude edits the designer file and re-renders until you're happy.
+
+```
+> User: Make the password field use a password mask.
+```
+
+Claude edits `LoginForm.Designer.cs`, adding one property:
+
+```csharp
+this.txtPassword.UseSystemPasswordChar = true;
+```
+
+```
+Claude calls render_form:
+  designerFilePath: "C:\project\src\MyApp\Forms\LoginForm.Designer.cs"
+  outputPath: "C:\temp\login-preview-2.png"
+```
+
+```
+Done. The password field now masks input with dots. Here's the updated preview.
+```
+
+*[rendered preview showing masked password field]*
+
+```
+> User: Add a "Remember me" checkbox below the password field, and make the
+>       submit button wider.
+```
+
+Claude edits the designer file -- adds a `CheckBox` control, adjusts button width, shifts the button down to make room:
+
+```
+Claude calls render_form:
+  designerFilePath: "C:\project\src\MyApp\Forms\LoginForm.Designer.cs"
+  outputPath: "C:\temp\login-preview-3.png"
+```
+
+```
+Added a "Remember me" checkbox at (130, 100) and widened the Log In button
+to 200px. The button moved down to (130, 135) to make room for the checkbox.
+The form height increased to 200 to fit everything. Here's the result.
+```
+
+*[rendered preview with checkbox and wider button]*
+
+```
+> User: Looks good, but center the button horizontally.
+```
+
+Claude recalculates: form client width is 370, button width is 200, so `(370 - 200) / 2 = 85`. Edits the button's X position to 85.
+
+```
+Claude calls render_form:
+  designerFilePath: "C:\project\src\MyApp\Forms\LoginForm.Designer.cs"
+  outputPath: "C:\temp\login-preview-4.png"
+```
+
+```
+Centered. The button is now at X=85 which puts it in the horizontal center
+of the 370px-wide form.
+```
+
+This cycle takes seconds per iteration since `render_form` completes in ~150ms. No build step, no waiting.
+
+---
+
+## 4. Testing a Running App with FlaUI
+
+You want Claude to launch an app, interact with it, and verify behavior -- all headless.
+
+```
+> User: Launch the test app and fill in the registration form. Use "Jane Doe"
+>       for the name and "jane@example.com" for email, then submit it.
+```
+
+Claude launches the app:
+
+```
+Claude calls launch_app:
+  path: "C:\project\bin\Debug\net8.0-windows\MyApp.exe"
+
+Result: { success: true, pid: 8432, processName: "MyApp" }
+```
+
+Claude waits for the main window to load:
+
+```
+Claude calls wait_for_element:
+  name: "Registration"
+  timeoutMs: 5000
+
+Result: { success: true, found: true }
+```
+
+Claude finds and fills the name field:
+
+```
+Claude calls find_element:
+  automationId: "txtName"
+
+Result: { success: true, elementId: "elem_1", controlType: "Edit" }
+
+Claude calls type_text:
+  elementId: "elem_1"
+  text: "Jane Doe"
+  clearFirst: true
+
+Result: { success: true }
+```
+
+Claude finds and fills the email field:
+
+```
+Claude calls find_element:
+  automationId: "txtEmail"
+
+Result: { success: true, elementId: "elem_2", controlType: "Edit" }
+
+Claude calls type_text:
+  elementId: "elem_2"
+  text: "jane@example.com"
+  clearFirst: true
+
+Result: { success: true }
+```
+
+Claude clicks the submit button:
+
+```
+Claude calls find_element:
+  automationId: "btnSubmit"
+
+Result: { success: true, elementId: "elem_3", controlType: "Button" }
+
+Claude calls click_element:
+  elementId: "elem_3"
+
+Result: { success: true }
+```
+
+Claude takes a screenshot to show you the result:
+
+```
+Claude calls take_screenshot:
+  outputPath: "C:\temp\registration-result.png"
+
+Result: { success: true }
+```
+
+```
+Done. I launched the app, filled in "Jane Doe" and "jane@example.com", and
+clicked Submit. Here's a screenshot of the result -- the success message
+is visible at the top of the form.
+```
+
+*[screenshot of the app showing completed registration]*
+
+```
+> User: Now close it.
+```
+
+```
+Claude calls close_app:
+  pid: 8432
+  force: false
+
+Result: { success: true }
+```
+
+```
+App closed cleanly.
+```
+
+### Checking element properties
+
+```
+> User: Is the Submit button enabled after filling in both fields?
+```
+
+```
+Claude calls get_property:
+  elementId: "elem_3"
+  propertyName: "isenabled"
+
+Result: { success: true, value: "True" }
+```
+
+```
+Yes, the Submit button is enabled.
+```
+
+### Keyboard shortcuts and navigation
+
+```
+> User: Test that Tab order works correctly on the form.
+```
+
+```
+Claude calls click_element:
+  elementId: "elem_1"    (clicks the name field to focus it)
+
+Claude calls send_keys:
+  keys: "{TAB}"          (Tab to next field)
+
+Claude calls take_screenshot:
+  outputPath: "C:\temp\tab-order-1.png"
+
+Claude calls send_keys:
+  keys: "{TAB}"          (Tab again)
+
+Claude calls take_screenshot:
+  outputPath: "C:\temp\tab-order-2.png"
+```
+
+```
+Tab order is: Name field -> Email field -> Submit button. Each screenshot
+shows the focus moving to the next control in sequence. The order matches
+the expected flow.
+```
+
+---
+
+## 5. Validating UI Changes
+
+You made a code change and want to verify it looks right -- both as a static preview and at runtime.
+
+```
+> User: I just changed the main form to add a status bar. Can you verify it
+>       looks right?
+```
+
+**Step 1: Static preview** -- Claude renders the designer file to check layout.
+
+```
+Claude calls render_form:
+  designerFilePath: "C:\project\Forms\MainForm.Designer.cs"
+  outputPath: "C:\temp\main-preview.png"
+```
+
+```
+Static preview looks good. The status bar is docked to the bottom of the
+form with the text "Ready" as expected. The other controls aren't overlapping
+with it.
+```
+
+*[rendered preview showing the form with status bar]*
+
+**Step 2: Runtime verification** -- Claude builds and launches to confirm it works.
+
+```
+> User: Good. Now run it and make sure the status bar updates when I click
+>       the Process button.
+```
+
+Claude builds the project first, then launches:
+
+```
+Claude runs: dotnet build C:\project\MyApp.csproj
+
+Claude calls launch_app:
+  path: "C:\project\bin\Debug\net8.0-windows\MyApp.exe"
+
+Result: { success: true, pid: 9210 }
+```
+
+Claude takes a "before" screenshot:
+
+```
+Claude calls take_screenshot:
+  outputPath: "C:\temp\before-click.png"
+```
+
+Claude finds and reads the status bar text:
+
+```
+Claude calls find_element:
+  automationId: "statusLabel"
+
+Result: { success: true, elementId: "elem_1" }
+
+Claude calls get_property:
+  elementId: "elem_1"
+  propertyName: "name"
+
+Result: { value: "Ready" }
+```
+
+Claude clicks the Process button:
+
+```
+Claude calls find_element:
+  automationId: "btnProcess"
+
+Result: { success: true, elementId: "elem_2" }
+
+Claude calls click_element:
+  elementId: "elem_2"
+```
+
+Claude waits a moment, then checks the status bar again:
+
+```
+Claude calls wait_for_element:
+  name: "Processing complete"
+  timeoutMs: 5000
+
+Result: { success: true, found: true }
+
+Claude calls take_screenshot:
+  outputPath: "C:\temp\after-click.png"
+```
+
+```
+Verified. The status bar started at "Ready" and changed to "Processing
+complete" after clicking the Process button. Here are the before and after
+screenshots. Everything matches the expected behavior.
+
+Before: status bar shows "Ready"
+After: status bar shows "Processing complete"
+```
+
+*[before screenshot]* *[after screenshot]*
+
+Claude cleans up:
+
+```
+Claude calls close_app:
+  pid: 9210
+```
+
+---
+
+## Tips
+
+- **Use `render_form` for fast iteration** -- at ~150ms per render, you can tweak layouts interactively without waiting for builds.
+- **Always use `wait_for_element` before interacting** -- apps take time to load, and elements may not be immediately available.
+- **Use `clearFirst: true` when typing into fields** -- avoids appending to existing text.
+- **Take screenshots to verify state** -- Claude can see the screenshots and tell you what's on screen.
+- **Close apps when done** -- call `close_app` to clean up resources and avoid orphan processes.
+- **Start with `render_form`, escalate if needed** -- if controls are missing in the preview, move to `render_form_inprocess`, then `render_form_compiled` as a last resort.
+
+---
+
+For setup instructions, see [Claude Code Setup Guide](CLAUDE_CODE_SETUP.md). For the main project documentation, see the [README](../README.md).
