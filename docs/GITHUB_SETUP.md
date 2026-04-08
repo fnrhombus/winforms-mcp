@@ -55,16 +55,6 @@ Go to **Repository Settings → Secrets and variables → Actions** and add thes
    - Must have publish permissions for `@rhom6us` scope
    - Secret value: The full token with `npm_` prefix
 
-2. **DOCKER_USERNAME**
-   - Your Docker Hub username
-   - Create account: https://hub.docker.com
-
-3. **DOCKER_PASSWORD**
-   - Docker Hub access token (NOT your password)
-   - Create at: https://hub.docker.com/settings/security
-   - Click "New Access Token"
-   - Grant read, write, delete permissions
-
 **NOTE:** NuGet API key is NOT needed! The workflow uses GitHub OIDC tokens for secure, keyless publishing.
 
 ## Step 5: Configure Branch Protection (Optional but Recommended)
@@ -99,7 +89,6 @@ This will:
 - Run the publish workflow which will:
   - Publish to NuGet.org as `Rhombus.WinFormsMcp` (using OIDC trusted publishing)
   - Publish to NPM as `@rhom6us/winforms-mcp`
-  - Build and push Docker image as `rhom6us/winforms-mcp:1.0.0`
   - Create a GitHub Release with release notes
 
 ## Workflow Triggers
@@ -123,7 +112,6 @@ Triggers on:
 What it does (if secrets are configured):
 - Publishes to NuGet.org (using OIDC tokens)
 - Publishes to NPM Registry
-- Builds and pushes Docker image
 - Creates GitHub Release with binaries
 
 ## Publishing a New Version
@@ -179,12 +167,6 @@ npm install @rhom6us/winforms-mcp@1.0.0
 npx @rhom6us/winforms-mcp
 ```
 
-### Docker
-```bash
-docker pull rhom6us/winforms-mcp:1.0.0
-docker run rhom6us/winforms-mcp:1.0.0
-```
-
 ### Direct Download
 Download from: https://github.com/rhom6us/winforms-mcp/releases
 
@@ -208,11 +190,6 @@ Download from: https://github.com/rhom6us/winforms-mcp/releases
 - Ensure `@rhom6us` scope exists on npmjs.com
 - Check that you have publish permissions
 
-### Docker Build Fails
-- Docker build runs on Windows runner (required for Windows Server Core image)
-- Ensure DOCKER_USERNAME and DOCKER_PASSWORD are set
-- Check Docker Hub has `rhom6us` organization/user
-
 ## Security Notes
 
 This project uses **NuGet Trusted Publishing** with GitHub OIDC tokens:
@@ -229,5 +206,4 @@ This is much more secure than traditional API keys and requires zero secret rota
 - Repository: https://github.com/rhom6us/winforms-mcp
 - NuGet Package: https://www.nuget.org/packages/Rhombus.WinFormsMcp
 - NPM Package: https://www.npmjs.com/package/@rhom6us/winforms-mcp
-- Docker Image: https://hub.docker.com/r/rhom6us/winforms-mcp
 - NuGet Trusted Publishing: https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing

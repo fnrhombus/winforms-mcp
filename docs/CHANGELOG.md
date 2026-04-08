@@ -19,9 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive mock-based test suite (52+ passing tests)
 - NuGet package: `Rhombus.WinFormsMcp`
 - NPM package: `@rhom6us/winforms-mcp` with npx support
-- Docker image: `rhom6us/winforms-mcp`
 - GitHub Actions CI/CD workflows
-- Multi-platform publishing (NuGet, NPM, Docker, GitHub Releases)
+- Multi-platform publishing (NuGet, NPM, GitHub Releases)
 - Branch protection and pull request workflows
 - MIT License
 
@@ -31,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Full Process Control**: Launch, attach, and manage application lifecycles
 - **Visual Validation**: Capture screenshots for analysis
 - **Async Integration**: Seamless integration with modern .NET async patterns
-- **Cross-Platform Distribution**: Available via NuGet, NPM, Docker, and direct download
+- **Cross-Platform Distribution**: Available via NuGet, NPM, and direct download
 
 ### Testing
 - 52+ passing unit-level tests
@@ -43,7 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known Limitations
 - Windows-only (requires x64 architecture)
 - Requires .NET 8.0 runtime or SDK
-- Docker image requires Windows Server Core
 - UI automation limited to Win32 UI framework (WinForms, WPF, native Windows)
 
 ---

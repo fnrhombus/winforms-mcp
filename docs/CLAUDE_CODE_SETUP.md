@@ -35,21 +35,7 @@ Or use directly with `npx`:
 npx @rhom6us/winforms-mcp
 ```
 
-### Option 3: Docker (for containerized environments)
-
-Pull the Docker image:
-
-```bash
-docker pull rhom6us/winforms-mcp:latest
-```
-
-Run as a container:
-
-```bash
-docker run -it rhom6us/winforms-mcp:latest
-```
-
-### Option 4: Direct Download
+### Option 3: Direct Download
 
 Download the latest release from [GitHub Releases](https://github.com/rhom6us/winforms-mcp/releases).
 
@@ -110,27 +96,6 @@ Edit `~/.claude/mcp.json` and add the server configuration. Choose one based on 
       "command": "npx",
       "args": [
         "@rhom6us/winforms-mcp"
-      ],
-      "env": {
-        "HEADLESS": "true"
-      }
-    }
-  }
-}
-```
-
-**For Docker:**
-
-```json
-{
-  "mcpServers": {
-    "winforms-mcp": {
-      "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "rhom6us/winforms-mcp:latest"
       ],
       "env": {
         "HEADLESS": "true"
@@ -304,7 +269,6 @@ If Claude Code doesn't recognize the server:
 2. Check that the command path is correct:
    - For NuGet: Full path to the `.dll` file
    - For NPM: Run `which npx` or `where npx` to verify
-   - For Docker: Run `docker images` to verify the image exists
    - For executable: Full path to `.exe` file
 
 3. Restart Claude Code:
@@ -324,8 +288,6 @@ If you get connection errors when using tools:
    # For NPM
    npx @rhom6us/winforms-mcp
 
-   # For Docker
-   docker run -it rhom6us/winforms-mcp:latest
    ```
 
 2. Verify you're running on Windows x64
