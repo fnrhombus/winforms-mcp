@@ -226,17 +226,29 @@ Comprehensive NUnit tests covering:
 
 To use this MCP server with Claude Code, see the complete setup guide: **[Claude Code MCP Setup Guide](docs/CLAUDE_CODE_SETUP.md)**
 
-Quick configuration for `~/.claude/mcp.json`:
+Add the following to `~/.claude/mcp.json` (or `%USERPROFILE%\.claude\mcp.json` on Windows):
+
+**Via npx (easiest, no install needed):**
 
 ```json
 {
   "mcpServers": {
     "winforms-mcp": {
-      "command": "dotnet",
-      "args": ["path/to/Rhombus.WinFormsMcp.Server.dll"],
-      "env": {
-        "HEADLESS": "true"
-      }
+      "command": "npx",
+      "args": ["-y", "@rhom6us/winforms-mcp"]
+    }
+  }
+}
+```
+
+**Via dotnet (if you have the published binary):**
+
+```json
+{
+  "mcpServers": {
+    "winforms-mcp": {
+      "command": "C:\\path\\to\\Rhombus.WinFormsMcp.Server.exe",
+      "args": []
     }
   }
 }

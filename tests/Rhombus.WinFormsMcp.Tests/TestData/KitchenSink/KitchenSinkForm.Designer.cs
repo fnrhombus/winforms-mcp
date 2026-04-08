@@ -35,6 +35,8 @@ partial class KitchenSinkForm {
         this.lblDoomsday = new System.Windows.Forms.Label();
         this.trkVolume = new System.Windows.Forms.TrackBar();
         this.prgDoom = new System.Windows.Forms.ProgressBar();
+        this.moodRing = new KitchenSink.MoodRing();
+        this.statusDash = new KitchenSink.StatusDashboard();
         this.lblWarning = new System.Windows.Forms.Label();
         this.lblStatus = new System.Windows.Forms.Label();
         this.grpDread.SuspendLayout();
@@ -346,12 +348,30 @@ partial class KitchenSinkForm {
         this.prgDoom.TabIndex = 6;
         this.prgDoom.Value = 42;
         //
+        // moodRing
+        //
+        this.moodRing.InnerColor = System.Drawing.Color.HotPink;
+        this.moodRing.OuterColor = System.Drawing.Color.Indigo;
+        this.moodRing.MoodText = "Chaotic Neutral";
+        this.moodRing.ForeColor = System.Drawing.Color.WhiteSmoke;
+        this.moodRing.Location = new System.Drawing.Point(12, 520);
+        this.moodRing.Name = "moodRing";
+        this.moodRing.Size = new System.Drawing.Size(100, 100);
+        this.moodRing.TabIndex = 9;
+        //
+        // statusDash
+        //
+        this.statusDash.Location = new System.Drawing.Point(130, 520);
+        this.statusDash.Name = "statusDash";
+        this.statusDash.Size = new System.Drawing.Size(280, 80);
+        this.statusDash.TabIndex = 10;
+        //
         // lblWarning
         //
         this.lblWarning.AutoSize = true;
         this.lblWarning.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
         this.lblWarning.ForeColor = System.Drawing.Color.Red;
-        this.lblWarning.Location = new System.Drawing.Point(12, 522);
+        this.lblWarning.Location = new System.Drawing.Point(12, 632);
         this.lblWarning.Name = "lblWarning";
         this.lblWarning.Size = new System.Drawing.Size(380, 19);
         this.lblWarning.TabIndex = 7;
@@ -362,7 +382,7 @@ partial class KitchenSinkForm {
         this.lblStatus.AutoSize = true;
         this.lblStatus.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
         this.lblStatus.ForeColor = System.Drawing.Color.Gray;
-        this.lblStatus.Location = new System.Drawing.Point(12, 548);
+        this.lblStatus.Location = new System.Drawing.Point(12, 658);
         this.lblStatus.Name = "lblStatus";
         this.lblStatus.Size = new System.Drawing.Size(265, 15);
         this.lblStatus.TabIndex = 8;
@@ -373,7 +393,7 @@ partial class KitchenSinkForm {
         this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
         this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
         this.BackColor = System.Drawing.Color.WhiteSmoke;
-        this.ClientSize = new System.Drawing.Size(950, 580);
+        this.ClientSize = new System.Drawing.Size(950, 690);
         this.Controls.Add(this.lblTitle);
         this.Controls.Add(this.grpDread);
         this.Controls.Add(this.pnlChaos);
@@ -381,6 +401,8 @@ partial class KitchenSinkForm {
         this.Controls.Add(this.tabControl);
         this.Controls.Add(this.trkVolume);
         this.Controls.Add(this.prgDoom);
+        this.Controls.Add(this.moodRing);
+        this.Controls.Add(this.statusDash);
         this.Controls.Add(this.lblWarning);
         this.Controls.Add(this.lblStatus);
         this.Font = new System.Drawing.Font("Segoe UI", 9F);
@@ -429,6 +451,8 @@ partial class KitchenSinkForm {
     private System.Windows.Forms.Label lblDoomsday;
     private System.Windows.Forms.TrackBar trkVolume;
     private System.Windows.Forms.ProgressBar prgDoom;
+    private KitchenSink.MoodRing moodRing;
+    private KitchenSink.StatusDashboard statusDash;
     private System.Windows.Forms.Label lblWarning;
     private System.Windows.Forms.Label lblStatus;
 }

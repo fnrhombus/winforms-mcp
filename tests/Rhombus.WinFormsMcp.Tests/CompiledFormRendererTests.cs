@@ -500,4 +500,170 @@ partial class MyForm {
     }
 
     #endregion
+
+    #region Benchmark
+
+    [Test]
+    [Category("E2E")]
+    public void Benchmark_AllThreeRenderers_KitchenSink()
+    {
+        var designerFile = Path.Combine(TestContext.CurrentContext.TestDirectory,
+            "TestData", "KitchenSink", "KitchenSinkForm.Designer.cs");
+        if (!File.Exists(designerFile))
+            Assert.Ignore("KitchenSink designer file not found.");
+
+        var kitchenSinkExe = Path.Combine(TestContext.CurrentContext.TestDirectory,
+            "TestData", "KitchenSink", "bin", "publish", "KitchenSink.exe");
+        if (!File.Exists(kitchenSinkExe))
+            Assert.Ignore("KitchenSink.exe not built.");
+
+        // Scenario: developer edits .Designer.cs, wants to see the result.
+        // Every run is cold — source changed, so no caching applies.
+        const int runs = 5;
+        var sw = new System.Diagnostics.Stopwatch();
+        var kitchenSinkCsproj = Path.Combine(TestContext.CurrentContext.TestDirectory,
+            "TestData", "KitchenSink", "KitchenSink.csproj");
+
+        // ── 1. Roslyn (syntax tree) ─────────────────────────────
+        //    Reads .Designer.cs, walks AST, creates controls via reflection.
+        //    No build step needed — only reads the designer file.
+        var roslynOut = Path.Combine(Path.GetTempPath(), "bench_roslyn.png");
+        sw.Restart();
+        for (int i = 0; i < runs; i++)
+            new SyntaxTreeFormRenderer().RenderDesignerFile(designerFile, roslynOut);
+        sw.Stop();
+        var roslynMs = sw.ElapsedMilliseconds / (double)runs;
+        var roslynSize = new FileInfo(roslynOut).Length;
+
+        // ── 2. In-process (Roslyn emit) ─────────────────────────
+        //    Compiles designer in-memory via Roslyn, loads assembly,
+        //    runs real InitializeComponent + DrawToBitmap. No external process.
+        sw.Restart();
+        for (int i = 0; i < runs; i++)
+            new InProcessFormRenderer().RenderForm(designerFile);
+        sw.Stop();
+        var inprocMs = sw.ElapsedMilliseconds / (double)runs;
+        var inprocSize = new InProcessFormRenderer().RenderForm(designerFile).Length;
+
+        // ── 3. Compiled (dotnet build + run) ────────────────────
+        //    Generates temp csproj, runs dotnet build, launches exe,
+        //    captures base64 PNG from stdout.
+        sw.Restart();
+        for (int i = 0; i < runs; i++)
+            new CompiledFormRenderer().RenderForm(designerFile);
+        sw.Stop();
+        var compiledMs = sw.ElapsedMilliseconds / (double)runs;
+        var compiledSize = new CompiledFormRenderer().RenderForm(designerFile).Length;
+
+        // ── 4. FlaUI (build + publish + launch + screenshot) ────
+        //    Full pipeline: build the actual project, publish exe,
+        //    launch it, wait for window, take FlaUI screenshot.
+        var flauiTimes = new List<double>();
+        var flauiOut = Path.Combine(Path.GetTempPath(), "bench_flaui.png");
+        for (int i = 0; i < runs; i++)
+        {
+            sw.Restart();
+            var pubDir = Path.Combine(Path.GetTempPath(), $"bench_flaui_{i}");
+            BuildAndPublish(kitchenSinkCsproj, pubDir);
+            RunFlaUI(Path.Combine(pubDir, "KitchenSink.exe"), false, flauiOut);
+            sw.Stop();
+            flauiTimes.Add(sw.ElapsedMilliseconds);
+            try { Directory.Delete(pubDir, true); } catch { }
+        }
+        var flauiMs = flauiTimes.Average();
+        var flauiSize = new FileInfo(flauiOut).Length;
+
+        // ── Results ─────────────────────────────────────────────
+        var fastest = roslynMs;
+        TestContext.WriteLine("");
+        TestContext.WriteLine("  Scenario: source changed → how fast to get a preview PNG?");
+        TestContext.WriteLine("  Every run is cold (no caching). Avg of {0} runs.", runs);
+        TestContext.WriteLine("");
+        TestContext.WriteLine("╔═════════════════════════════════════════════════════════════════╗");
+        TestContext.WriteLine("║  Method                    │   Time     │  Size   │  vs Best  ║");
+        TestContext.WriteLine("╠════════════════════════════╪════════════╪═════════╪═══════════╣");
+        TestContext.WriteLine($"║  Roslyn (syntax tree)      │ {roslynMs,7:F0} ms  │ {roslynSize / 1024.0,5:F1} KB │   1.0x    ║");
+        TestContext.WriteLine($"║  In-process (Roslyn emit)  │ {inprocMs,7:F0} ms  │ {inprocSize / 1024.0,5:F1} KB │  {inprocMs / fastest,4:F1}x    ║");
+        TestContext.WriteLine($"║  Compiled (dotnet build)   │ {compiledMs,7:F0} ms  │ {compiledSize / 1024.0,5:F1} KB │  {compiledMs / fastest,4:F1}x    ║");
+        TestContext.WriteLine($"║  FlaUI (build + launch)    │ {flauiMs,7:F0} ms  │ {flauiSize / 1024.0,5:F1} KB │  {flauiMs / fastest,4:F1}x    ║");
+        TestContext.WriteLine("╠═════════════════════════════════════════════════════════════════╣");
+        TestContext.WriteLine("║  Note: Roslyn skips custom controls it can't resolve.         ║");
+        TestContext.WriteLine("║  In-process/Compiled/FlaUI render all controls (43 KB vs 30). ║");
+        TestContext.WriteLine("╚═════════════════════════════════════════════════════════════════╝");
+
+        Assert.That(roslynMs, Is.GreaterThan(0));
+        Assert.That(inprocMs, Is.GreaterThan(0));
+        Assert.That(compiledMs, Is.GreaterThan(0));
+        Assert.That(flauiMs, Is.GreaterThan(0));
+    }
+
+    private static void BuildAndPublish(string csprojPath, string outputDir)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "dotnet",
+            Arguments = $"publish \"{csprojPath}\" -c Release -o \"{outputDir}\" --nologo -v q",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        using var process = System.Diagnostics.Process.Start(psi)!;
+        process.WaitForExit(60000);
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException(
+                $"dotnet publish failed: {process.StandardError.ReadToEnd()}");
+    }
+
+    private static void RunFlaUI(string exePath, bool headless, string outputPath)
+    {
+        using var automation = new AutomationHelper(headless: headless);
+        var process = automation.LaunchApp(exePath);
+        try
+        {
+            var window = WaitForMainWindow(automation, process.Id);
+            automation.TakeScreenshot(outputPath, window);
+        }
+        finally
+        {
+            automation.CloseApp(process.Id, force: true);
+        }
+    }
+
+    private static FlaUI.Core.AutomationElements.AutomationElement WaitForMainWindow(
+        AutomationHelper automation, int pid, int timeoutMs = 5000)
+    {
+        var deadline = Environment.TickCount64 + timeoutMs;
+        while (Environment.TickCount64 < deadline)
+        {
+            var window = automation.GetMainWindow(pid);
+            if (window != null)
+                return window;
+            System.Threading.Thread.Sleep(50);
+        }
+        throw new TimeoutException($"Main window not found within {timeoutMs}ms");
+    }
+
+    [Test]
+    [Category("E2E")]
+    public void InProcess_KitchenSink_ProducesValidPng()
+    {
+        var designerFile = Path.Combine(TestContext.CurrentContext.TestDirectory,
+            "TestData", "KitchenSink", "KitchenSinkForm.Designer.cs");
+        if (!File.Exists(designerFile))
+            Assert.Ignore("KitchenSink designer file not found.");
+
+        var renderer = new InProcessFormRenderer();
+        var pngBytes = renderer.RenderForm(designerFile);
+
+        Assert.That(pngBytes, Is.Not.Null);
+        Assert.That(pngBytes.Length, Is.GreaterThan(1000));
+        Assert.That(pngBytes[0], Is.EqualTo(0x89)); // PNG magic
+
+        var outputPath = Path.Combine(Path.GetTempPath(), "KitchenSink_inprocess.png");
+        File.WriteAllBytes(outputPath, pngBytes);
+        TestContext.WriteLine($"In-process rendered: {outputPath}");
+    }
+
+    #endregion
 }
