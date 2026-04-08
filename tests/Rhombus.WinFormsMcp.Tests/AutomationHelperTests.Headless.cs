@@ -350,6 +350,51 @@ public class AutomationHelperHeadlessTests
         Assert.That(value, Is.EqualTo("TestButton"));
     }
 
+    [Test]
+    [TestCase("value", "Hello World")]
+    [TestCase("text", "Hello World")]
+    [TestCase("ischecked", "On")]
+    [TestCase("togglestate", "Off")]
+    [TestCase("isselected", true)]
+    [TestCase("selecteditem", "Item1")]
+    [TestCase("items", "[\"Item1\",\"Item2\"]")]
+    [TestCase("itemcount", 3)]
+    [TestCase("boundingrectangle", "{\"x\":10,\"y\":20,\"width\":100,\"height\":50}")]
+    [TestCase("isexpanded", "Expanded")]
+    [TestCase("min", 0.0)]
+    [TestCase("max", 100.0)]
+    [TestCase("current", 42.0)]
+    public void TestGetPropertyPatternBased(string propertyName, object expectedValue)
+    {
+        // Arrange
+        _mockAutomation!
+            .Setup(a => a.GetProperty(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), propertyName))
+            .Returns(expectedValue)
+            .Verifiable();
+
+        // Act
+        var value = _mockAutomation.Object.GetProperty(null!, propertyName);
+
+        // Assert
+        Assert.That(value, Is.EqualTo(expectedValue));
+    }
+
+    [Test]
+    public void TestGetPropertyUnsupportedPatternReturnsMessage()
+    {
+        // Arrange — simulate an element that doesn't support TogglePattern
+        _mockAutomation!
+            .Setup(a => a.GetProperty(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "togglestate"))
+            .Returns("TogglePattern not supported on this element")
+            .Verifiable();
+
+        // Act
+        var value = _mockAutomation.Object.GetProperty(null!, "togglestate");
+
+        // Assert
+        Assert.That(value, Is.EqualTo("TogglePattern not supported on this element"));
+    }
+
     // ===== NEGATIVE TESTS =====
 
     [Test]
@@ -474,5 +519,207 @@ public class AutomationHelperHeadlessTests
 
         // Assert
         Assert.That(found, Is.False);
+    }
+
+    // ===== SELECT ITEM TESTS =====
+
+    [Test]
+    public void TestSelectItemByValue()
+    {
+        // Arrange
+        _mockAutomation!
+            .Setup(a => a.SelectItem(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "Option A", null))
+            .Returns("Option A")
+            .Verifiable();
+
+        // Act
+        var result = _mockAutomation.Object.SelectItem(null!, "Option A");
+
+        // Assert
+        Assert.That(result, Is.EqualTo("Option A"));
+    }
+
+    [Test]
+    public void TestSelectItemByIndex()
+    {
+        // Arrange
+        _mockAutomation!
+            .Setup(a => a.SelectItem(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), null, 2))
+            .Returns("Option C")
+            .Verifiable();
+
+        // Act
+        var result = _mockAutomation.Object.SelectItem(null!, null, 2);
+
+        // Assert
+        Assert.That(result, Is.EqualTo("Option C"));
+    }
+
+    [Test]
+    public void TestSelectItemThrowsWhenNoValueOrIndex()
+    {
+        // Arrange
+        _mockAutomation!
+            .Setup(a => a.SelectItem(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), null, null))
+            .Throws<ArgumentException>()
+            .Verifiable();
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            _mockAutomation.Object.SelectItem(null!, null, null)
+        );
+    }
+
+    [Test]
+    public void TestSelectItemThrowsWhenItemNotFound()
+    {
+        // Arrange
+        _mockAutomation!
+            .Setup(a => a.SelectItem(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "NonExistent", null))
+            .Throws(new InvalidOperationException("Item with value 'NonExistent' not found in the selection control"))
+            .Verifiable();
+
+        // Act & Assert
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            _mockAutomation.Object.SelectItem(null!, "NonExistent")
+        );
+        Assert.That(ex!.Message, Does.Contain("NonExistent"));
+    }
+
+    [Test]
+    public void TestSelectItemThrowsWhenIndexOutOfRange()
+    {
+        // Arrange
+        _mockAutomation!
+            .Setup(a => a.SelectItem(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), null, 99))
+            .Throws<ArgumentOutOfRangeException>()
+            .Verifiable();
+
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            _mockAutomation.Object.SelectItem(null!, null, 99)
+        );
+    }
+
+    // ===== CLICK MENU ITEM TESTS =====
+
+    [Test]
+    public void TestClickMenuItemSingleLevel()
+    {
+        // Arrange
+        _mockAutomation!
+            .Setup(a => a.ClickMenuItem(new[] { "File" }, null))
+            .Verifiable();
+
+        // Act
+        _mockAutomation.Object.ClickMenuItem(new[] { "File" });
+
+        // Assert
+        _mockAutomation.Verify(a => a.ClickMenuItem(new[] { "File" }, null), Times.Once);
+    }
+
+    [Test]
+    public void TestClickMenuItemMultiLevel()
+    {
+        // Arrange
+        var menuPath = new[] { "File", "Save As" };
+        _mockAutomation!
+            .Setup(a => a.ClickMenuItem(menuPath, null))
+            .Verifiable();
+
+        // Act
+        _mockAutomation.Object.ClickMenuItem(menuPath);
+
+        // Assert
+        _mockAutomation.Verify(a => a.ClickMenuItem(menuPath, null), Times.Once);
+    }
+
+    [Test]
+    public void TestClickMenuItemWithPid()
+    {
+        // Arrange
+        var menuPath = new[] { "Edit", "Copy" };
+        _mockAutomation!
+            .Setup(a => a.ClickMenuItem(menuPath, 1234))
+            .Verifiable();
+
+        // Act
+        _mockAutomation.Object.ClickMenuItem(menuPath, 1234);
+
+        // Assert
+        _mockAutomation.Verify(a => a.ClickMenuItem(menuPath, 1234), Times.Once);
+    }
+
+    [Test]
+    public void TestClickMenuItemThrowsOnEmptyPath()
+    {
+        // Arrange
+        _mockAutomation!
+            .Setup(a => a.ClickMenuItem(Array.Empty<string>(), null))
+            .Throws<ArgumentException>()
+            .Verifiable();
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            _mockAutomation.Object.ClickMenuItem(Array.Empty<string>())
+        );
+    }
+
+    [Test]
+    public void TestClickMenuItemThrowsOnNullPath()
+    {
+        // Arrange
+        _mockAutomation!
+            .Setup(a => a.ClickMenuItem(null!, null))
+            .Throws<ArgumentException>()
+            .Verifiable();
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            _mockAutomation.Object.ClickMenuItem(null!)
+        );
+    }
+
+    [Test]
+    public void TestClickMenuItemThrowsWhenMenuNotFound()
+    {
+        // Arrange
+        var menuPath = new[] { "NonExistentMenu" };
+        _mockAutomation!
+            .Setup(a => a.ClickMenuItem(menuPath, null))
+            .Throws(new InvalidOperationException("Menu item 'NonExistentMenu' not found"))
+            .Verifiable();
+
+        // Act & Assert
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            _mockAutomation.Object.ClickMenuItem(menuPath)
+        );
+        Assert.That(ex!.Message, Does.Contain("NonExistentMenu"));
+    }
+
+    // ===== DIRECT (NON-MOCK) TESTS FOR ARGUMENT VALIDATION =====
+
+    [Test]
+    public void TestSelectItemDirectValidation_NullArguments()
+    {
+        // Test the real AutomationHelper argument validation
+        using var helper = new AutomationHelper(headless: true);
+        Assert.Throws<ArgumentException>(() => helper.SelectItem(null!, null, null));
+    }
+
+    [Test]
+    public void TestClickMenuItemDirectValidation_EmptyPath()
+    {
+        // Test the real AutomationHelper argument validation
+        using var helper = new AutomationHelper(headless: true);
+        Assert.Throws<ArgumentException>(() => helper.ClickMenuItem(Array.Empty<string>()));
+    }
+
+    [Test]
+    public void TestClickMenuItemDirectValidation_NullPath()
+    {
+        // Test the real AutomationHelper argument validation
+        using var helper = new AutomationHelper(headless: true);
+        Assert.Throws<ArgumentException>(() => helper.ClickMenuItem(null!));
     }
 }

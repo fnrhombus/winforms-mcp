@@ -83,6 +83,54 @@ public class SyntaxTreeFormRenderer
         RenderDesignerCode(designerCode, outputPath);
     }
 
+    /// <summary>
+    /// Render designer code to PNG bytes without writing to disk.
+    /// </summary>
+    /// <param name="designerCode">The C# source code of the .Designer.cs file.</param>
+    /// <returns>PNG image as a byte array.</returns>
+    public byte[] RenderDesignerCodeToBytes(string designerCode)
+    {
+        var tree = CSharpSyntaxTree.ParseText(designerCode);
+        var root = tree.GetCompilationUnitRoot();
+
+        var initMethod = root.DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault(m => m.Identifier.Text == "InitializeComponent");
+
+        if (initMethod?.Body == null)
+            throw new InvalidOperationException("InitializeComponent() method not found in designer code.");
+
+        EnsureVisualStyles();
+
+        _fields = new Dictionary<string, object>();
+        _form = new Form();
+
+        foreach (var statement in initMethod.Body.Statements)
+        {
+            try
+            {
+                ExecuteStatement(statement);
+            }
+            catch
+            {
+                // Graceful degradation: skip statements that can't be executed
+            }
+        }
+
+        return RenderFormToBytes();
+    }
+
+    /// <summary>
+    /// Render a .Designer.cs file to PNG bytes without writing to disk.
+    /// </summary>
+    /// <param name="designerFilePath">Path to the .Designer.cs file.</param>
+    /// <returns>PNG image as a byte array.</returns>
+    public byte[] RenderDesignerFileToBytes(string designerFilePath)
+    {
+        var designerCode = File.ReadAllText(designerFilePath);
+        return RenderDesignerCodeToBytes(designerCode);
+    }
+
     internal void ExecuteStatement(StatementSyntax statement)
     {
         if (statement is ExpressionStatementSyntax exprStmt)
@@ -741,14 +789,10 @@ public class SyntaxTreeFormRenderer
         return null;
     }
 
-    private void RenderFormToBitmap(string outputPath)
+    private byte[] RenderFormToBytes()
     {
-        if (_form == null) return;
-
-        // Ensure output directory exists
-        var dir = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(dir))
-            Directory.CreateDirectory(dir);
+        if (_form == null)
+            throw new InvalidOperationException("Failed to render form: form was not created.");
 
         Bitmap? bitmap = null;
         Exception? threadException = null;
@@ -781,17 +825,30 @@ public class SyntaxTreeFormRenderer
         if (threadException != null)
             throw new InvalidOperationException($"Failed to render form: {threadException.Message}", threadException);
 
-        if (bitmap != null)
-        {
-            bitmap.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
-            bitmap.Dispose();
-        }
-        else
-        {
+        if (bitmap == null)
             throw new InvalidOperationException("Failed to render form: bitmap was not created.");
-        }
 
+        byte[] pngBytes;
+        using (var ms = new System.IO.MemoryStream())
+        {
+            bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            pngBytes = ms.ToArray();
+        }
+        bitmap.Dispose();
         _form.Dispose();
+
+        return pngBytes;
+    }
+
+    private void RenderFormToBitmap(string outputPath)
+    {
+        // Ensure output directory exists
+        var dir = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
+
+        var pngBytes = RenderFormToBytes();
+        File.WriteAllBytes(outputPath, pngBytes);
     }
 }
 

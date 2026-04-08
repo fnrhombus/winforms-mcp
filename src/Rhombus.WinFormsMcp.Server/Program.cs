@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FlaUI.Core.AutomationElements;
@@ -114,6 +115,7 @@ class AutomationServer
             { "launch_app", LaunchApp },
             { "attach_to_process", AttachToProcess },
             { "close_app", CloseApp },
+            { "get_process_status", GetProcessStatus },
 
             // Validation Tools
             { "take_screenshot", TakeScreenshot },
@@ -123,11 +125,16 @@ class AutomationServer
             // Interaction Tools
             { "drag_drop", DragDrop },
             { "send_keys", SendKeys },
+            { "select_item", SelectItem },
+            { "click_menu_item", ClickMenuItem },
 
             // Form Preview Tools
             { "render_form", RenderForm },
             { "render_form_inprocess", RenderFormInProcess },
             { "render_form_compiled", RenderFormCompiled },
+
+            // Discovery Tools
+            { "get_element_tree", GetElementTree },
 
             // Event Tools
             { "raise_event", RaiseEvent },
@@ -362,6 +369,32 @@ class AutomationServer
             },
             new
             {
+                name = "get_property",
+                description = "Get a property or UIA pattern value from a cached UI element. " +
+                    "Supported property names: " +
+                    "name, automationId, className, controlType, isOffscreen, isEnabled, " +
+                    "value (or text) — reads ValuePattern.Value (falls back to Name), " +
+                    "isChecked (or toggleState) — reads TogglePattern.ToggleState, " +
+                    "isSelected — reads SelectionItemPattern.IsSelected, " +
+                    "selectedItem — reads first SelectionPattern.Selection item name, " +
+                    "items — JSON array of child item names, " +
+                    "itemCount — count of child items, " +
+                    "boundingRectangle — JSON {x, y, width, height}, " +
+                    "isExpanded — reads ExpandCollapsePattern state, " +
+                    "min / max / current — reads RangeValuePattern values (for sliders, NumericUpDown, etc.).",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        elementId = new { type = "string", description = "Cached element ID (e.g. elem_1)" },
+                        propertyName = new { type = "string", description = "Property name to read (see tool description for supported names)" }
+                    },
+                    required = new[] { "elementId", "propertyName" }
+                }
+            },
+            new
+            {
                 name = "launch_app",
                 description = "Launch a WinForms application",
                 inputSchema = new
@@ -378,17 +411,32 @@ class AutomationServer
             },
             new
             {
-                name = "take_screenshot",
-                description = "Take a screenshot of the application or element",
+                name = "get_process_status",
+                description = "Get the current status of a launched process. Use after launch_app to verify the application started successfully, " +
+                    "detect crashes (hasExited + exitCode), check responsiveness (responding), or read stderr output for error diagnostics. " +
+                    "Returns isRunning, hasExited, exitCode (if exited), responding (Process.Responding), mainWindowTitle, and captured stderr.",
                 inputSchema = new
                 {
                     type = "object",
                     properties = new
                     {
-                        outputPath = new { type = "string", description = "Path to save the screenshot" },
-                        elementPath = new { type = "string", description = "Specific element to screenshot (optional)" }
+                        pid = new { type = "integer", description = "Process ID returned by launch_app or attach_to_process" }
                     },
-                    required = new[] { "outputPath" }
+                    required = new[] { "pid" }
+                }
+            },
+            new
+            {
+                name = "take_screenshot",
+                description = "Take a screenshot of the application or element. Returns the image as base64 data that Claude can see directly. Optionally saves to disk if outputPath is provided.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        outputPath = new { type = "string", description = "Path to save the screenshot (optional). If omitted, captures to a temp file, converts to base64, and deletes the temp file." },
+                        elementPath = new { type = "string", description = "Specific element to screenshot (optional)" }
+                    }
                 }
             },
             // ── Form Preview Tools ──
@@ -423,9 +471,9 @@ class AutomationServer
                     properties = new
                     {
                         designerFilePath = new { type = "string", description = "Path to the .Designer.cs file" },
-                        outputPath = new { type = "string", description = "Path to save the rendered PNG" }
+                        outputPath = new { type = "string", description = "Optional path to also save the rendered PNG to disk. The image is always returned as base64 regardless." }
                     },
-                    required = new[] { "designerFilePath", "outputPath" }
+                    required = new[] { "designerFilePath" }
                 }
             },
             new
@@ -473,6 +521,65 @@ class AutomationServer
                         sourceFilePath = new { type = "string", description = "Path to the .cs or .Designer.cs file. If given a .cs file, automatically finds the sibling .Designer.cs." }
                     },
                     required = new[] { "sourceFilePath" }
+                }
+            },
+            new
+            {
+                name = "select_item",
+                description = "Select an item in a combo box, list box, or similar selection control. " +
+                    "Handles the expand-find-select pattern automatically: expands the control (if collapsible), " +
+                    "finds the target item by text value or zero-based index, selects it via SelectionItemPattern " +
+                    "(or falls back to ScrollIntoView + click), and collapses the control. " +
+                    "Provide either 'value' (text match, case-insensitive) or 'index' (zero-based position). " +
+                    "Returns the text of the selected item.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        elementId = new { type = "string", description = "Cached element ID of the selection control (combo box, list box, etc.)" },
+                        value = new { type = "string", description = "Text of the item to select (case-insensitive match). Provide this or index." },
+                        index = new { type = "integer", description = "Zero-based index of the item to select. Provide this or value." }
+                    },
+                    required = new[] { "elementId" }
+                }
+            },
+            new
+            {
+                name = "click_menu_item",
+                description = "Navigate and click a menu item in a menu bar or context menu. " +
+                    "Provide a menuPath array of menu item names forming the navigation path (e.g. [\"File\", \"Save As\"]). " +
+                    "For each level, the tool finds the menu item by name, expands it (via ExpandCollapsePattern or click), " +
+                    "waits for the submenu to appear, and then proceeds to the next level. The final item is invoked " +
+                    "(via InvokePattern) or clicked. Works with both MenuBar items and context menu items. " +
+                    "Optionally provide a pid to scope the search to a specific application window.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        menuPath = new { type = "array", description = "Array of menu item names forming the navigation path, e.g. [\"File\", \"Save As\"]", items = new { type = "string" } },
+                        pid = new { type = "integer", description = "Optional process ID to scope the search to a specific window" }
+                    },
+                    required = new[] { "menuPath" }
+                }
+            },
+            new
+            {
+                name = "get_element_tree",
+                description = "Get the UI automation element tree as structured JSON. Returns a recursive tree of elements with name, controlType, automationId, boundingRectangle, isEnabled, isOffscreen, and children. " +
+                    "Each discovered element is cached and assigned an elementId for subsequent tool calls (click_element, type_text, etc.). " +
+                    "Use this tool to discover the UI structure of a running application before interacting with specific elements.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        pid = new { type = "integer", description = "Process ID — uses the process main window as root" },
+                        elementId = new { type = "string", description = "Cached element ID to use as root (from a previous find_element or get_element_tree call)" },
+                        depth = new { type = "integer", description = "Maximum depth to traverse (default 3)" },
+                        maxElements = new { type = "integer", description = "Maximum total elements to include (default 50)" }
+                    }
                 }
             }
         };
@@ -668,11 +775,40 @@ class AutomationServer
         }
     }
 
+    private Task<JsonElement> GetProcessStatus(JsonElement args)
+    {
+        try
+        {
+            var pid = GetIntArg(args, "pid");
+
+            var automation = _session.GetAutomation();
+            var status = automation.GetProcessStatus(pid);
+
+            var jsonObj = new Dictionary<string, object?>
+            {
+                ["success"] = true,
+                ["isRunning"] = status["isRunning"],
+                ["hasExited"] = status["hasExited"],
+                ["exitCode"] = status["exitCode"],
+                ["responding"] = status["responding"],
+                ["mainWindowTitle"] = status["mainWindowTitle"],
+                ["stderr"] = status["stderr"]
+            };
+
+            var json = JsonSerializer.Serialize(jsonObj);
+            return Task.FromResult(JsonDocument.Parse(json).RootElement);
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
     private Task<JsonElement> TakeScreenshot(JsonElement args)
     {
         try
         {
-            var outputPath = GetStringArg(args, "outputPath") ?? throw new ArgumentException("outputPath is required");
+            var outputPath = GetStringArg(args, "outputPath");
             var elementId = GetStringArg(args, "elementId");
 
             var automation = _session.GetAutomation();
@@ -681,9 +817,26 @@ class AutomationServer
             if (!string.IsNullOrEmpty(elementId))
                 element = _session.GetElement(elementId!);
 
-            automation.TakeScreenshot(outputPath, element);
+            // If no outputPath provided, use a temp file
+            var useTempFile = string.IsNullOrEmpty(outputPath);
+            var screenshotPath = useTempFile
+                ? Path.Combine(Path.GetTempPath(), $"screenshot_{Guid.NewGuid():N}.png")
+                : outputPath!;
 
-            return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"message\": \"Screenshot saved to {EscapeJson(outputPath)}\"}}").RootElement);
+            automation.TakeScreenshot(screenshotPath, element);
+
+            // Read the file and convert to base64
+            var imageBytes = File.ReadAllBytes(screenshotPath);
+            var base64 = Convert.ToBase64String(imageBytes);
+
+            // Clean up temp file
+            if (useTempFile)
+            {
+                try { File.Delete(screenshotPath); }
+                catch { /* best-effort cleanup */ } // COVERAGE_EXCEPTION: Temp file cleanup race condition
+            }
+
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement);
         }
         catch (Exception ex)
         {
@@ -772,11 +925,24 @@ class AutomationServer
         try
         {
             var designerFilePath = GetStringArg(args, "designerFilePath") ?? throw new ArgumentException("designerFilePath is required");
-            var outputPath = GetStringArg(args, "outputPath") ?? throw new ArgumentException("outputPath is required");
+            var outputPath = GetStringArg(args, "outputPath");
 
-            _formRenderer.RenderDesignerFile(designerFilePath, outputPath);
+            byte[] pngBytes;
 
-            return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"message\": \"Form rendered to {EscapeJson(outputPath)}\"}}").RootElement);
+            if (!string.IsNullOrEmpty(outputPath))
+            {
+                // Save to disk AND return base64
+                _formRenderer.RenderDesignerFile(designerFilePath, outputPath);
+                pngBytes = System.IO.File.ReadAllBytes(outputPath);
+            }
+            else
+            {
+                // No output path: render to bytes only
+                pngBytes = _formRenderer.RenderDesignerFileToBytes(designerFilePath);
+            }
+
+            var base64 = Convert.ToBase64String(pngBytes);
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement);
         }
         catch (Exception ex)
         {
@@ -811,6 +977,87 @@ class AutomationServer
             var base64 = Convert.ToBase64String(pngBytes);
 
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement);
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> GetElementTree(JsonElement args)
+    {
+        try
+        {
+            var automation = _session.GetAutomation();
+            var pid = GetIntArg(args, "pid");
+            var elementId = GetStringArg(args, "elementId");
+            var depth = GetIntArg(args, "depth", 3);
+            var maxElements = GetIntArg(args, "maxElements", 50);
+
+            AutomationElement? root = null;
+
+            if (!string.IsNullOrEmpty(elementId))
+            {
+                root = _session.GetElement(elementId!);
+                if (root == null)
+                    return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement);
+            }
+            else if (pid > 0)
+            {
+                root = automation.GetMainWindow(pid);
+                if (root == null)
+                    return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Could not find main window for the specified process\"}").RootElement);
+            }
+
+            if (root == null)
+                return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Either pid or elementId must be provided\"}").RootElement);
+
+            var tree = automation.GetElementTree(root, depth, maxElements, el => _session.CacheElement(el));
+
+            var json = JsonSerializer.Serialize(new { success = true, tree, elementCount = tree.Count });
+            return Task.FromResult(JsonDocument.Parse(json).RootElement);
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> SelectItem(JsonElement args)
+    {
+        try
+        {
+            var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
+            var value = GetStringArg(args, "value");
+            var index = GetNullableIntArg(args, "index");
+
+            var element = _session.GetElement(elementId);
+            if (element == null)
+                return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement);
+
+            var automation = _session.GetAutomation();
+            var selectedValue = automation.SelectItem(element, value, index);
+
+            var json = $"{{\"success\": true, \"selectedValue\": \"{EscapeJson(selectedValue)}\"}}";
+            return Task.FromResult(JsonDocument.Parse(json).RootElement);
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> ClickMenuItem(JsonElement args)
+    {
+        try
+        {
+            var menuPath = GetStringArrayArg(args, "menuPath") ?? throw new ArgumentException("menuPath is required");
+            var pid = GetNullableIntArg(args, "pid");
+
+            var automation = _session.GetAutomation();
+            automation.ClickMenuItem(menuPath, pid);
+
+            return Task.FromResult(JsonDocument.Parse("{\"success\": true}").RootElement);
         }
         catch (Exception ex)
         {
@@ -861,6 +1108,33 @@ class AutomationServer
             : args.TryGetProperty(key, out var prop2) && prop2.ValueKind == JsonValueKind.False
                 ? false
                 : defaultValue;
+    }
+
+    private int? GetNullableIntArg(JsonElement args, string key)
+    {
+        if (args.ValueKind == JsonValueKind.Null)
+            return null;
+
+        return args.TryGetProperty(key, out var prop) && prop.ValueKind == JsonValueKind.Number
+            ? prop.GetInt32()
+            : null;
+    }
+
+    private string[]? GetStringArrayArg(JsonElement args, string key)
+    {
+        if (args.ValueKind == JsonValueKind.Null)
+            return null;
+
+        if (!args.TryGetProperty(key, out var prop) || prop.ValueKind != JsonValueKind.Array)
+            return null;
+
+        var result = new List<string>();
+        foreach (var item in prop.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String)
+                result.Add(item.GetString()!);
+        }
+        return result.Count > 0 ? result.ToArray() : null;
     }
 
     private string EscapeJson(string? value)
