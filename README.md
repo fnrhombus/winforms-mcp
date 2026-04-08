@@ -19,6 +19,47 @@ fnWindowsMCP bridges the gap between Claude Code and WinForms applications, enab
 - **Headless operation** compatible with CI/CD environments, remote systems, and servers
 - **Full async/await support** for integration with modern .NET applications
 
+## Form Preview
+
+The `render_form` tool renders WinForms `.Designer.cs` files to PNG images **without building the project**. This enables Claude Code to iterate on form layout visually during design.
+
+### How It Works
+
+1. **Roslyn AST parsing** — parses the designer file into a syntax tree (~10ms)
+2. **Reflection execution** — walks `InitializeComponent()` statements, creating real WinForms controls via `Activator.CreateInstance` and setting properties via `PropertyInfo.SetValue`
+3. **Bitmap rendering** — shows the form offscreen on an STA thread and captures it with `DrawToBitmap`
+
+This is the same approach Visual Studio uses to render the designer surface.
+
+### Supported
+
+- All standard `System.Windows.Forms` controls (Button, TextBox, Label, ComboBox, CheckBox, Panel, GroupBox, etc.)
+- `System.Drawing` types (Color, Font, Point, Size)
+- Enum flags, static members, static method calls (e.g., `Color.FromArgb`)
+- Both legacy (`this.button1 = new System.Windows.Forms.Button()`) and modern (`button1 = new Button()`) designer formats
+
+### Not Supported
+
+- Custom controls from the project or NuGet (type not found → control skipped)
+- Embedded resources (icons, images) → skipped, controls render without them
+- Data binding → not populated, lists/grids render empty
+- These match Visual Studio's own designer limitations for cross-project types
+
+### Designer File Guidelines
+
+For `render_form` to work correctly, designer files should follow standard WinForms conventions:
+
+1. **Use fully-qualified type names** (e.g., `System.Windows.Forms.Button`) — ensures types resolve without project context
+2. **Prefix field access with `this.`** (e.g., `this.button1`)
+3. **Include `InitializeComponent()` method** in a partial class
+4. **Wrap layout changes** with `SuspendLayout()` / `ResumeLayout(false)` / `PerformLayout()`
+
+#### References
+
+- [WinForms designed code and C# partial classes](https://learn.microsoft.com/en-us/archive/blogs/jaybaz_ms/winforms-designed-code-and-c-partial-classes)
+- [Updated Modern Code Generation for WinForm's InitializeComponent](https://devblogs.microsoft.com/dotnet/winforms-codegen-update/)
+- [Customizing Code Generation in .NET Framework Visual Designers](https://learn.microsoft.com/en-us/previous-versions/dotnet/articles/ms973818(v=msdn.10))
+
 ## Architecture
 
 ### Project Structure
@@ -112,7 +153,7 @@ Implements Model Context Protocol with:
   - Cached automation elements with unique IDs
   - Process contexts for lifecycle tracking
 
-#### Tool Implementations (14 tools)
+#### Tool Implementations (15 tools)
 
 **Element Tools:**
 - `find_element` - Discover UI element by identifier
@@ -134,6 +175,9 @@ Implements Model Context Protocol with:
 **Interaction Tools:**
 - `drag_drop` - Drag-and-drop operation
 - `send_keys` - Send keyboard input
+
+**Form Preview:**
+- `render_form` - Render .Designer.cs file to PNG image
 
 **Future Enhancement:**
 - `raise_event` - Trigger UI events (not yet implemented)
@@ -190,7 +234,9 @@ Quick configuration for `~/.claude/mcp.json`:
     "winforms-mcp": {
       "command": "dotnet",
       "args": ["path/to/Rhombus.WinFormsMcp.Server.dll"],
-      "env": {}
+      "env": {
+        "HEADLESS": "true"
+      }
     }
   }
 }
@@ -426,6 +472,22 @@ Sends keyboard input.
 {"success": true, "message": "Keys sent"}
 ```
 
+### render_form
+
+Renders a WinForms .Designer.cs file to a PNG image preview using Roslyn parsing and reflection. Does not require the project to build.
+
+**Arguments:**
+- `designerFilePath` (string, required) - Path to the .Designer.cs file
+- `outputPath` (string, required) - Path to save the rendered PNG
+
+**Returns:**
+```json
+{
+  "success": true,
+  "message": "Form rendered to C:\\temp\\form_preview.png"
+}
+```
+
 ## Example Workflows
 
 ### Finding and Clicking a Button
@@ -486,6 +548,7 @@ Edit `global.json` to change .NET SDK version:
 
 ### Environment Variables
 
+- `HEADLESS` - Run launched applications headless with hidden windows (default: `true`). Set to `false` or `0` to show windows. Does not affect `render_form` (it always renders offscreen).
 - `FNWINDOWSMCP_TIMEOUT` - Default timeout for operations (ms)
 - `FNWINDOWSMCP_SCREENSHOT_DIR` - Default screenshot directory
 

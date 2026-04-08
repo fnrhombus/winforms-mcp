@@ -82,12 +82,13 @@ dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c 
 
 ### MCP Tools Available
 
-The server implements 14 tools via JSON-RPC:
+The server implements 15 tools via JSON-RPC:
 - Process Management: `launch_app`, `attach_to_process`, `close_app`
 - Element Discovery: `find_element`, `element_exists`, `wait_for_element`
 - UI Interaction: `click_element`, `type_text`, `set_value`, `drag_drop`, `send_keys`
 - Property Access: `get_property`
 - Validation: `take_screenshot`
+- Form Preview: `render_form` (renders .Designer.cs files to PNG via Roslyn parsing + reflection)
 - Future/Placeholder: `raise_event`, `listen_for_event` (not yet implemented)
 
 ### Session Management

@@ -13,6 +13,11 @@ namespace Rhombus.WinFormsMcp.Server.Automation;
 public interface IAutomationHelper : IDisposable
 {
     /// <summary>
+    /// Whether launched applications should run headless (hidden window)
+    /// </summary>
+    bool Headless { get; }
+
+    /// <summary>
     /// Launch a WinForms application
     /// </summary>
     Process LaunchApp(string path, string? arguments = null, string? workingDirectory = null);

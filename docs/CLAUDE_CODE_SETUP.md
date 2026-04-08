@@ -93,7 +93,9 @@ Edit `~/.claude/mcp.json` and add the server configuration. Choose one based on 
       "args": [
         "path/to/Rhombus.WinFormsMcp.Server.dll"
       ],
-      "env": {}
+      "env": {
+        "HEADLESS": "true"
+      }
     }
   }
 }
@@ -109,7 +111,9 @@ Edit `~/.claude/mcp.json` and add the server configuration. Choose one based on 
       "args": [
         "@rhom6us/winforms-mcp"
       ],
-      "env": {}
+      "env": {
+        "HEADLESS": "true"
+      }
     }
   }
 }
@@ -128,7 +132,9 @@ Edit `~/.claude/mcp.json` and add the server configuration. Choose one based on 
         "-i",
         "rhom6us/winforms-mcp:latest"
       ],
-      "env": {}
+      "env": {
+        "HEADLESS": "true"
+      }
     }
   }
 }
@@ -142,7 +148,9 @@ Edit `~/.claude/mcp.json` and add the server configuration. Choose one based on 
     "winforms-mcp": {
       "command": "C:\\path\\to\\Rhombus.WinFormsMcp.Server.exe",
       "args": [],
-      "env": {}
+      "env": {
+        "HEADLESS": "true"
+      }
     }
   }
 }
@@ -232,7 +240,55 @@ The MCP server exposes 14 tools for WinForms automation:
 - `wait_for_element` - Wait for elements to appear
 - `get_property` - Read element properties
 
+### Form Preview
+- `render_form` - Render a .Designer.cs file to a PNG image preview (no build required)
+
 For detailed tool documentation, see [MCP Tool Reference](../README.md#mcp-tool-reference).
+
+## Form Design Workflow
+
+The `render_form` tool enables a rapid edit → render → iterate cycle for WinForms form design:
+
+1. **Edit** the `.Designer.cs` file to add or modify controls
+2. **Render** with `render_form` to see a PNG preview
+3. **Review** the rendered output and adjust positions, sizes, or properties
+4. **Repeat** until the layout matches the design intent
+
+This works even when the project doesn't build, since `render_form` uses Roslyn parsing (not compilation) and reflection to instantiate standard WinForms controls.
+
+### Example
+
+```claude
+@mcp winforms-mcp render_form {
+  "designerFilePath": "C:\\MyProject\\Forms\\MainForm.Designer.cs",
+  "outputPath": "C:\\temp\\preview.png"
+}
+```
+
+### Add to Your Project's CLAUDE.md
+
+Add the following to your project's `CLAUDE.md` to guide Claude Code when editing designer files:
+
+````markdown
+## WinForms Designer File Guidelines
+
+When editing `.Designer.cs` files, follow these conventions so `render_form` can preview them:
+
+1. **Use fully-qualified type names** — `System.Windows.Forms.Button`, not `Button`
+2. **Prefix field access with `this.`** — `this.button1`, not `button1`
+3. **Include `InitializeComponent()`** in a partial class
+4. **Wrap layout changes** with `SuspendLayout()` / `ResumeLayout(false)` / `PerformLayout()`
+5. **Only set non-default properties** — the designer only serializes values that differ from defaults
+6. **Order**: instantiation → SuspendLayout → per-control properties → form properties/Controls.Add → ResumeLayout
+
+After editing a designer file, use `render_form` to preview:
+```
+@mcp winforms-mcp render_form {
+  "designerFilePath": "<path to .Designer.cs>",
+  "outputPath": "<path to output .png>"
+}
+```
+````
 
 ## Troubleshooting
 
@@ -311,6 +367,7 @@ You can pass environment variables to the MCP server:
       "command": "dotnet",
       "args": ["path/to/server.dll"],
       "env": {
+        "HEADLESS": "true",
         "FNWINDOWSMCP_TIMEOUT": "5000",
         "FNWINDOWSMCP_SCREENSHOT_DIR": "C:\\temp\\screenshots"
       }
@@ -329,12 +386,16 @@ To run multiple instances (for parallel automation):
     "winforms-mcp-1": {
       "command": "dotnet",
       "args": ["path/to/server.dll"],
-      "env": {}
+      "env": {
+        "HEADLESS": "true"
+      }
     },
     "winforms-mcp-2": {
       "command": "dotnet",
       "args": ["path/to/server.dll"],
-      "env": {}
+      "env": {
+        "HEADLESS": "true"
+      }
     }
   }
 }
