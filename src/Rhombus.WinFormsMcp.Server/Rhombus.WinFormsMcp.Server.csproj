@@ -24,12 +24,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Rhombus.WinFormsMcp.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- FlaUI for WinForms automation (UIA2 for maximum compatibility) -->
     <PackageReference Include="FlaUI.UIA2" Version="4.0.0" />
     <PackageReference Include="FlaUI.Core" Version="4.0.0" />
 
     <!-- System.Drawing for screenshots -->
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+
+    <!-- Roslyn for parsing .Designer.cs files in render_form -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
   </ItemGroup>
 
 </Project>

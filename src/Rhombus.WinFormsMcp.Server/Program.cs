@@ -21,7 +21,11 @@ class Program
     {
         try
         {
-            _server = new AutomationServer();
+            var headlessEnv = Environment.GetEnvironmentVariable("HEADLESS");
+            var headless = !string.Equals(headlessEnv, "false", StringComparison.OrdinalIgnoreCase)
+                        && headlessEnv != "0";
+
+            _server = new AutomationServer(headless);
             await _server.RunAsync();
         }
         catch (Exception ex)
@@ -42,10 +46,16 @@ class SessionManager
     private readonly Dictionary<int, object> _processContext = new();
     private int _nextElementId = 1;
     private AutomationHelper? _automation;
+    private readonly bool _headless;
+
+    public SessionManager(bool headless = false)
+    {
+        _headless = headless;
+    }
 
     public AutomationHelper GetAutomation()
     {
-        return _automation ??= new AutomationHelper();
+        return _automation ??= new AutomationHelper(_headless);
     }
 
     public string CacheElement(AutomationElement element)
@@ -83,10 +93,13 @@ class AutomationServer
 {
     private readonly Dictionary<string, Func<JsonElement, Task<JsonElement>>> _tools;
     private int _nextId = 1;
-    private readonly SessionManager _session = new();
+    private readonly SessionManager _session;
+    private readonly FormRenderer _formRenderer = new();
+    private readonly CompiledFormRenderer _compiledFormRenderer = new();
 
-    public AutomationServer()
+    public AutomationServer(bool headless = false)
     {
+        _session = new SessionManager(headless);
         _tools = new Dictionary<string, Func<JsonElement, Task<JsonElement>>>
         {
             // Element Tools
@@ -110,6 +123,10 @@ class AutomationServer
             { "drag_drop", DragDrop },
             { "send_keys", SendKeys },
 
+            // Form Preview Tools
+            { "render_form", RenderForm },
+            { "render_form_compiled", RenderFormCompiled },
+
             // Event Tools
             { "raise_event", RaiseEvent },
             { "listen_for_event", ListenForEvent },
@@ -119,41 +136,38 @@ class AutomationServer
     public async Task RunAsync()
     {
         var reader = Console.In;
-        var writer = Console.Out;
-
-        // Send initialization
-        var initMessage = new
+        // Use raw stdout stream with explicit LF to avoid Windows CRLF (\r\n),
+        // which breaks Node.js JSON parsing when it splits on \n and sees trailing \r.
+        var stdoutStream = Console.OpenStandardOutput();
+        var writer = new System.IO.StreamWriter(stdoutStream, new System.Text.UTF8Encoding(false))
         {
-            jsonrpc = "2.0",
-            result = new
-            {
-                protocolVersion = "2024-11-05",
-                capabilities = new
-                {
-                    tools = GetToolDefinitions()
-                },
-                serverInfo = new
-                {
-                    name = "fnWindowsMCP",
-                    version = "1.0.0"
-                }
-            }
+            NewLine = "\n",
+            AutoFlush = false
         };
 
-        await writer.WriteLineAsync(JsonSerializer.Serialize(initMessage));
-        await writer.FlushAsync();
-
-        // Process incoming messages
+        // Process incoming messages — wait for client to send initialize first
         while (true)
         {
             var line = await reader.ReadLineAsync();
-            if (string.IsNullOrEmpty(line))
+            if (line == null)
                 break;
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
 
             try
             {
                 var request = JsonDocument.Parse(line).RootElement;
-                var response = await ProcessRequest(request);
+
+                // Notifications have no "id" — must never send a response
+                bool isNotification = !request.TryGetProperty("id", out _);
+                if (isNotification)
+                {
+                    await ProcessNotification(request);
+                    continue;
+                }
+
+                var requestId = GetRequestId(request);
+                var response = await ProcessRequest(request, requestId);
                 await writer.WriteLineAsync(JsonSerializer.Serialize(response));
                 await writer.FlushAsync();
             }
@@ -162,6 +176,7 @@ class AutomationServer
                 var error = new
                 {
                     jsonrpc = "2.0",
+                    id = (object?)null,
                     error = new
                     {
                         code = -32603,
@@ -175,7 +190,21 @@ class AutomationServer
         }
     }
 
-    private async Task<object> ProcessRequest(JsonElement request)
+    private static object GetRequestId(JsonElement request)
+    {
+        if (!request.TryGetProperty("id", out var id))
+            return 0;
+        return id.ValueKind == JsonValueKind.String ? (object)id.GetString()! : id.GetInt32();
+    }
+
+    private Task ProcessNotification(JsonElement request)
+    {
+        // Notifications are fire-and-forget; no response allowed.
+        // "initialized" is the only one we currently receive.
+        return Task.CompletedTask;
+    }
+
+    private async Task<object> ProcessRequest(JsonElement request, object requestId)
     {
         if (!request.TryGetProperty("method", out var methodElement))
             throw new InvalidOperationException("Missing method");
@@ -186,13 +215,15 @@ class AutomationServer
             return new
             {
                 jsonrpc = "2.0",
-                id = request.TryGetProperty("id", out var id) ? id.GetInt32() : _nextId++,
+                id = requestId,
                 result = new
                 {
                     protocolVersion = "2024-11-05",
+                    // Per MCP spec, capabilities.tools is an empty object {},
+                    // not the tools list — tools are fetched via tools/list.
                     capabilities = new
                     {
-                        tools = GetToolDefinitions()
+                        tools = new { }
                     },
                     serverInfo = new
                     {
@@ -208,7 +239,7 @@ class AutomationServer
             return new
             {
                 jsonrpc = "2.0",
-                id = request.TryGetProperty("id", out var id) ? id.GetInt32() : _nextId++,
+                id = requestId,
                 result = new
                 {
                     tools = GetToolDefinitions()
@@ -232,10 +263,32 @@ class AutomationServer
 
             var result = await _tools[toolName](toolArgs);
 
+            // If the tool returned image data, respond with an MCP image content block
+            if (result.TryGetProperty("imageBase64", out var imgData) && imgData.ValueKind == JsonValueKind.String)
+            {
+                return new
+                {
+                    jsonrpc = "2.0",
+                    id = requestId,
+                    result = new
+                    {
+                        content = new object[]
+                        {
+                            new Dictionary<string, string>
+                            {
+                                ["type"] = "image",
+                                ["data"] = imgData.GetString()!,
+                                ["mimeType"] = "image/png"
+                            }
+                        }
+                    }
+                };
+            }
+
             return new
             {
                 jsonrpc = "2.0",
-                id = request.TryGetProperty("id", out var id) ? id.GetInt32() : _nextId++,
+                id = requestId,
                 result = new
                 {
                     content = new[]
@@ -334,6 +387,35 @@ class AutomationServer
                         elementPath = new { type = "string", description = "Specific element to screenshot (optional)" }
                     },
                     required = new[] { "outputPath" }
+                }
+            },
+            new
+            {
+                name = "render_form",
+                description = "Render a WinForms .Designer.cs file to a PNG image preview. The designer file must follow standard WinForms designer conventions: partial class with InitializeComponent() method, fully-qualified type names (e.g. System.Windows.Forms.Button), this. prefix on field access, SuspendLayout/ResumeLayout wrapping. Only standard System.Windows.Forms and System.Drawing types are supported. Event wireups and resource references are ignored.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        designerFilePath = new { type = "string", description = "Path to the .Designer.cs file" },
+                        outputPath = new { type = "string", description = "Path to save the rendered PNG" }
+                    },
+                    required = new[] { "designerFilePath", "outputPath" }
+                }
+            },
+            new
+            {
+                name = "render_form_compiled",
+                description = "Render a WinForms form to a PNG image by compiling a temporary project. Accepts a .cs or .Designer.cs file path — if given a .cs file, automatically uses the sibling .Designer.cs. Copies package references from the source project's .csproj, so custom controls and third-party packages work. Returns the image directly as base64. Results are cached until the source changes. Requires a separate .Designer.cs file to exist.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        sourceFilePath = new { type = "string", description = "Path to the .cs or .Designer.cs file" }
+                    },
+                    required = new[] { "sourceFilePath" }
                 }
             }
         };
@@ -621,6 +703,40 @@ class AutomationServer
             automation.SendKeys(keys);
 
             return Task.FromResult(JsonDocument.Parse("{\"success\": true, \"message\": \"Keys sent\"}").RootElement);
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> RenderForm(JsonElement args)
+    {
+        try
+        {
+            var designerFilePath = GetStringArg(args, "designerFilePath") ?? throw new ArgumentException("designerFilePath is required");
+            var outputPath = GetStringArg(args, "outputPath") ?? throw new ArgumentException("outputPath is required");
+
+            _formRenderer.RenderDesignerFile(designerFilePath, outputPath);
+
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"message\": \"Form rendered to {EscapeJson(outputPath)}\"}}").RootElement);
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> RenderFormCompiled(JsonElement args)
+    {
+        try
+        {
+            var sourceFilePath = GetStringArg(args, "sourceFilePath") ?? throw new ArgumentException("sourceFilePath is required");
+
+            var pngBytes = _compiledFormRenderer.RenderForm(sourceFilePath);
+            var base64 = Convert.ToBase64String(pngBytes);
+
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement);
         }
         catch (Exception ex)
         {

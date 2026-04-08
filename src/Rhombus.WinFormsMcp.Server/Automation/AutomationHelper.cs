@@ -22,8 +22,11 @@ public class AutomationHelper : IAutomationHelper
     private readonly Dictionary<string, Process> _launchedProcesses = new();
     private readonly object _lock = new object();
 
-    public AutomationHelper()
+    public bool Headless { get; }
+
+    public AutomationHelper(bool headless = false)
     {
+        Headless = headless;
         _automation = new UIA2Automation();
     }
 
@@ -37,7 +40,9 @@ public class AutomationHelper : IAutomationHelper
             FileName = path,
             Arguments = arguments ?? string.Empty,
             WorkingDirectory = workingDirectory ?? string.Empty,
-            UseShellExecute = false
+            UseShellExecute = false,
+            CreateNoWindow = Headless,
+            WindowStyle = Headless ? ProcessWindowStyle.Hidden : ProcessWindowStyle.Normal
         };
 
         var process = Process.Start(psi) ?? throw new InvalidOperationException($"Failed to launch {path}");
