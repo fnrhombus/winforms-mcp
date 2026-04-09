@@ -127,8 +127,6 @@ Set `HEADLESS=true` to launch apps on a hidden Windows desktop (`CreateDesktop` 
 
 ## Documentation
 
-- [Claude Code Setup Guide](docs/CLAUDE_CODE_SETUP.md) — step-by-step MCP configuration
-- [Quick Start](docs/QUICKSTART.md) — first automation in 5 minutes
 - [Examples](docs/EXAMPLES.md) — common workflows and patterns
 - [Headless Mode](docs/HEADLESS_MODE.md) — hidden desktop architecture and tool compatibility
 
