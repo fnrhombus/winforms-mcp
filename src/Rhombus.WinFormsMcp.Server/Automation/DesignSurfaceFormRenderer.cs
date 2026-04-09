@@ -19,9 +19,8 @@ namespace Rhombus.WinFormsMcp.Server.Automation;
 /// System.ComponentModel.Design.DesignSurface — the same infrastructure
 /// Visual Studio uses for its WinForms designer.
 ///
-/// Combines Roslyn syntax-tree parsing (like SyntaxTreeFormRenderer) with
-/// DesignSurface + IDesignerHost for control creation, giving VS-parity
-/// rendering at speeds comparable to the syntax-tree approach.
+/// Combines Roslyn syntax-tree parsing with DesignSurface + IDesignerHost
+/// for control creation, giving VS-parity rendering.
 ///
 /// Supports standard controls, custom controls (loaded from project build
 /// output), UserControls, and the full property-assignment spectrum from

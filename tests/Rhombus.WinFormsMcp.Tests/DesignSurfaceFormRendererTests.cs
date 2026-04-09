@@ -703,7 +703,7 @@ namespace Test {
 
     #endregion
 
-    #region Parity with SyntaxTreeFormRenderer
+    #region Additional Coverage
 
     [Test]
     public void Parity_WithoutThisPrefix_ModernVSFormat() {

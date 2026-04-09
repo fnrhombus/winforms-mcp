@@ -84,9 +84,6 @@ class AutomationServer {
     private readonly Dictionary<string, Func<JsonElement, Task<JsonElement>>> _tools;
     private int _nextId = 1;
     private readonly SessionManager _session;
-    private readonly SyntaxTreeFormRenderer _formRenderer = new();
-    private readonly InProcessFormRenderer _inProcessSyntaxTreeFormRenderer = new();
-    private readonly CompiledFormRenderer _compiledSyntaxTreeFormRenderer = new();
     private readonly RendererProcessPool _rendererPool = new();
 
     public AutomationServer(bool headless = false) {
@@ -119,8 +116,6 @@ class AutomationServer {
 
             // Form Preview Tools
             { "render_form", RenderForm },
-            { "render_form_inprocess", RenderFormInProcess },
-            { "render_form_compiled", RenderFormCompiled },
 
             // Discovery Tools
             { "get_element_tree", GetElementTree },
@@ -406,87 +401,26 @@ class AutomationServer {
                 }
             },
             // ── Form Preview Tools ──
-            // Three renderers ranked by speed. Choose based on whether the form uses custom/third-party controls:
-            //   render_form           → ~150ms, standard controls only (fastest, but skips custom controls)
-            //   render_form_inprocess → ~450ms, all controls including custom/third-party (best balance)
-            //   render_form_compiled  → ~2800ms, all controls (slowest, uses dotnet build externally)
-            // If the form only uses System.Windows.Forms controls, use render_form.
-            // If the form uses custom or third-party controls, use render_form_inprocess.
-            // Only fall back to render_form_compiled if render_form_inprocess fails.
             new
             {
                 name = "render_form",
-                description = "FASTEST (~150ms) — Render a WinForms .Designer.cs to PNG by parsing the syntax tree and creating controls via reflection. " +
-                    "PROS: No build step needed; reads the .Designer.cs file directly; fastest turnaround for iterating on layout changes. " +
-                    "CONS: Only supports standard System.Windows.Forms and System.Drawing types — custom controls, UserControls, and third-party controls are silently skipped (blank space in output). Event wireups and resource references are ignored. " +
-                    "USE WHEN: The form only uses standard WinForms controls and you want the fastest possible preview after editing the designer file. " +
-                    "DO NOT USE WHEN: The form contains custom controls, UserControls from the same project, or third-party NuGet controls — use render_form_inprocess instead. " +
-                    "IMPORTANT — AUTHORING FORMS: You MUST write forms using the standard Visual Studio designer file convention. " +
-                    "Every form requires THREE files: (1) MyForm.cs — the code-behind partial class inheriting Form with constructor calling InitializeComponent(), " +
-                    "(2) MyForm.Designer.cs — the designer partial class containing InitializeComponent() with all control creation, property assignments, and layout code, " +
-                    "(3) MyForm.resx — resource file (optional, only if embedding images/icons). " +
-                    "The .Designer.cs file MUST follow the exact Visual Studio pattern: use 'this.' prefix for all member access, " +
-                    "fully-qualified type names (e.g., System.Windows.Forms.Button not just Button), " +
-                    "SuspendLayout()/ResumeLayout(false)/PerformLayout() calls, " +
-                    "field declarations at the bottom of the class, and a Dispose method with components container. " +
-                    "Do NOT put control creation or layout code in the .cs file — it belongs ONLY in .Designer.cs. " +
-                    "Do NOT use file-scoped namespaces in designer files — use block-scoped 'namespace X { }' or the traditional Visual Studio style.",
+                description = "Render a WinForms .Designer.cs file to a pixel-accurate PNG preview using .NET's DesignSurface — the same infrastructure Visual Studio uses for its WYSIWYG designer. " +
+                    "Works WITHOUT building the project. Automatically detects the project's target framework and renders in a matching out-of-process host (supports .NET Framework 4.x, .NET Core 3.x, and .NET 5–9+). " +
+                    "Returns the image as inline base64 so you can see the form layout directly. Results are cached by content hash for instant re-renders. " +
+                    "AUTHORING REQUIREMENTS: Forms must use the standard Visual Studio designer file convention — " +
+                    "a separate .Designer.cs file containing a partial class with InitializeComponent(), " +
+                    "fully-qualified type names (e.g., System.Windows.Forms.Button), 'this.' prefix for member access, " +
+                    "SuspendLayout()/ResumeLayout(false)/PerformLayout() calls, field declarations at the bottom, and a Dispose method with components container. " +
+                    "Do NOT put control creation in the .cs file — it belongs ONLY in .Designer.cs.",
                 inputSchema = new
                 {
                     type = "object",
                     properties = new
                     {
-                        designerFilePath = new { type = "string", description = "Path to the .Designer.cs file" },
+                        designerFilePath = new { type = "string", description = "Path to the .Designer.cs file (or the companion .cs file — the .Designer.cs will be found automatically)" },
                         outputPath = new { type = "string", description = "Optional path to also save the rendered PNG to disk. The image is always returned as base64 regardless." }
                     },
                     required = new[] { "designerFilePath" }
-                }
-            },
-            new
-            {
-                name = "render_form_inprocess",
-                description = "RECOMMENDED (~450ms) — Render a WinForms form to PNG by compiling the designer code in-memory with Roslyn and running it in-process. " +
-                    "PROS: Supports ALL controls including custom UserControls and third-party NuGet controls (loaded from the project's build output). Runs real InitializeComponent() code, so rendering is pixel-perfect. No external dotnet build process — 6x faster than render_form_compiled. Returns image as base64. Results cached by content hash. " +
-                    "CONS: Requires the project to have been built at least once (so custom control DLLs exist in bin/). Slightly slower than render_form for standard-only forms. " +
-                    "USE WHEN: The form uses custom controls, UserControls, or third-party controls. Also the safe default choice when you're unsure what control types are used. " +
-                    "DO NOT USE WHEN: You need the absolute fastest preview and you know the form only has standard controls — use render_form instead. " +
-                    "IMPORTANT — AUTHORING FORMS: You MUST write forms using the standard Visual Studio designer file convention. " +
-                    "Every form requires a SEPARATE .Designer.cs file — do NOT put InitializeComponent() in the main .cs file. " +
-                    "The .Designer.cs MUST contain: a partial class declaration, a private IContainer components field, a Dispose(bool) override, " +
-                    "and an InitializeComponent() method that creates controls with fully-qualified type names (e.g., 'this.button1 = new System.Windows.Forms.Button();'), " +
-                    "sets all properties using 'this.' prefix, calls SuspendLayout()/ResumeLayout(false)/PerformLayout(), " +
-                    "and declares all control fields at the bottom of the class. " +
-                    "The companion .cs file should ONLY contain the partial class with a constructor calling InitializeComponent() plus event handlers. " +
-                    "This is exactly how Visual Studio generates WinForms code — follow this pattern precisely or rendering will fail.",
-                inputSchema = new
-                {
-                    type = "object",
-                    properties = new
-                    {
-                        sourceFilePath = new { type = "string", description = "Path to the .cs or .Designer.cs file. If given a .cs file, automatically finds the sibling .Designer.cs." }
-                    },
-                    required = new[] { "sourceFilePath" }
-                }
-            },
-            new
-            {
-                name = "render_form_compiled",
-                description = "SLOWEST (~2800ms) — Render a WinForms form to PNG by generating a temporary .csproj, running dotnet build, and capturing the output. " +
-                    "PROS: Most robust — generates a full .NET project with PackageReferences copied from the source .csproj, so it handles any control type. Works even if the project has never been built. References the project's built assembly for custom controls. " +
-                    "CONS: Slowest option (~2.8s per render) due to spawning dotnet build + a separate process. " +
-                    "USE WHEN: render_form_inprocess fails (e.g. missing build output, complex project configurations, or exotic package setups). Also useful as a one-time validation that the designer code is correct. " +
-                    "DO NOT USE WHEN: Speed matters — use render_form_inprocess instead for iterative development. " +
-                    "IMPORTANT — AUTHORING FORMS: You MUST write forms using the standard Visual Studio designer file convention with a SEPARATE .Designer.cs file. " +
-                    "See render_form or render_form_inprocess descriptions for the full authoring requirements. " +
-                    "The .Designer.cs file is the input to ALL renderers — if it doesn't follow the Visual Studio pattern, rendering will fail or produce incorrect output.",
-                inputSchema = new
-                {
-                    type = "object",
-                    properties = new
-                    {
-                        sourceFilePath = new { type = "string", description = "Path to the .cs or .Designer.cs file. If given a .cs file, automatically finds the sibling .Designer.cs." }
-                    },
-                    required = new[] { "sourceFilePath" }
                 }
             },
             new
@@ -872,34 +806,6 @@ class AutomationServer {
         }
         catch (Exception ex) {
             return JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement;
-        }
-    }
-
-    private Task<JsonElement> RenderFormInProcess(JsonElement args) {
-        try {
-            var sourceFilePath = GetStringArg(args, "sourceFilePath") ?? throw new ArgumentException("sourceFilePath is required");
-
-            var pngBytes = _inProcessSyntaxTreeFormRenderer.RenderForm(sourceFilePath);
-            var base64 = Convert.ToBase64String(pngBytes);
-
-            return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement);
-        }
-        catch (Exception ex) {
-            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
-        }
-    }
-
-    private Task<JsonElement> RenderFormCompiled(JsonElement args) {
-        try {
-            var sourceFilePath = GetStringArg(args, "sourceFilePath") ?? throw new ArgumentException("sourceFilePath is required");
-
-            var pngBytes = _compiledSyntaxTreeFormRenderer.RenderForm(sourceFilePath);
-            var base64 = Convert.ToBase64String(pngBytes);
-
-            return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement);
-        }
-        catch (Exception ex) {
-            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 

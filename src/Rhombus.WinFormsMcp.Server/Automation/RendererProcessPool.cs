@@ -23,15 +23,17 @@ public sealed class RendererProcessPool : IDisposable {
     private static readonly string[] HostTfms = { "net48", "netcoreapp3.1", "net8.0-windows" };
 
     private readonly ConcurrentDictionary<string, HostEntry> _hosts = new();
-    private readonly string _hostBasePath;
+    private readonly Lazy<string> _hostBasePath;
     private bool _disposed;
 
     /// <param name="hostBasePath">
     /// Directory containing the RendererHost build output (with subdirs per TFM).
-    /// If null, auto-detected relative to this assembly.
+    /// If null, auto-detected relative to this assembly on first use.
     /// </param>
     public RendererProcessPool(string? hostBasePath = null) {
-        _hostBasePath = hostBasePath ?? DetectHostBasePath();
+        _hostBasePath = hostBasePath != null
+            ? new Lazy<string>(hostBasePath)
+            : new Lazy<string>(DetectHostBasePath);
     }
 
     /// <summary>
@@ -55,7 +57,7 @@ public sealed class RendererProcessPool : IDisposable {
         if (_disposed) throw new ObjectDisposedException(nameof(RendererProcessPool));
 
         var hostTfm = ResolveHostTfm(targetTfm, csprojPath);
-        var entry = _hosts.GetOrAdd(hostTfm, tfm => new HostEntry(tfm, _hostBasePath));
+        var entry = _hosts.GetOrAdd(hostTfm, tfm => new HostEntry(tfm, _hostBasePath.Value));
 
         return await entry.RenderAsync(designerContent, companionContent, extraAssemblyPaths);
     }
@@ -156,11 +158,12 @@ public sealed class RendererProcessPool : IDisposable {
         // host:   src/Rhombus.WinFormsMcp.RendererHost/bin/Debug/
         var parts = serverDir.Replace('\\', '/').Split('/');
         for (int i = parts.Length - 1; i >= 0; i--) {
-            if (string.Equals(parts[i], "bin", StringComparison.OrdinalIgnoreCase) && i >= 1) {
-                // parts[i-1] should be project name, parts[i] = "bin", parts[i+1] = config
-                var srcDir = string.Join("/", parts.Take(i));
+            if (string.Equals(parts[i], "bin", StringComparison.OrdinalIgnoreCase) && i >= 2) {
+                // parts[i-1] = project name, parts[i] = "bin", parts[i+1] = config
+                // Go up to the parent of the project dir (e.g. src/)
+                var parentDir = string.Join("/", parts.Take(i - 1));
                 var config = (i + 1 < parts.Length) ? parts[i + 1] : "Debug";
-                var hostBin = Path.Combine(srcDir, "Rhombus.WinFormsMcp.RendererHost", "bin", config);
+                var hostBin = Path.Combine(parentDir, "Rhombus.WinFormsMcp.RendererHost", "bin", config);
                 if (Directory.Exists(hostBin))
                     return hostBin;
             }
