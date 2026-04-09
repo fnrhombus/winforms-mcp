@@ -242,8 +242,12 @@ public class DesignSurfaceFormRenderer {
             if (fieldName != null) {
                 var typeName = creation.Type.ToString();
                 var type = ResolveType(typeName);
-                if (type == null)
+                if (type == null) {
+                    // Unknown type — create a placeholder so the layout stays intact
+                    var placeholder = CreateErrorPlaceholder(typeName, "Type not found");
+                    _components[fieldName] = placeholder;
                     return;
+                }
 
                 // Special case: skip IContainer (components)
                 if (typeof(IContainer).IsAssignableFrom(type)) {
@@ -270,7 +274,7 @@ public class DesignSurfaceFormRenderer {
                             SetPropertyValue(_rootControl!, fieldName, component);
                         }
                     }
-                    catch {
+                    catch (Exception ex) {
                         // Fall back to direct instantiation
                         try {
                             var args = EvaluateArgumentList(creation.ArgumentList);
@@ -280,7 +284,13 @@ public class DesignSurfaceFormRenderer {
                             if (instance is IComponent comp)
                                 _components[fieldName] = comp;
                         }
-                        catch { /* skip */ }
+                        catch {
+                            // Both paths failed — show error placeholder for controls
+                            if (typeof(Control).IsAssignableFrom(type)) {
+                                var placeholder = CreateErrorPlaceholder(typeName, ex.Message);
+                                _components[fieldName] = placeholder;
+                            }
+                        }
                     }
                     return;
                 }
@@ -913,6 +923,28 @@ public class DesignSurfaceFormRenderer {
     #endregion
 
     #region Utilities
+
+    /// <summary>
+    /// Creates a red-bordered error placeholder panel matching VS designer behavior
+    /// when a control fails to load or throws during initialization.
+    /// </summary>
+    internal static Panel CreateErrorPlaceholder(string typeName, string errorMessage) {
+        var panel = new Panel {
+            BackColor = Color.FromArgb(255, 240, 240),
+            BorderStyle = BorderStyle.FixedSingle,
+            Size = new Size(200, 50)
+        };
+        var label = new Label {
+            Text = $"{typeName}\n{errorMessage}",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+            ForeColor = Color.DarkRed,
+            Font = new Font("Segoe UI", 7.5f, FontStyle.Regular),
+            AutoEllipsis = true
+        };
+        panel.Controls.Add(label);
+        return panel;
+    }
 
     private static string ComputeHash(string content) {
         using var sha = SHA256.Create();

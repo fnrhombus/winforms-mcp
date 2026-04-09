@@ -859,6 +859,86 @@ namespace Test {
 
     #endregion
 
+    #region Error Placeholder (VS-Parity)
+
+    [Test]
+    public void RenderDesignerCode_UnknownControlType_ProducesValidPngWithPlaceholder() {
+        var designerCode = @"
+namespace Test {
+    partial class TestForm {
+        private void InitializeComponent() {
+            this.myWidget = new Acme.Widgets.SuperButton();
+            this.SuspendLayout();
+            this.myWidget.Location = new System.Drawing.Point(10, 10);
+            this.myWidget.Size = new System.Drawing.Size(200, 50);
+            this.Controls.Add(this.myWidget);
+            this.ClientSize = new System.Drawing.Size(300, 200);
+            this.Text = ""Error Placeholder Test"";
+            this.ResumeLayout(false);
+        }
+        private Acme.Widgets.SuperButton myWidget;
+    }
+}";
+        var pngBytes = _renderer.RenderDesignerCode(designerCode);
+        AssertValidPng(pngBytes);
+    }
+
+    [Test]
+    public void RenderDesignerCode_MultipleUnknownControls_StillRendersForm() {
+        var designerCode = @"
+namespace Test {
+    partial class TestForm {
+        private void InitializeComponent() {
+            this.btn = new System.Windows.Forms.Button();
+            this.unknown1 = new Missing.Namespace.Widget1();
+            this.unknown2 = new Missing.Namespace.Widget2();
+            this.SuspendLayout();
+            this.btn.Text = ""OK"";
+            this.btn.Location = new System.Drawing.Point(10, 10);
+            this.btn.Size = new System.Drawing.Size(80, 30);
+            this.unknown1.Location = new System.Drawing.Point(10, 50);
+            this.unknown1.Size = new System.Drawing.Size(200, 40);
+            this.unknown2.Location = new System.Drawing.Point(10, 100);
+            this.unknown2.Size = new System.Drawing.Size(200, 40);
+            this.Controls.Add(this.btn);
+            this.Controls.Add(this.unknown1);
+            this.Controls.Add(this.unknown2);
+            this.ClientSize = new System.Drawing.Size(300, 200);
+            this.ResumeLayout(false);
+        }
+        private System.Windows.Forms.Button btn;
+        private Missing.Namespace.Widget1 unknown1;
+        private Missing.Namespace.Widget2 unknown2;
+    }
+}";
+        var pngBytes = _renderer.RenderDesignerCode(designerCode);
+        AssertValidPng(pngBytes);
+    }
+
+    [Test]
+    public void CreateErrorPlaceholder_ReturnsPanel_WithExpectedProperties() {
+        var panel = DesignSurfaceFormRenderer.CreateErrorPlaceholder("MyWidget", "Type not found");
+
+        Assert.Multiple(() => {
+            Assert.That(panel, Is.InstanceOf<Panel>());
+            Assert.That(panel.BackColor, Is.EqualTo(Color.FromArgb(255, 240, 240)));
+            Assert.That(panel.BorderStyle, Is.EqualTo(BorderStyle.FixedSingle));
+            Assert.That(panel.Size, Is.EqualTo(new Size(200, 50)));
+            Assert.That(panel.Controls.Count, Is.EqualTo(1));
+
+            var label = panel.Controls[0] as Label;
+            Assert.That(label, Is.Not.Null);
+            Assert.That(label!.Text, Does.Contain("MyWidget"));
+            Assert.That(label.Text, Does.Contain("Type not found"));
+            Assert.That(label.ForeColor, Is.EqualTo(Color.DarkRed));
+            Assert.That(label.Dock, Is.EqualTo(DockStyle.Fill));
+        });
+
+        panel.Dispose();
+    }
+
+    #endregion
+
     #region Helpers
 
     private static void AssertValidPng(byte[] pngBytes) {
