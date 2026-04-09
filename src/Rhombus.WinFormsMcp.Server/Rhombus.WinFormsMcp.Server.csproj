@@ -7,7 +7,7 @@
     <OutputType>Exe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>Rhombus.WinFormsMcp.Server</RootNamespace>
-    <AssemblyName>Rhombus.WinFormsMcp.Server</AssemblyName>
+    <AssemblyName>winformsmcp</AssemblyName>
 
     <!-- NuGet Package Configuration -->
     <PackageId>Rhombus.WinFormsMcp</PackageId>
@@ -16,8 +16,8 @@
     <Company>butler.software</Company>
     <Product>Rhombus.WinFormsMcp</Product>
     <Description>WinForms automation MCP server using FlaUI with UIA2 backend for headless Windows Forms application testing and automation</Description>
-    <PackageProjectUrl>https://github.com/rhom6us/winforms-mcp</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/rhom6us/winforms-mcp.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/fnrhombus/winforms-mcp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/fnrhombus/winforms-mcp.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>winforms;automation;flaui;ui-testing;mcp;model-context-protocol;headless</PackageTags>

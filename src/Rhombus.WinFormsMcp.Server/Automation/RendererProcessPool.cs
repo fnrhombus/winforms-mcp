@@ -149,7 +149,7 @@ public sealed class RendererProcessPool : IDisposable {
 
     private static string DetectHostBasePath() {
         // Walk up from this assembly's location to find the RendererHost build output.
-        // Layout: .../<config>/<tfm>/Rhombus.WinFormsMcp.Server.dll
+        // Layout: .../<config>/<tfm>/winformsmcp.dll
         // RendererHost: .../Rhombus.WinFormsMcp.RendererHost/bin/<config>/<tfm>/
         var serverDir = Path.GetDirectoryName(typeof(RendererProcessPool).Assembly.Location)!;
 

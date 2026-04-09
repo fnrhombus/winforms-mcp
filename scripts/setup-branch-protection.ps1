@@ -5,7 +5,7 @@
 #
 
 param(
-    [string]$Repository = "rhom6us/winforms-mcp",
+    [string]$Repository = "fnrhombus/winforms-mcp",
     [string]$Branch = "master"
 )
 

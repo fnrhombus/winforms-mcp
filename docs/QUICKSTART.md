@@ -13,7 +13,7 @@ Get up and running with Rhombus.WinFormsMcp in 5 minutes.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/rhom6us/winforms-mcp.git
+git clone https://github.com/fnrhombus/winforms-mcp.git
 cd winforms-mcp
 ```
 

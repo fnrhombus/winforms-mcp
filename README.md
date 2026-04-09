@@ -4,9 +4,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rhom6us/winforms-mcp/actions/workflows/ci.yml"><img src="https://github.com/rhom6us/winforms-mcp/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
+  <a href="https://github.com/fnrhombus/winforms-mcp/actions/workflows/ci.yml"><img src="https://github.com/fnrhombus/winforms-mcp/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
   <a href="https://www.nuget.org/packages/Rhombus.WinFormsMcp"><img src="https://img.shields.io/nuget/v/Rhombus.WinFormsMcp" alt="NuGet Version"></a>
-  <a href="https://www.npmjs.com/package/@rhom6us/winforms-mcp"><img src="https://img.shields.io/npm/v/@rhom6us/winforms-mcp" alt="NPM Version"></a>
+  <a href="https://www.npmjs.com/package/@fnrhombus/winforms-mcp"><img src="https://img.shields.io/npm/v/@fnrhombus/winforms-mcp" alt="NPM Version"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
 </p>
 
@@ -45,34 +45,30 @@ It can then edit the layout, re-render, and iterate — a full visual feedback l
 
 Add to your MCP config and restart. Nothing else to install.
 
-**npx (recommended):**
+**npx** (requires Node.js):
 
 ```json
 {
   "mcpServers": {
     "winforms-mcp": {
       "command": "npx",
-      "args": ["-y", "@rhom6us/winforms-mcp"]
+      "args": ["-y", "@fnrhombus/winforms-mcp"]
     }
   }
 }
 ```
 
-<details>
-<summary><strong>From source</strong> (alternative — requires .NET 8+ SDK)</summary>
+**Standalone exe** (no Node required) — [download from Releases](https://github.com/fnrhombus/winforms-mcp/releases):
 
 ```json
 {
   "mcpServers": {
     "winforms-mcp": {
-      "command": "dotnet",
-      "args": ["run", "--project", "path/to/Rhombus.WinFormsMcp.Server.csproj"]
+      "command": "C:/path/to/winformsmcp.exe"
     }
   }
 }
 ```
-
-</details>
 
 That's it. The agent can now see and interact with any WinForms application on your machine.
 
@@ -110,7 +106,7 @@ Set `HEADLESS=true` to launch apps on a hidden Windows desktop (`CreateDesktop` 
   "mcpServers": {
     "winforms-mcp": {
       "command": "npx",
-      "args": ["-y", "@rhom6us/winforms-mcp"],
+      "args": ["-y", "@fnrhombus/winforms-mcp"],
       "env": { "HEADLESS": "true" }
     }
   }
@@ -135,7 +131,7 @@ Set `HEADLESS=true` to launch apps on a hidden Windows desktop (`CreateDesktop` 
 
 ## Contributing
 
-Contributions welcome! See [issues](https://github.com/rhom6us/winforms-mcp/issues) for open items.
+Contributions welcome! See [issues](https://github.com/fnrhombus/winforms-mcp/issues) for open items.
 
 ## License
 

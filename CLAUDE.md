@@ -78,7 +78,7 @@ dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c 
 - **UI Automation**: FlaUI 4.0.0 with UIA2 backend for maximum WinForms compatibility without visual requirements
 - **Testing**: NUnit 3.14.0 with Moq for mocking
 - **Protocol**: MCP with stdio transport, single-line JSON-RPC 2.0 messages
-- **Package Distribution**: NuGet (Rhombus.WinFormsMcp), NPM (@rhom6us/winforms-mcp)
+- **Package Distribution**: NuGet (Rhombus.WinFormsMcp), NPM (@fnrhombus/winforms-mcp)
 
 ### MCP Tools Available
 
@@ -276,5 +276,5 @@ While not strictly enforced, following conventional commits helps the AI version
 1. The project was renamed from `fnWindowsMCP` to `Rhombus.WinFormsMcp` - all namespaces and project references use the new naming.
 2. Git status shows multiple deleted files from the old `fnWindowsMCP` structure - these deletions represent the rename refactoring.
 3. The solution file is `Rhombus.WinFormsMcp.sln` (not fnWindowsMCP.sln).
-4. NuGet package ID is `Rhombus.WinFormsMcp`, NPM package is `@rhom6us/winforms-mcp`.
+4. NuGet package ID is `Rhombus.WinFormsMcp`, NPM package is `@fnrhombus/winforms-mcp`.
 5. All project files use the `Rhombus.WinFormsMcp` namespace prefix.
