@@ -4,7 +4,9 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Text.Json;
 
+using Rhombus.WinFormsMcp.Rendering;
 using Rhombus.WinFormsMcp.Server;
+using Rhombus.WinFormsMcp.Server.Automation;
 
 /// <summary>
 /// Tests for the take_screenshot tool's base64 image return behavior.
@@ -183,7 +185,11 @@ public class TakeScreenshotTests {
         var outputReader = new StringReader("");
 
         // Use reflection or instantiate AutomationServer to check tool definitions
-        var server = new AutomationServer(headless: true);
+        var automation = new AutomationHelper(headless: true);
+        var session = new SessionManager(automation);
+        var rendererPool = new RendererProcessPool();
+        var telemetry = new NullTelemetry();
+        var server = new AutomationServer(session, rendererPool, telemetry);
 
         // We test by sending an initialize + tools/list request through the server
         // But since RunAsync reads from Console.In, we'll test by checking the

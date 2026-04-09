@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 using FlaUI.Core.AutomationElements;
 
+using Microsoft.Extensions.DependencyInjection;
+
 using Rhombus.WinFormsMcp.Rendering;
 using Rhombus.WinFormsMcp.Server.Automation;
 
@@ -26,7 +28,23 @@ class Program {
             var headless = string.Equals(headlessEnv, "true", StringComparison.OrdinalIgnoreCase)
                         || headlessEnv == "1";
 
-            _server = new AutomationServer(headless);
+            var services = new ServiceCollection();
+
+            // Telemetry
+            var optOut = Environment.GetEnvironmentVariable("TELEMETRY_OPTOUT");
+            bool telemetryOptOut = string.Equals(optOut, "true", StringComparison.OrdinalIgnoreCase) || optOut == "1";
+            if (telemetryOptOut)
+                services.AddSingleton<ITelemetry, NullTelemetry>();
+            else
+                services.AddSingleton<ITelemetry, Telemetry>();
+
+            services.AddSingleton<IAutomationHelper>(new AutomationHelper(headless));
+            services.AddSingleton<ISessionManager, SessionManager>();
+            services.AddSingleton<RendererProcessPool>();
+            services.AddSingleton<AutomationServer>();
+
+            var provider = services.BuildServiceProvider();
+            _server = provider.GetRequiredService<AutomationServer>();
             await _server.RunAsync();
         }
         catch (Exception ex) {
@@ -38,21 +56,31 @@ class Program {
 }
 
 /// <summary>
+/// Interface for session management — tracking automation contexts and element references.
+/// </summary>
+interface ISessionManager : IDisposable {
+    IAutomationHelper GetAutomation();
+    string CacheElement(AutomationElement element);
+    AutomationElement? GetElement(string elementId);
+    void ClearElement(string elementId);
+    void CacheProcess(int pid, object context);
+}
+
+/// <summary>
 /// Session manager for tracking automation contexts and element references
 /// </summary>
-class SessionManager {
+class SessionManager : ISessionManager {
     private readonly Dictionary<string, AutomationElement> _elementCache = new();
     private readonly Dictionary<int, object> _processContext = new();
     private int _nextElementId = 1;
-    private AutomationHelper? _automation;
-    private readonly bool _headless;
+    private readonly IAutomationHelper _automation;
 
-    public SessionManager(bool headless = false) {
-        _headless = headless;
+    public SessionManager(IAutomationHelper automation) {
+        _automation = automation;
     }
 
-    public AutomationHelper GetAutomation() {
-        return _automation ??= new AutomationHelper(_headless);
+    public IAutomationHelper GetAutomation() {
+        return _automation;
     }
 
     public string CacheElement(AutomationElement element) {
@@ -84,11 +112,14 @@ class SessionManager {
 class AutomationServer {
     private readonly Dictionary<string, Func<JsonElement, Task<JsonElement>>> _tools;
     private int _nextId = 1;
-    private readonly SessionManager _session;
-    private readonly RendererProcessPool _rendererPool = new();
+    private readonly ISessionManager _session;
+    private readonly RendererProcessPool _rendererPool;
+    private readonly ITelemetry _telemetry;
 
-    public AutomationServer(bool headless = false) {
-        _session = new SessionManager(headless);
+    public AutomationServer(ISessionManager session, RendererProcessPool rendererPool, ITelemetry telemetry) {
+        _session = session;
+        _rendererPool = rendererPool;
+        _telemetry = telemetry;
         _tools = new Dictionary<string, Func<JsonElement, Task<JsonElement>>>
         {
             // Element Tools
@@ -182,6 +213,7 @@ class AutomationServer {
                 await writer.FlushAsync();
             }
             catch (Exception ex) {
+                _telemetry.TrackException(ex);
                 var error = new {
                     jsonrpc = "2.0",
                     id = (object?)null,
@@ -198,6 +230,7 @@ class AutomationServer {
 
         // Clean up renderer host processes on exit
         _rendererPool.Dispose();
+        _telemetry.Flush();
     }
 
     private static object GetRequestId(JsonElement request) {
@@ -259,7 +292,19 @@ class AutomationServer {
             if (!_tools.ContainsKey(toolName))
                 throw new InvalidOperationException($"Unknown tool: {toolName}");
 
-            var result = await _tools[toolName](toolArgs);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            JsonElement result;
+            try {
+                result = await _tools[toolName](toolArgs);
+            }
+            catch (Exception ex) {
+                sw.Stop();
+                _telemetry.TrackToolCall(toolName, sw.Elapsed);
+                _telemetry.TrackException(ex);
+                throw;
+            }
+            sw.Stop();
+            _telemetry.TrackToolCall(toolName, sw.Elapsed);
 
             // If the tool returned image data, respond with an MCP image content block
             if (result.TryGetProperty("imageBase64", out var imgData) && imgData.ValueKind == JsonValueKind.String) {
