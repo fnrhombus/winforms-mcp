@@ -1,0 +1,43 @@
+name: Bug Report
+description: Report a bug in Rhombus.WinFormsMcp
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the issue.
+      placeholder: |
+        1. Configure MCP server with...
+        2. Call tool X with arguments...
+        3. Observe error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Your setup details.
+      value: |
+        - OS: Windows 10/11
+        - .NET SDK:
+        - Installation method: npx / dotnet / binary
+        - MCP client: Claude Code / other
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Output / Logs
+      description: Paste any error messages or relevant log output.
+      render: shell
