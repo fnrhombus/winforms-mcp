@@ -38,6 +38,13 @@ public class DesignSurfaceFormRenderer {
     private IDesignerHost? _host;
     private List<Assembly> _extraAssemblies = [];
 
+    // Recursive rendering: project directory for searching .Designer.cs files
+    private string? _projectDir;
+
+    // Circular reference protection for recursive UserControl rendering (shared across threads)
+    private static readonly HashSet<string> _renderingStack = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly object _renderingStackLock = new();
+
     private static void EnsureVisualStyles() {
         if (_visualStylesInitialized)
             return;
@@ -71,19 +78,22 @@ public class DesignSurfaceFormRenderer {
         var projectDir = Path.GetDirectoryName(designerFile)!;
         var extraPaths = ResolveProjectAssemblyPaths(projectDir);
 
-        return RenderDesignerCode(designerContent, companionContent, extraPaths);
+        return RenderDesignerCode(designerContent, companionContent, extraPaths, projectDir);
     }
 
     /// <summary>
     /// Render designer code from a string, with optional companion content and extra assemblies.
     /// </summary>
     public byte[] RenderDesignerCode(string designerContent, string? companionContent = null,
-        IEnumerable<string>? extraAssemblyPaths = null) {
+        IEnumerable<string>? extraAssemblyPaths = null, string? projectDir = null) {
         var cacheKey = ComputeHash(designerContent + (companionContent ?? ""));
         if (_cache.TryGetValue(cacheKey, out var cached))
             return cached;
 
         EnsureVisualStyles();
+
+        // Store project directory for recursive UserControl rendering
+        _projectDir = projectDir;
 
         // Load extra assemblies into runtime
         _extraAssemblies = [];
@@ -243,6 +253,13 @@ public class DesignSurfaceFormRenderer {
                 var typeName = creation.Type.ToString();
                 var type = ResolveType(typeName);
                 if (type == null) {
+                    // Try recursive rendering from source .Designer.cs
+                    var recursivePlaceholder = TryRenderUserControlFromSource(typeName);
+                    if (recursivePlaceholder != null) {
+                        _components[fieldName] = recursivePlaceholder;
+                        return;
+                    }
+
                     // Unknown type — create a placeholder so the layout stays intact
                     var placeholder = CreateErrorPlaceholder(typeName, "Type not found");
                     _components[fieldName] = placeholder;
@@ -918,6 +935,100 @@ public class DesignSurfaceFormRenderer {
         catch { /* no csproj or no build output */ }
 
         return paths;
+    }
+
+    #endregion
+
+    #region Recursive UserControl Rendering
+
+    /// <summary>
+    /// Attempt to find a .Designer.cs file in the project directory whose class name
+    /// matches the unresolved type, render it recursively, and return a PictureBox
+    /// containing the rendered bitmap. Returns null if not possible.
+    /// </summary>
+    private Panel? TryRenderUserControlFromSource(string typeName) {
+        if (_projectDir == null)
+            return null;
+
+        // Extract the short class name from the fully qualified type name
+        var shortName = typeName.Contains('.')
+            ? typeName.Substring(typeName.LastIndexOf('.') + 1)
+            : typeName;
+
+        // Circular reference protection
+        lock (_renderingStackLock) {
+            if (!_renderingStack.Add(shortName))
+                return null; // Already rendering this type — circular reference
+        }
+
+        try {
+            var designerFile = FindDesignerFileForType(shortName, _projectDir);
+            if (designerFile == null)
+                return null;
+
+            var designerContent = File.ReadAllText(designerFile);
+
+            // Look for companion .cs file
+            var idx = designerFile.LastIndexOf(".Designer.cs", StringComparison.OrdinalIgnoreCase);
+            var companionPath = idx >= 0 ? designerFile.Substring(0, idx) + ".cs" : null;
+            string? companionContent = null;
+            if (companionPath != null && File.Exists(companionPath))
+                companionContent = File.ReadAllText(companionPath);
+
+            // Render with a child renderer, passing project dir for further recursion
+            var childRenderer = new DesignSurfaceFormRenderer();
+            var extraPaths = ResolveProjectAssemblyPaths(_projectDir);
+            var pngBytes = childRenderer.RenderDesignerCode(designerContent, companionContent, extraPaths, _projectDir);
+
+            // Create a Panel with the rendered image as background
+            using var ms = new MemoryStream(pngBytes);
+            var bitmap = new Bitmap(ms);
+
+            var panel = new Panel {
+                Size = bitmap.Size,
+                BackgroundImage = bitmap,
+                BackgroundImageLayout = ImageLayout.None,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            return panel;
+        }
+        catch {
+            // Recursive rendering failed — caller will fall back to error placeholder
+            return null;
+        }
+        finally {
+            lock (_renderingStackLock) {
+                _renderingStack.Remove(shortName);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Search the project directory tree for a .Designer.cs file whose class name matches.
+    /// </summary>
+    internal static string? FindDesignerFileForType(string shortClassName, string projectDir) {
+        try {
+            // First try the obvious file name: ClassName.Designer.cs
+            var candidateFiles = Directory.GetFiles(projectDir, $"{shortClassName}.Designer.cs", SearchOption.AllDirectories);
+            if (candidateFiles.Length > 0)
+                return candidateFiles[0];
+
+            // Broader search: scan all .Designer.cs files for a matching class declaration
+            var allDesignerFiles = Directory.GetFiles(projectDir, "*.Designer.cs", SearchOption.AllDirectories);
+            foreach (var file in allDesignerFiles) {
+                // Skip bin/obj directories
+                if (file.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar) ||
+                    file.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
+                    continue;
+
+                var content = File.ReadAllText(file);
+                if (Regex.IsMatch(content, $@"\bclass\s+{Regex.Escape(shortClassName)}\b"))
+                    return file;
+            }
+        }
+        catch { /* directory not searchable */ }
+
+        return null;
     }
 
     #endregion

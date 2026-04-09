@@ -1,6 +1,6 @@
 # Plan: UserControl and Custom Control Rendering
 
-## Status: Mostly Complete
+## Status: Complete
 
 The original plan proposed changes across three renderers (SyntaxTreeFormRenderer, InProcessFormRenderer, CompiledFormRenderer). All three have been replaced by **DesignSurfaceFormRenderer**, which uses .NET's `DesignSurface`/`IDesignerHost` infrastructure — the same system Visual Studio uses.
 
@@ -13,21 +13,25 @@ The original plan proposed changes across three renderers (SyntaxTreeFormRendere
 
 ## What Remains
 
-### 1. Error-resilient control rendering
+All items complete.
+
+### 1. Error-resilient control rendering -- DONE
 
 When a control throws during initialization (missing dependency, broken constructor, etc.), the entire render currently fails. Visual Studio instead shows a red error box for the broken control and continues rendering the rest of the form.
 
-**Approach**: Wrap individual control creation in try/catch within the DesignSurface statement executor. On failure, substitute a red-bordered Panel with the exception message — matching VS behavior.
+**Implementation**: `CreateErrorPlaceholder` in DesignSurfaceFormRenderer.cs shows pink error panels when controls fail.
 
-### 2. Recursive UserControl rendering from source
+### 2. Recursive UserControl rendering from source -- DONE
 
 When a form references a UserControl defined in the same project (e.g., `this.statusDash = new MyApp.StatusDashboard()`), DesignSurface can only render it if the project has been built (so the DLL exists in `bin/`). If the project hasn't been built, the control is skipped.
 
-**Approach**: When a type can't be resolved from loaded assemblies, search the project directory for a matching `.Designer.cs` file and parse it recursively via a child DesignSurface. Needs circular reference protection.
+**Implementation**: `TryRenderUserControlFromSource` searches the project directory for a matching `.Designer.cs` file and renders it recursively via a child DesignSurfaceFormRenderer. Uses a static `_renderingStack` with locking for circular reference protection. Falls back to error placeholder on failure.
 
-### 3. Placeholder rendering for unresolvable types
+### 3. Placeholder rendering for unresolvable types -- DONE
 
 When a control type can't be resolved at all (no DLL, no designer file), render a gray placeholder with the type name instead of leaving a blank gap.
+
+**Implementation**: Same `CreateErrorPlaceholder` handles "Type not found" case.
 
 ## Obsolete Sections
 
