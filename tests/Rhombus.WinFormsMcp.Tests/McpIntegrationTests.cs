@@ -104,9 +104,6 @@ public class McpIntegrationTests {
             .ToHashSet();
 
         // Verify all tools that have definitions in GetToolDefinitions() are present.
-        // Note: some tools registered in _tools (set_value, attach_to_process, close_app,
-        // element_exists, wait_for_element, drag_drop, send_keys, raise_event, listen_for_event)
-        // are missing tool definitions — they're callable but undiscoverable via MCP.
         var expectedTools = new[] {
             "find_element",
             "click_element",
@@ -119,6 +116,13 @@ public class McpIntegrationTests {
             "select_item",
             "click_menu_item",
             "get_element_tree",
+            "set_value",
+            "attach_to_process",
+            "close_app",
+            "element_exists",
+            "wait_for_element",
+            "drag_drop",
+            "send_keys",
         };
 
         var expectedSet = new HashSet<string>(expectedTools);
