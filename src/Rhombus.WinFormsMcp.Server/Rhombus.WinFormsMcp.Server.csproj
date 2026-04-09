@@ -42,7 +42,7 @@
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
 
     <!-- Roslyn for parsing .Designer.cs files in render_form -->
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
   </ItemGroup>
 
 </Project>
