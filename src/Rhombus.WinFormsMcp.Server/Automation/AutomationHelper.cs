@@ -1179,4 +1179,207 @@ public class AutomationHelper : IAutomationHelper {
         var currentState = togglePattern.ToggleState.ValueOrDefault.ToString();
         return (previousState, currentState);
     }
+
+    // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
+    public Dictionary<string, object> Scroll(AutomationElement element, string direction, int amount = 1, string scrollType = "line") {
+        var scrollPattern = element.Patterns.Scroll.PatternOrDefault
+            ?? throw new InvalidOperationException("Element does not support ScrollPattern (not a scrollable control)");
+
+        var scrollAmount = scrollType.ToLower() == "page"
+            ? FlaUI.Core.Definitions.ScrollAmount.LargeIncrement
+            : FlaUI.Core.Definitions.ScrollAmount.SmallIncrement;
+
+        var scrollAmountBack = scrollType.ToLower() == "page"
+            ? FlaUI.Core.Definitions.ScrollAmount.LargeDecrement
+            : FlaUI.Core.Definitions.ScrollAmount.SmallDecrement;
+
+        for (int i = 0; i < amount; i++) {
+            switch (direction.ToLower()) {
+                case "down":
+                    scrollPattern.Scroll(FlaUI.Core.Definitions.ScrollAmount.NoAmount, scrollAmount);
+                    break;
+                case "up":
+                    scrollPattern.Scroll(FlaUI.Core.Definitions.ScrollAmount.NoAmount, scrollAmountBack);
+                    break;
+                case "right":
+                    scrollPattern.Scroll(scrollAmount, FlaUI.Core.Definitions.ScrollAmount.NoAmount);
+                    break;
+                case "left":
+                    scrollPattern.Scroll(scrollAmountBack, FlaUI.Core.Definitions.ScrollAmount.NoAmount);
+                    break;
+                default:
+                    throw new ArgumentException($"Invalid direction '{direction}'. Use up, down, left, or right.");
+            }
+        }
+
+        return new Dictionary<string, object> {
+            ["horizontalPercent"] = scrollPattern.HorizontalScrollPercent.ValueOrDefault,
+            ["verticalPercent"] = scrollPattern.VerticalScrollPercent.ValueOrDefault,
+            ["horizontallyScrollable"] = scrollPattern.HorizontallyScrollable.ValueOrDefault,
+            ["verticallyScrollable"] = scrollPattern.VerticallyScrollable.ValueOrDefault
+        };
+    }
+
+    // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
+    public Dictionary<string, object?> GetTableData(AutomationElement element, int startRow = 0, int rowCount = 50, int[]? columns = null) {
+        // Try DataGridView first (WinForms-specific), then fall back to Grid (generic UIA)
+        try {
+            var dgv = element.AsDataGridView();
+            var rows = dgv.Rows;
+            var header = dgv.Header;
+
+            var headers = new List<string>();
+            if (header != null) {
+                foreach (var col in header.Columns)
+                    headers.Add(col.Text ?? "");
+            }
+
+            var totalRows = rows.Length;
+            var endRow = Math.Min(startRow + rowCount, totalRows);
+            var resultRows = new List<Dictionary<string, object?>>();
+
+            for (int r = startRow; r < endRow; r++) {
+                var row = rows[r];
+                var cells = row.Cells;
+                var cellValues = new List<string?>();
+
+                if (columns != null) {
+                    foreach (var colIdx in columns) {
+                        if (colIdx < cells.Length)
+                            cellValues.Add(cells[colIdx].Value);
+                        else
+                            cellValues.Add(null);
+                    }
+                } else {
+                    foreach (var cell in cells)
+                        cellValues.Add(cell.Value);
+                }
+
+                resultRows.Add(new Dictionary<string, object?> {
+                    ["rowIndex"] = r,
+                    ["cells"] = cellValues
+                });
+            }
+
+            return new Dictionary<string, object?> {
+                ["rowCount"] = totalRows,
+                ["columnCount"] = headers.Count > 0 ? headers.Count : (rows.Length > 0 ? rows[0].Cells.Length : 0),
+                ["headers"] = headers,
+                ["rows"] = resultRows
+            };
+        }
+        catch {
+            // Fall back to Grid pattern
+            return GetTableDataViaGrid(element, startRow, rowCount, columns);
+        }
+    }
+
+    private Dictionary<string, object?> GetTableDataViaGrid(AutomationElement element, int startRow, int rowCount, int[]? columns) {
+        var grid = element.AsGrid();
+        var header = grid.Header;
+        var rows = grid.Rows;
+
+        var headers = new List<string>();
+        if (header != null) {
+            foreach (var item in header.Columns)
+                headers.Add(item.Name ?? "");
+        }
+
+        var totalRows = rows.Length;
+        var endRow = Math.Min(startRow + rowCount, totalRows);
+        var resultRows = new List<Dictionary<string, object?>>();
+
+        for (int r = startRow; r < endRow; r++) {
+            var row = rows[r];
+            var cells = row.Cells;
+            var cellValues = new List<string?>();
+
+            if (columns != null) {
+                foreach (var colIdx in columns) {
+                    if (colIdx < cells.Length)
+                        cellValues.Add(cells[colIdx].Name ?? cells[colIdx].Properties.Name.ValueOrDefault);
+                    else
+                        cellValues.Add(null);
+                }
+            } else {
+                foreach (var cell in cells)
+                    cellValues.Add(cell.Name ?? cell.Properties.Name.ValueOrDefault);
+            }
+
+            resultRows.Add(new Dictionary<string, object?> {
+                ["rowIndex"] = r,
+                ["cells"] = cellValues
+            });
+        }
+
+        return new Dictionary<string, object?> {
+            ["rowCount"] = totalRows,
+            ["columnCount"] = headers.Count > 0 ? headers.Count : (rows.Length > 0 ? rows[0].Cells.Length : 0),
+            ["headers"] = headers,
+            ["rows"] = resultRows
+        };
+    }
+
+    // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
+    public (string? previousValue, string? newValue) SetTableCell(AutomationElement element, int row, int column, string value) {
+        // Try DataGridView first, then Grid
+        try {
+            var dgv = element.AsDataGridView();
+            var rows = dgv.Rows;
+            if (row >= rows.Length)
+                throw new ArgumentOutOfRangeException(nameof(row), $"Row {row} is out of range (0-{rows.Length - 1})");
+
+            var cells = rows[row].Cells;
+            if (column >= cells.Length)
+                throw new ArgumentOutOfRangeException(nameof(column), $"Column {column} is out of range (0-{cells.Length - 1})");
+
+            var cell = cells[column];
+            var previousValue = cell.Value;
+
+            // Try ValuePattern on the cell
+            var valuePattern = cell.Patterns.Value.PatternOrDefault;
+            if (valuePattern != null && !valuePattern.IsReadOnly) {
+                valuePattern.SetValue(value);
+            } else {
+                // Fall back: click cell to enter edit mode, then set value
+                cell.Click();
+                Thread.Sleep(200);
+
+                // Find the edit control that appeared
+                var editor = cell.FindFirstChild();
+                if (editor != null) {
+                    var editorValuePattern = editor.Patterns.Value.PatternOrDefault;
+                    if (editorValuePattern != null)
+                        editorValuePattern.SetValue(value);
+                }
+            }
+
+            return (previousValue, value);
+        }
+        catch (ArgumentOutOfRangeException) { throw; }
+        catch {
+            return SetTableCellViaGrid(element, row, column, value);
+        }
+    }
+
+    private (string? previousValue, string? newValue) SetTableCellViaGrid(AutomationElement element, int row, int column, string value) {
+        var grid = element.AsGrid();
+        var rows = grid.Rows;
+        if (row >= rows.Length)
+            throw new ArgumentOutOfRangeException(nameof(row), $"Row {row} is out of range (0-{rows.Length - 1})");
+
+        var cells = rows[row].Cells;
+        if (column >= cells.Length)
+            throw new ArgumentOutOfRangeException(nameof(column), $"Column {column} is out of range (0-{cells.Length - 1})");
+
+        var cell = cells[column];
+        var previousValue = cell.Name;
+
+        var valuePattern = cell.Patterns.Value.PatternOrDefault;
+        if (valuePattern != null && !valuePattern.IsReadOnly) {
+            valuePattern.SetValue(value);
+        }
+
+        return (previousValue, value);
+    }
 }
