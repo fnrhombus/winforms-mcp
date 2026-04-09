@@ -5,7 +5,7 @@
 1. Go to [GitHub](https://github.com/new)
 2. Create a new public repository with these settings:
    - **Repository name:** `winforms-mcp`
-   - **Owner:** `rhom6us`
+   - **Owner:** `fnrhombus`
    - **Description:** WinForms automation MCP server with headless UI automation
    - **Public/Private:** Public
    - **Do NOT initialize with README, .gitignore, or License** (we have these already)
@@ -18,7 +18,7 @@ After creating the repo on GitHub, run:
 
 ```bash
 cd /c/dev/WinFormsMcp
-git remote add origin https://github.com/rhom6us/winforms-mcp.git
+git remote add origin https://github.com/fnrhombus/winforms-mcp.git
 git branch -M master
 git push -u origin master
 ```
@@ -35,7 +35,7 @@ NuGet uses trusted publishing with GitHub OIDC tokens instead of long-lived API 
 1. Go to https://www.nuget.org/account/Trusted
 2. Click "Add new policy"
 3. Enter the following trusted policy details:
-   - **Repository Owner:** `rhom6us`
+   - **Repository Owner:** `fnrhombus`
    - **Repository:** `winforms-mcp`
    - **Workflow File:** `publish.yml`
    - **Environment:** (leave empty - not using GitHub environments)
@@ -50,9 +50,9 @@ Go to **Repository Settings → Secrets and variables → Actions** and add thes
 ### Required Secrets
 
 1. **NPM_TOKEN**
-   - Obtain from: https://www.npmjs.com/settings/rhom6us/tokens
+   - Obtain from: https://www.npmjs.com/settings/fnrhombus/tokens
    - Create automation token (read and write)
-   - Must have publish permissions for `@rhom6us` scope
+   - Must have publish permissions for `@fnrhombus` scope
    - Secret value: The full token with `npm_` prefix
 
 **NOTE:** NuGet API key is NOT needed! The workflow uses GitHub OIDC tokens for secure, keyless publishing.
@@ -88,7 +88,7 @@ This will:
 - Run the CI workflow (build and test)
 - Run the publish workflow which will:
   - Publish to NuGet.org as `Rhombus.WinFormsMcp` (using OIDC trusted publishing)
-  - Publish to NPM as `@rhom6us/winforms-mcp`
+  - Publish to NPM as `@fnrhombus/winforms-mcp`
   - Create a GitHub Release with release notes
 
 ## Workflow Triggers
@@ -163,19 +163,19 @@ Install-Package Rhombus.WinFormsMcp -Version 1.0.0
 
 ### NPM
 ```bash
-npm install @rhom6us/winforms-mcp@1.0.0
-npx @rhom6us/winforms-mcp
+npm install @fnrhombus/winforms-mcp@1.0.0
+npx @fnrhombus/winforms-mcp
 ```
 
 ### Direct Download
-Download from: https://github.com/rhom6us/winforms-mcp/releases
+Download from: https://github.com/fnrhombus/winforms-mcp/releases
 
 ## Troubleshooting
 
 ### Workflow Fails with "No matching trust policy found"
 - Ensure you've created a NuGet trusted publishing policy at https://www.nuget.org/account/Trusted
 - Policy details must match exactly:
-  - Repository Owner: `rhom6us`
+  - Repository Owner: `fnrhombus`
   - Repository: `winforms-mcp`
   - Workflow File: `publish.yml` (file name only, no path)
 - Wait 7 days for permanent activation, or temporarily active policies work immediately
@@ -187,7 +187,7 @@ Download from: https://github.com/rhom6us/winforms-mcp/releases
 
 ### NPM Publish Fails
 - Verify NPM_TOKEN is set (should start with `npm_`)
-- Ensure `@rhom6us` scope exists on npmjs.com
+- Ensure `@fnrhombus` scope exists on npmjs.com
 - Check that you have publish permissions
 
 ## Security Notes
@@ -203,7 +203,7 @@ This is much more secure than traditional API keys and requires zero secret rota
 
 ## Reference
 
-- Repository: https://github.com/rhom6us/winforms-mcp
+- Repository: https://github.com/fnrhombus/winforms-mcp
 - NuGet Package: https://www.nuget.org/packages/Rhombus.WinFormsMcp
-- NPM Package: https://www.npmjs.com/package/@rhom6us/winforms-mcp
+- NPM Package: https://www.npmjs.com/package/@fnrhombus/winforms-mcp
 - NuGet Trusted Publishing: https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing

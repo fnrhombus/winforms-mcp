@@ -153,5 +153,5 @@ Write-Host "  1. Remove -beta suffix from version" -ForegroundColor Gray
 Write-Host "  2. Create GitHub release" -ForegroundColor Gray
 Write-Host "  3. Publish to NuGet and NPM" -ForegroundColor Gray
 Write-Host ""
-Write-Host "Monitor the workflow at: https://github.com/rhom6us/winforms-mcp/actions" -ForegroundColor Cyan
+Write-Host "Monitor the workflow at: https://github.com/fnrhombus/winforms-mcp/actions" -ForegroundColor Cyan
 Write-Host ""

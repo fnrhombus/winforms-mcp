@@ -90,7 +90,7 @@ jobs:
 
           ### Releases
           - **NuGet**: `Rhombus.WinFormsMcp` v${{ steps.version.outputs.version }}
-          - **NPM**: `@rhom6us/winforms-mcp` v${{ steps.version.outputs.version }}
+          - **NPM**: `@fnrhombus/winforms-mcp` v${{ steps.version.outputs.version }}
 
           ### Installation
 
@@ -101,12 +101,12 @@ jobs:
 
           #### NPM
           ```
-          npm install @rhom6us/winforms-mcp@${{ steps.version.outputs.version }}
-          npx @rhom6us/winforms-mcp
+          npm install @fnrhombus/winforms-mcp@${{ steps.version.outputs.version }}
+          npx @fnrhombus/winforms-mcp
           ```
 
           ### Changes
-          See [CHANGELOG.md](https://github.com/rhom6us/winforms-mcp/blob/master/CHANGELOG.md) for details.
+          See [CHANGELOG.md](https://github.com/fnrhombus/winforms-mcp/blob/master/CHANGELOG.md) for details.
         draft: false
         prerelease: false
 
@@ -114,7 +114,7 @@ jobs:
       run: |
         mkdir -p npm/dist
         # Copy binaries
-        $exeFile = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows" -Filter "Rhombus.WinFormsMcp.Server.exe" | Select-Object -First 1
+        $exeFile = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows" -Filter "winformsmcp.exe" | Select-Object -First 1
         $dllFiles = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows" -Filter "*.dll"
         if ($exeFile) {
           Copy-Item -Path $exeFile.FullName -Destination "npm/dist/" -Force
@@ -126,7 +126,7 @@ jobs:
 
     - name: Publish to NPM
       run: |
-        npm config set @rhom6us:registry https://registry.npmjs.org/
+        npm config set @fnrhombus:registry https://registry.npmjs.org/
         npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
         cd npm
         npm publish --access public || echo "NPM publish failed or already exists"

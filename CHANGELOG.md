@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full async/await support for modern .NET applications
 - Comprehensive mock-based test suite (52+ passing tests)
 - NuGet package: `Rhombus.WinFormsMcp`
-- NPM package: `@rhom6us/winforms-mcp` with npx support
+- NPM package: `@fnrhombus/winforms-mcp` with npx support
 - GitHub Actions CI/CD workflows
 - Multi-platform publishing (NuGet, NPM, GitHub Releases)
 - Branch protection and pull request workflows
@@ -46,4 +46,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-For more information, visit [https://github.com/rhom6us/winforms-mcp](https://github.com/rhom6us/winforms-mcp)
+For more information, visit [https://github.com/fnrhombus/winforms-mcp](https://github.com/fnrhombus/winforms-mcp)

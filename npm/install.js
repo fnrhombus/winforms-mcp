@@ -1,5 +1,5 @@
 /**
- * Post-install script for @rhom6us/winforms-mcp
+ * Post-install script for @fnrhombus/winforms-mcp
  *
  * This script ensures the .NET executable binaries are available.
  * In a published package, binaries are included in the dist/ directory.
@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 
 const distDir = path.join(__dirname, 'dist');
-const exePath = path.join(distDir, 'Rhombus.WinFormsMcp.Server.exe');
+const exePath = path.join(distDir, 'winformsmcp.exe');
 
 // Check if dist directory exists and has binaries
 if (fs.existsSync(distDir)) {

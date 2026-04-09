@@ -26,23 +26,23 @@ Then configure Claude Code to use it (see [Configuration](#configuration) below)
 Install globally:
 
 ```bash
-npm install -g @rhom6us/winforms-mcp
+npm install -g @fnrhombus/winforms-mcp
 ```
 
 Or use directly with `npx` (the `-y` flag auto-confirms the install prompt):
 
 ```bash
-npx -y @rhom6us/winforms-mcp
+npx -y @fnrhombus/winforms-mcp
 ```
 
 ### Option 3: Direct Download
 
-Download the latest release from [GitHub Releases](https://github.com/rhom6us/winforms-mcp/releases).
+Download the latest release from [GitHub Releases](https://github.com/fnrhombus/winforms-mcp/releases).
 
 Extract and run:
 
 ```bash
-./Rhombus.WinFormsMcp.Server.exe
+./winformsmcp.exe
 ```
 
 ## Configuration
@@ -76,7 +76,7 @@ Edit `~/.claude/mcp.json` and add the server configuration. Choose one based on 
   "mcpServers": {
     "winforms-mcp": {
       "command": "npx",
-      "args": ["-y", "@rhom6us/winforms-mcp"]
+      "args": ["-y", "@fnrhombus/winforms-mcp"]
     }
   }
 }
@@ -90,7 +90,7 @@ Edit `~/.claude/mcp.json` and add the server configuration. Choose one based on 
     "winforms-mcp": {
       "command": "dotnet",
       "args": [
-        "C:\\path\\to\\Rhombus.WinFormsMcp.Server.dll"
+        "C:\\path\\to\\winformsmcp.dll"
       ]
     }
   }
@@ -103,7 +103,7 @@ Edit `~/.claude/mcp.json` and add the server configuration. Choose one based on 
 {
   "mcpServers": {
     "winforms-mcp": {
-      "command": "C:\\path\\to\\Rhombus.WinFormsMcp.Server.exe",
+      "command": "C:\\path\\to\\winformsmcp.exe",
       "args": []
     }
   }
@@ -272,10 +272,10 @@ If you get connection errors when using tools:
 1. Test the MCP server directly:
    ```bash
    # For .NET
-   dotnet path/to/Rhombus.WinFormsMcp.Server.dll
+   dotnet path/to/winformsmcp.dll
 
    # For NPM
-   npx -y @rhom6us/winforms-mcp
+   npx -y @fnrhombus/winforms-mcp
 
    ```
 
@@ -433,10 +433,10 @@ Now I'll check if specific elements are visible:
 
 ## Support & Documentation
 
-- **GitHub Repository**: https://github.com/rhom6us/winforms-mcp
-- **Issues**: https://github.com/rhom6us/winforms-mcp/issues
+- **GitHub Repository**: https://github.com/fnrhombus/winforms-mcp
+- **Issues**: https://github.com/fnrhombus/winforms-mcp/issues
 - **NuGet Package**: https://www.nuget.org/packages/Rhombus.WinFormsMcp
-- **NPM Package**: https://www.npmjs.com/package/@rhom6us/winforms-mcp
+- **NPM Package**: https://www.npmjs.com/package/@fnrhombus/winforms-mcp
 
 ## Related Resources
 

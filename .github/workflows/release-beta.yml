@@ -150,7 +150,7 @@ jobs:
       run: |
         mkdir -p npm/dist
         # Copy binaries
-        $exeFile = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows" -Filter "Rhombus.WinFormsMcp.Server.exe" | Select-Object -First 1
+        $exeFile = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows" -Filter "winformsmcp.exe" | Select-Object -First 1
         $dllFiles = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows" -Filter "*.dll"
         if ($exeFile) {
           Copy-Item -Path $exeFile.FullName -Destination "npm/dist/" -Force
@@ -162,7 +162,7 @@ jobs:
 
     - name: Publish beta to NPM
       run: |
-        npm config set @rhom6us:registry https://registry.npmjs.org/
+        npm config set @fnrhombus:registry https://registry.npmjs.org/
         npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
         cd npm
         npm publish --access public --tag beta || echo "NPM publish failed or already exists, continuing..."

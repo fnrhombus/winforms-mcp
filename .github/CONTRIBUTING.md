@@ -4,7 +4,7 @@ Thanks for your interest in contributing! This document covers how to get starte
 
 ## Getting Started
 
-1. Fork the repository at [github.com/rhom6us/WinFormsMcp](https://github.com/rhom6us/WinFormsMcp)
+1. Fork the repository at [github.com/fnrhombus/WinFormsMcp](https://github.com/fnrhombus/WinFormsMcp)
 2. Clone your fork locally
 3. Create a branch from `dev` for your work
 
@@ -53,8 +53,8 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) to help with
 
 ## Reporting Issues
 
-- **Bugs**: Use the [bug report template](https://github.com/rhom6us/WinFormsMcp/issues/new?template=bug_report.yml)
-- **Features**: Use the [feature request template](https://github.com/rhom6us/WinFormsMcp/issues/new?template=feature_request.yml)
+- **Bugs**: Use the [bug report template](https://github.com/fnrhombus/WinFormsMcp/issues/new?template=bug_report.yml)
+- **Features**: Use the [feature request template](https://github.com/fnrhombus/WinFormsMcp/issues/new?template=feature_request.yml)
 - **Security**: See [SECURITY.md](SECURITY.md) for vulnerability reporting
 
 ## License
