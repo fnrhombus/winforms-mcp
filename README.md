@@ -58,17 +58,19 @@ Add to your MCP config and restart. Nothing else to install.
 }
 ```
 
-**Standalone exe** (no Node required) — [download from Releases](https://github.com/fnrhombus/winforms-mcp/releases):
+**Standalone** (no Node required) — [download the zip from Releases](https://github.com/fnrhombus/winforms-mcp/releases), extract it, and point to the exe:
 
 ```json
 {
   "mcpServers": {
     "winforms-mcp": {
-      "command": "C:/path/to/winformsmcp.exe"
+      "command": "C:/path/to/winformsmcp/winformsmcp.exe"
     }
   }
 }
 ```
+
+> **Note:** Keep the extracted folder structure intact — `render_form` needs the `rendererhost/` subdirectory alongside the exe.
 
 That's it. The agent can now see and interact with any WinForms application on your machine.
 
