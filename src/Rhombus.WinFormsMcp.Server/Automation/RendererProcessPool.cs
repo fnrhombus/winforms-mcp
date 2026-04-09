@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Rhombus.WinFormsMcp.Server.Automation;
 
@@ -22,15 +23,19 @@ public sealed class RendererProcessPool : IDisposable {
     /// </summary>
     private static readonly string[] HostTfms = { "net48", "netcoreapp3.1", "net8.0-windows" };
 
-    private readonly ConcurrentDictionary<string, HostEntry> _hosts = new();
+    private readonly IMemoryCache _cache;
+    private readonly ConcurrentBag<string> _activeKeys = new();
+    private readonly object _createLock = new();
     private readonly Lazy<string> _hostBasePath;
     private bool _disposed;
 
+    /// <param name="cache">Memory cache instance for managing host entries.</param>
     /// <param name="hostBasePath">
     /// Directory containing the RendererHost build output (with subdirs per TFM).
     /// If null, auto-detected relative to this assembly on first use.
     /// </param>
-    public RendererProcessPool(string? hostBasePath = null) {
+    public RendererProcessPool(IMemoryCache cache, string? hostBasePath = null) {
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _hostBasePath = hostBasePath != null
             ? new Lazy<string>(hostBasePath)
             : new Lazy<string>(DetectHostBasePath);
@@ -57,7 +62,7 @@ public sealed class RendererProcessPool : IDisposable {
         if (_disposed) throw new ObjectDisposedException(nameof(RendererProcessPool));
 
         var hostTfm = ResolveHostTfm(targetTfm, csprojPath);
-        var entry = _hosts.GetOrAdd(hostTfm, tfm => new HostEntry(tfm, _hostBasePath.Value));
+        var entry = GetOrCreateEntry(hostTfm);
 
         return await entry.RenderAsync(designerContent, companionContent, extraAssemblyPaths);
     }
@@ -140,10 +145,31 @@ public sealed class RendererProcessPool : IDisposable {
         if (_disposed) return;
         _disposed = true;
 
-        foreach (var kvp in _hosts) {
-            kvp.Value.Dispose();
+        // Removing from cache triggers eviction callbacks which dispose HostEntries
+        foreach (var key in _activeKeys) {
+            _cache.Remove(key);
         }
-        _hosts.Clear();
+    }
+
+    private HostEntry GetOrCreateEntry(string hostTfm) {
+        var key = $"RendererHost:{hostTfm}";
+        if (_cache.TryGetValue<HostEntry>(key, out var existing))
+            return existing!;
+
+        lock (_createLock) {
+            if (_cache.TryGetValue<HostEntry>(key, out existing))
+                return existing!;
+
+            var entry = new HostEntry(hostTfm, _hostBasePath.Value);
+            var options = new MemoryCacheEntryOptions()
+                .SetSlidingExpiration(IdleTimeout)
+                .RegisterPostEvictionCallback((k, v, reason, state) => {
+                    if (v is HostEntry he) he.Dispose();
+                });
+            _cache.Set(key, entry, options);
+            _activeKeys.Add(key);
+            return entry;
+        }
     }
 
     private string ResolveHostTfm(string targetTfm, string? csprojPath) {
@@ -211,7 +237,6 @@ public sealed class RendererProcessPool : IDisposable {
         private Process? _process;
         private StreamWriter? _stdin;
         private StreamReader? _stdout;
-        private System.Threading.Timer? _idleTimer;
         private bool _disposed;
 
         public HostEntry(string tfm, string hostBasePath) {
@@ -223,7 +248,6 @@ public sealed class RendererProcessPool : IDisposable {
             await _lock.WaitAsync();
             try {
                 EnsureProcess();
-                ResetIdleTimer();
 
                 var request = JsonSerializer.Serialize(new {
                     designerContent,
@@ -263,7 +287,6 @@ public sealed class RendererProcessPool : IDisposable {
         public void Dispose() {
             if (_disposed) return;
             _disposed = true;
-            _idleTimer?.Dispose();
             KillProcess();
             _lock.Dispose();
         }
@@ -316,21 +339,6 @@ public sealed class RendererProcessPool : IDisposable {
                 _stdin = null;
                 _stdout = null;
             }
-        }
-
-        private void ResetIdleTimer() {
-            _idleTimer?.Dispose();
-            _idleTimer = new System.Threading.Timer(_ => {
-                // Fire-and-forget idle kill
-                if (_lock.Wait(0)) {
-                    try {
-                        KillProcess();
-                    }
-                    finally {
-                        _lock.Release();
-                    }
-                }
-            }, null, IdleTimeout, Timeout.InfiniteTimeSpan);
         }
 
         private string FindHostExe() {

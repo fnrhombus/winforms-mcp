@@ -1,9 +1,11 @@
+using Microsoft.Extensions.Caching.Memory;
 using Rhombus.WinFormsMcp.Server.Automation;
 
 namespace Rhombus.WinFormsMcp.Tests;
 
 [TestFixture]
 public class RendererProcessPoolTests {
+    private static MemoryCache CreateCache() => new MemoryCache(new MemoryCacheOptions());
     #region TFM Mapping
 
     [TestCase("net48", "net48")]
@@ -186,13 +188,13 @@ public class RendererProcessPoolTests {
 
     [Test]
     public void Dispose_DoesNotThrow() {
-        var pool = new RendererProcessPool("/nonexistent");
+        var pool = new RendererProcessPool(CreateCache(), "/nonexistent");
         Assert.DoesNotThrow(() => pool.Dispose());
     }
 
     [Test]
     public void RenderAsync_AfterDispose_ThrowsObjectDisposed() {
-        var pool = new RendererProcessPool("/nonexistent");
+        var pool = new RendererProcessPool(CreateCache(), "/nonexistent");
         pool.Dispose();
         Assert.ThrowsAsync<ObjectDisposedException>(async () =>
             await pool.RenderAsync("content", null, null, "net8.0-windows"));
@@ -200,7 +202,7 @@ public class RendererProcessPoolTests {
 
     [Test]
     public void RenderAsync_AutoWithoutCsproj_ThrowsArgument() {
-        using var pool = new RendererProcessPool("/nonexistent");
+        using var pool = new RendererProcessPool(CreateCache(), "/nonexistent");
         var ex = Assert.ThrowsAsync<ArgumentException>(async () =>
             await pool.RenderAsync("content", null, null, "auto"));
         Assert.That(ex!.Message, Does.Contain("csprojPath is required"));
@@ -225,7 +227,7 @@ public class RendererProcessPoolTests {
             Assert.Ignore("RendererHost not built. Run: dotnet build src/Rhombus.WinFormsMcp.RendererHost");
         }
 
-        using var pool = new RendererProcessPool(hostBasePath);
+        using var pool = new RendererProcessPool(CreateCache(), hostBasePath);
 
         var designerContent = @"
 namespace TestApp {
@@ -266,7 +268,7 @@ namespace TestApp {
             Assert.Ignore("RendererHost not built.");
         }
 
-        using var pool = new RendererProcessPool(hostBasePath);
+        using var pool = new RendererProcessPool(CreateCache(), hostBasePath);
 
         var designerContent = @"
 namespace TestApp {
