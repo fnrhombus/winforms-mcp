@@ -1,10 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches: [ master, main ]
   pull_request:
-    branches: [ master, main ]
+  push:
+    branches: [ dev ]
 
 jobs:
   build-and-test:
@@ -21,16 +20,23 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore Rhombus.WinFormsMcp.sln
 
-    - name: Build
+    - name: Build solution
       run: dotnet build Rhombus.WinFormsMcp.sln --configuration Release --no-restore
 
-    - name: Run tests
-      run: dotnet test Rhombus.WinFormsMcp.sln --configuration Release --no-build --logger "console;verbosity=minimal" --collect:"XPlat Code Coverage"
+    - name: Build RendererHost (multi-target)
+      run: dotnet build src/Rhombus.WinFormsMcp.RendererHost/Rhombus.WinFormsMcp.RendererHost.csproj --configuration Release --no-restore
 
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
-      if: always()
+    - name: Run tests with coverage
+      run: dotnet test Rhombus.WinFormsMcp.sln --configuration Release --no-build --logger "console;verbosity=detailed" --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+    - name: Install ReportGenerator
+      run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+    - name: Generate coverage report
+      run: reportgenerator -reports:./coverage/**/coverage.cobertura.xml -targetdir:./coverage/report -reporttypes:"HtmlInline_AzurePipelines;Cobertura;TextSummary"
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
       with:
-        files: ./coverage.cobertura.xml
-        flags: unittests
-        name: codecov-umbrella
+        name: coverage-report
+        path: ./coverage/report/

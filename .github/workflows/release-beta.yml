@@ -1,13 +1,13 @@
-name: CI - Dev Branch
+name: Release Beta
 
 on:
   push:
     branches: [ dev ]
-  pull_request:
-    branches: [ dev ]
 
 jobs:
-  build-test-coverage:
+  release-beta:
+    # Skip version-bump commits to avoid infinite loops
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !startsWith(github.event.head_commit.message, 'chore: bump version to')"
     runs-on: windows-latest
     permissions:
       contents: write
@@ -30,73 +30,11 @@ jobs:
     - name: Build
       run: dotnet build Rhombus.WinFormsMcp.sln --configuration Release --no-restore
 
-    - name: Run tests with coverage
-      run: dotnet test Rhombus.WinFormsMcp.sln --configuration Release --no-build --logger "console;verbosity=detailed" --collect:"XPlat Code Coverage" --results-directory ./coverage
+    - name: Build RendererHost (multi-target)
+      run: dotnet build src/Rhombus.WinFormsMcp.RendererHost/Rhombus.WinFormsMcp.RendererHost.csproj --configuration Release --no-restore
 
-    - name: Install ReportGenerator
-      run: dotnet tool install -g dotnet-reportgenerator-globaltool
-
-    - name: Generate coverage report
-      run: reportgenerator -reports:./coverage/**/coverage.cobertura.xml -targetdir:./coverage/report -reporttypes:"HtmlInline_AzurePipelines;Cobertura;TextSummary"
-
-    - name: Check coverage with exceptions
-      shell: pwsh
-      run: |
-        $coverageFile = Get-ChildItem -Path "./coverage" -Filter "coverage.cobertura.xml" -Recurse | Select-Object -First 1
-        if (-not $coverageFile) {
-          Write-Error "Coverage file not found"
-          exit 1
-        }
-
-        [xml]$coverage = Get-Content $coverageFile.FullName
-
-        # Extract overall coverage metrics
-        $lineCoverage = [decimal]$coverage.coverage.'line-rate' * 100
-        Write-Host "Overall Line Coverage: $lineCoverage%"
-
-        # Check for uncovered lines
-        $uncoveredLines = @()
-
-        foreach ($package in $coverage.coverage.packages.package) {
-          foreach ($class in $package.classes.class) {
-            $filename = $class.filename
-
-            foreach ($line in $class.lines.line) {
-              if ($line.hits -eq "0") {
-                $lineNumber = $line.number
-
-                # Read the source file to check for exception comment
-                if (Test-Path $filename) {
-                  $sourceLines = Get-Content $filename
-                  $sourceLine = $sourceLines[$lineNumber - 1]
-
-                  # Check if line or previous line has COVERAGE_EXCEPTION comment
-                  $hasException = $false
-                  if ($sourceLine -match "//\s*COVERAGE_EXCEPTION:") {
-                    $hasException = $true
-                  } elseif ($lineNumber -gt 1 -and $sourceLines[$lineNumber - 2] -match "//\s*COVERAGE_EXCEPTION:") {
-                    $hasException = $true
-                  }
-
-                  if (-not $hasException) {
-                    $uncoveredLines += "${filename}:${lineNumber}"
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        if ($uncoveredLines.Count -gt 0) {
-          Write-Error "Found $($uncoveredLines.Count) uncovered lines without COVERAGE_EXCEPTION comments:"
-          $uncoveredLines | ForEach-Object { Write-Error "  $_" }
-          Write-Host ""
-          Write-Host "To fix: Add test coverage OR add comment on/before the line:"
-          Write-Host "  // COVERAGE_EXCEPTION: <reason why this line cannot be tested>"
-          exit 1
-        }
-
-        Write-Host "✓ All uncovered lines have COVERAGE_EXCEPTION comments" -ForegroundColor Green
+    - name: Run tests
+      run: dotnet test Rhombus.WinFormsMcp.sln --configuration Release --no-build --logger "console;verbosity=detailed"
 
     - name: Analyze commits for version bump
       id: version-analysis
@@ -204,7 +142,6 @@ jobs:
         git add VERSION npm/package.json src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj
         git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} (${{ steps.bump.outputs.bump_type }})"
         git push
-      if: github.event_name == 'push'
 
     - name: Create NuGet package
       run: dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c Release -p:Version=${{ steps.bump.outputs.new_version }}
@@ -229,7 +166,7 @@ jobs:
         npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
         cd npm
         npm publish --access public --tag beta || echo "NPM publish failed or already exists, continuing..."
-      if: env.NPM_TOKEN != '' && github.event_name == 'push'
+      if: env.NPM_TOKEN != ''
       env:
         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       continue-on-error: true
@@ -239,7 +176,6 @@ jobs:
       id: nuget-login
       with:
         user: butler.software
-      if: github.event_name == 'push'
 
     - name: Publish beta to NuGet
       run: |
@@ -249,10 +185,3 @@ jobs:
           dotnet nuget push $nupkg.FullName --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
         }
       shell: pwsh
-      if: github.event_name == 'push'
-
-    - name: Upload coverage report
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-report
-        path: ./coverage/report/

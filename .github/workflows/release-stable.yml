@@ -1,4 +1,4 @@
-name: CI - Master Branch (Release)
+name: Release Stable
 
 on:
   push:
@@ -68,6 +68,9 @@ jobs:
 
     - name: Build
       run: dotnet build Rhombus.WinFormsMcp.sln --configuration Release --no-restore
+
+    - name: Build RendererHost (multi-target)
+      run: dotnet build src/Rhombus.WinFormsMcp.RendererHost/Rhombus.WinFormsMcp.RendererHost.csproj --configuration Release --no-restore
 
     - name: Run tests
       run: dotnet test Rhombus.WinFormsMcp.sln --configuration Release --no-build --logger "console;verbosity=minimal"
