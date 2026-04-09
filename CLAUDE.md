@@ -173,24 +173,7 @@ Version stored in three places (auto-synced by CI):
 2. `npm/package.json`
 3. `src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj`
 
-## Code Coverage Requirements
-
-**100% code coverage is required** for all pushes to dev branch.
-
-### Coverage Exceptions
-
-Lines that cannot be tested must have a coverage exception comment:
-
-```csharp
-// COVERAGE_EXCEPTION: Platform-specific code only runs on Windows Server 2019+
-if (Environment.OSVersion.Version.Major >= 10) {
-    // This line is excluded from coverage requirements
-}
-```
-
-Place the `// COVERAGE_EXCEPTION: <reason>` comment either:
-- On the same line as the code
-- On the line immediately before the code
+## Code Coverage
 
 ### Running Coverage Locally
 
@@ -212,7 +195,7 @@ open ./coverage/report/index.html   # Mac/Linux
 ### Dev Branch CI (.github/workflows/ci-dev.yml)
 Triggers on push to `dev` branch:
 1. Build and test
-2. Check 100% code coverage (with exception support)
+2. Run tests
 3. Analyze commits with Claude Haiku to determine version bump type
 4. Increment version with `-beta` suffix
 5. Publish beta to NuGet and NPM
