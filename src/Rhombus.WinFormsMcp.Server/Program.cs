@@ -138,6 +138,12 @@ class AutomationServer {
             { "raise_event", RaiseEvent },
             { "listen_for_event", ListenForEvent },
             { "open_context_menu", OpenContextMenu },
+
+            // Polish Tools
+            { "get_clipboard", GetClipboard },
+            { "set_clipboard", SetClipboard },
+            { "read_tooltip", ReadTooltip },
+            { "find_elements", FindElements },
         };
     }
 
@@ -817,6 +823,68 @@ class AutomationServer {
                         pid = new { type = "integer", description = "Optional process ID to verify the focused element belongs to this process" }
                     }
                 }
+            },
+            // ── Phase 5: Polish & Edge Cases ──
+            new
+            {
+                name = "get_clipboard",
+                description = "Get the current text content of the Windows clipboard. " +
+                    "Runs on an STA thread for COM clipboard access.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new { }
+                }
+            },
+            new
+            {
+                name = "set_clipboard",
+                description = "Set the Windows clipboard text content. " +
+                    "Runs on an STA thread for COM clipboard access.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        text = new { type = "string", description = "Text to place on the clipboard" }
+                    },
+                    required = new[] { "text" }
+                }
+            },
+            new
+            {
+                name = "read_tooltip",
+                description = "Read tooltip or help text from a UI element. " +
+                    "Tries HelpText property first, then LegacyIAccessible description, " +
+                    "then focuses the element and searches for a ToolTip popup.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        elementId = new { type = "string", description = "Cached element ID to read tooltip from" }
+                    },
+                    required = new[] { "elementId" }
+                }
+            },
+            new
+            {
+                name = "find_elements",
+                description = "Find ALL UI elements matching a search criterion (not just the first match). " +
+                    "Returns an array of matching elements, each cached with an elementId. " +
+                    "Useful for 'find all buttons', 'find all list items', etc.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        automationId = new { type = "string", description = "AutomationId to search for" },
+                        name = new { type = "string", description = "Name to search for" },
+                        className = new { type = "string", description = "ClassName to search for" },
+                        controlType = new { type = "string", description = "ControlType to search for (e.g. Button, TextBox, ListItem)" },
+                        parent = new { type = "string", description = "Optional parent element ID to scope the search" }
+                    }
+                }
             }
         };
     }
@@ -1424,6 +1492,95 @@ class AutomationServer {
 
             return Task.FromResult(JsonDocument.Parse(
                 $"{{\"success\": true, \"previousState\": \"{EscapeJson(previousState)}\", \"currentState\": \"{EscapeJson(currentState)}\"}}").RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> GetClipboard(JsonElement args) {
+        try {
+            var automation = _session.GetAutomation();
+            var text = automation.GetClipboardText();
+
+            var textJson = text == null ? "null" : $"\"{EscapeJson(text)}\"";
+            return Task.FromResult(JsonDocument.Parse(
+                $"{{\"success\": true, \"text\": {textJson}}}").RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> SetClipboard(JsonElement args) {
+        try {
+            var text = GetStringArg(args, "text") ?? throw new ArgumentException("text is required");
+
+            var automation = _session.GetAutomation();
+            automation.SetClipboardText(text);
+
+            return Task.FromResult(JsonDocument.Parse("{\"success\": true, \"message\": \"Clipboard text set\"}").RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> ReadTooltip(JsonElement args) {
+        try {
+            var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
+
+            var element = _session.GetElement(elementId);
+            if (element == null)
+                return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement);
+
+            var automation = _session.GetAutomation();
+            var tooltip = automation.GetTooltipText(element);
+
+            var tooltipJson = tooltip == null ? "null" : $"\"{EscapeJson(tooltip)}\"";
+            return Task.FromResult(JsonDocument.Parse(
+                $"{{\"success\": true, \"tooltip\": {tooltipJson}}}").RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> FindElements(JsonElement args) {
+        try {
+            var automationId = GetStringArg(args, "automationId");
+            var name = GetStringArg(args, "name");
+            var className = GetStringArg(args, "className");
+            var controlType = GetStringArg(args, "controlType");
+            var parentId = GetStringArg(args, "parent");
+
+            AutomationElement? parent = null;
+            if (parentId != null) {
+                parent = _session.GetElement(parentId);
+                if (parent == null)
+                    return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Parent element not found in session\"}").RootElement);
+            }
+
+            var automation = _session.GetAutomation();
+            var elements = automation.FindAllMatching(automationId, name, className, controlType, parent);
+
+            if (elements == null || elements.Length == 0)
+                return Task.FromResult(JsonDocument.Parse("{\"success\": true, \"count\": 0, \"elements\": []}").RootElement);
+
+            var results = new List<Dictionary<string, object?>>();
+            foreach (var el in elements) {
+                var elId = _session.CacheElement(el);
+                results.Add(new Dictionary<string, object?> {
+                    ["elementId"] = elId,
+                    ["name"] = el.Name,
+                    ["automationId"] = el.AutomationId,
+                    ["className"] = el.ClassName,
+                    ["controlType"] = el.ControlType.ToString()
+                });
+            }
+
+            var json = JsonSerializer.Serialize(new { success = true, count = results.Count, elements = results });
+            return Task.FromResult(JsonDocument.Parse(json).RootElement);
         }
         catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);

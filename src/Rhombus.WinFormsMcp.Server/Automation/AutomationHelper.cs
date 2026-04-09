@@ -1618,6 +1618,98 @@ public class AutomationHelper : IAutomationHelper {
         return null;
     }
 
+    // COVERAGE_EXCEPTION: Clipboard requires STA thread and live Windows session
+    public string? GetClipboardText() {
+        string? result = null;
+        var thread = new Thread(() => {
+            try {
+                if (System.Windows.Forms.Clipboard.ContainsText())
+                    result = System.Windows.Forms.Clipboard.GetText();
+            }
+            catch { /* clipboard may be locked */ }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join(3000);
+        return result;
+    }
+
+    // COVERAGE_EXCEPTION: Clipboard requires STA thread and live Windows session
+    public void SetClipboardText(string text) {
+        var thread = new Thread(() => {
+            try {
+                System.Windows.Forms.Clipboard.SetText(text);
+            }
+            catch { /* clipboard may be locked */ }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join(3000);
+    }
+
+    // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements
+    public string? GetTooltipText(AutomationElement element) {
+        // Try HelpText property first (most common for tooltips)
+        try {
+            var helpText = element.Properties.HelpText.ValueOrDefault;
+            if (!string.IsNullOrEmpty(helpText))
+                return helpText;
+        }
+        catch { /* not available */ }
+
+        // Try LegacyIAccessible description
+        var legacyPattern = element.Patterns.LegacyIAccessible.PatternOrDefault;
+        if (legacyPattern != null) {
+            try {
+                var description = legacyPattern.Description.ValueOrDefault;
+                if (!string.IsNullOrEmpty(description))
+                    return description;
+            }
+            catch { /* not available */ }
+        }
+
+        // Try finding a tooltip child/popup
+        try {
+            element.Focus();
+            Thread.Sleep(500); // Wait for tooltip to appear
+
+            if (_automation == null) return null;
+            var desktop = _automation.GetDesktop();
+            var tooltipCondition = new PropertyCondition(
+                _automation.PropertyLibrary.Element.ControlType,
+                FlaUI.Core.Definitions.ControlType.ToolTip);
+            var tooltip = desktop.FindFirstChild(tooltipCondition);
+            if (tooltip != null)
+                return tooltip.Name;
+        }
+        catch { /* tooltip search failed */ }
+
+        return null;
+    }
+
+    // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements
+    public AutomationElement[]? FindAllMatching(string? automationId = null, string? name = null,
+        string? className = null, string? controlType = null, AutomationElement? parent = null, int timeoutMs = 5000) {
+        if (_automation == null)
+            throw new ObjectDisposedException(nameof(AutomationHelper));
+
+        ConditionBase condition;
+        if (automationId != null)
+            condition = new PropertyCondition(_automation.PropertyLibrary.Element.AutomationId, automationId);
+        else if (name != null)
+            condition = new PropertyCondition(_automation.PropertyLibrary.Element.Name, name);
+        else if (className != null)
+            condition = new PropertyCondition(_automation.PropertyLibrary.Element.ClassName, className);
+        else if (controlType != null) {
+            var ct = Enum.Parse<ControlType>(controlType, true);
+            condition = new PropertyCondition(_automation.PropertyLibrary.Element.ControlType, ct);
+        }
+        else
+            throw new ArgumentException("At least one search criterion (automationId, name, className, controlType) is required");
+
+        return FindAll(condition, parent, timeoutMs);
+    }
+
     // COVERAGE_EXCEPTION: Focus operations require live UIA desktop
     public AutomationElement? GetFocusedElement() {
         if (_automation == null)

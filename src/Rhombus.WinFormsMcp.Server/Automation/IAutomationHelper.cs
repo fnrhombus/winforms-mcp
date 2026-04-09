@@ -236,4 +236,25 @@ public interface IAutomationHelper : IDisposable {
     /// Open a context menu on an element.
     /// </summary>
     AutomationElement? OpenContextMenu(AutomationElement element);
+
+    /// <summary>
+    /// Get the current clipboard text content.
+    /// </summary>
+    string? GetClipboardText();
+
+    /// <summary>
+    /// Set clipboard text content.
+    /// </summary>
+    void SetClipboardText(string text);
+
+    /// <summary>
+    /// Read tooltip or help text from an element.
+    /// </summary>
+    string? GetTooltipText(AutomationElement element);
+
+    /// <summary>
+    /// Find all elements matching a condition (not just the first).
+    /// </summary>
+    AutomationElement[]? FindAllMatching(string? automationId = null, string? name = null,
+        string? className = null, string? controlType = null, AutomationElement? parent = null, int timeoutMs = 5000);
 }
