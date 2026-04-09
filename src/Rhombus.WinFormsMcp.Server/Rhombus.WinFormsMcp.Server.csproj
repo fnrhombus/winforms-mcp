@@ -47,6 +47,9 @@
     <!-- Dependency injection -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
 
+    <!-- Caching for RendererProcessPool -->
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
+
     <ProjectReference Include="..\Rhombus.WinFormsMcp.Rendering\Rhombus.WinFormsMcp.Rendering.csproj" />
   </ItemGroup>
 

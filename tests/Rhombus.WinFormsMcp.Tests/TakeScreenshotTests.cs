@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Text.Json;
 
+using Microsoft.Extensions.Caching.Memory;
 using Rhombus.WinFormsMcp.Rendering;
 using Rhombus.WinFormsMcp.Server;
 using Rhombus.WinFormsMcp.Server.Automation;
@@ -187,7 +188,7 @@ public class TakeScreenshotTests {
         // Use reflection or instantiate AutomationServer to check tool definitions
         var automation = new AutomationHelper(headless: true);
         var session = new SessionManager(automation);
-        var rendererPool = new RendererProcessPool();
+        var rendererPool = new RendererProcessPool(new MemoryCache(new MemoryCacheOptions()));
         var telemetry = new NullTelemetry();
         var server = new AutomationServer(session, rendererPool, telemetry);
 

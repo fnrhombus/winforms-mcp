@@ -38,6 +38,7 @@ class Program {
             else
                 services.AddSingleton<ITelemetry, Telemetry>();
 
+            services.AddMemoryCache();
             services.AddSingleton<IAutomationHelper>(new AutomationHelper(headless));
             services.AddSingleton<ISessionManager, SessionManager>();
             services.AddSingleton<RendererProcessPool>();
