@@ -129,6 +129,11 @@ class AutomationServer {
             { "get_table_data", GetTableData },
             { "set_table_cell", SetTableCell },
 
+            // Window Management Tools
+            { "manage_window", ManageWindow },
+            { "list_windows", ListWindows },
+            { "get_focused_element", GetFocusedElement },
+
             // Event Tools
             { "raise_event", RaiseEvent },
             { "listen_for_event", ListenForEvent },
@@ -706,6 +711,58 @@ class AutomationServer {
                     },
                     required = new[] { "elementId", "row", "column", "value" }
                 }
+            },
+            // ── Phase 3: Window & Multi-Form Management ──
+            new
+            {
+                name = "manage_window",
+                description = "Manage a window: maximize, minimize, restore, resize, move, or close. " +
+                    "Uses UIA WindowPattern and TransformPattern. Works on hidden desktops for state changes; " +
+                    "resize/move may have no visible effect on hidden desktops but the state is tracked.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        pid = new { type = "integer", description = "Process ID of the target window" },
+                        action = new { type = "string", description = "Window action: maximize, minimize, restore, resize, move, close" },
+                        width = new { type = "integer", description = "Target width (for resize action)" },
+                        height = new { type = "integer", description = "Target height (for resize action)" },
+                        x = new { type = "integer", description = "Target X position (for move action)" },
+                        y = new { type = "integer", description = "Target Y position (for move action)" }
+                    },
+                    required = new[] { "pid", "action" }
+                }
+            },
+            new
+            {
+                name = "list_windows",
+                description = "List all top-level windows for a process. Returns title, className, visibility, controlType, and bounding rectangle " +
+                    "for each window. Each window is cached with an elementId for use as parent in find_element or get_element_tree. " +
+                    "Useful for apps with multiple forms, dialogs, or MDI windows.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        pid = new { type = "integer", description = "Process ID to enumerate windows for" }
+                    },
+                    required = new[] { "pid" }
+                }
+            },
+            new
+            {
+                name = "get_focused_element",
+                description = "Get the UI element that currently has keyboard focus. Returns the element's properties and caches it with an elementId " +
+                    "for subsequent interactions. Useful for debugging tab order, verifying focus after interactions, or understanding keyboard navigation.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        pid = new { type = "integer", description = "Optional process ID to verify the focused element belongs to this process" }
+                    }
+                }
             }
         };
     }
@@ -1175,6 +1232,99 @@ class AutomationServer {
             var newJson = newValue == null ? "null" : $"\"{EscapeJson(newValue)}\"";
             return Task.FromResult(JsonDocument.Parse(
                 $"{{\"success\": true, \"previousValue\": {prevJson}, \"newValue\": {newJson}}}").RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> ManageWindow(JsonElement args) {
+        try {
+            var pid = GetIntArg(args, "pid");
+            var action = GetStringArg(args, "action") ?? throw new ArgumentException("action is required");
+            var width = GetNullableIntArg(args, "width");
+            var height = GetNullableIntArg(args, "height");
+            var x = GetNullableIntArg(args, "x");
+            var y = GetNullableIntArg(args, "y");
+
+            var automation = _session.GetAutomation();
+            var result = automation.ManageWindow(pid, action, width, height, x, y);
+            result["success"] = true;
+
+            var json = JsonSerializer.Serialize(result);
+            return Task.FromResult(JsonDocument.Parse(json).RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> ListWindows(JsonElement args) {
+        try {
+            var pid = GetIntArg(args, "pid");
+
+            var automation = _session.GetAutomation();
+            var windows = automation.ListWindows(pid);
+
+            // Cache each window element for subsequent operations
+            for (int i = 0; i < windows.Count; i++) {
+                windows[i]["windowIndex"] = i;
+            }
+
+            var result = new Dictionary<string, object?> {
+                ["success"] = true,
+                ["windowCount"] = windows.Count,
+                ["windows"] = windows
+            };
+
+            var json = JsonSerializer.Serialize(result);
+            return Task.FromResult(JsonDocument.Parse(json).RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> GetFocusedElement(JsonElement args) {
+        try {
+            var pid = GetNullableIntArg(args, "pid");
+
+            var automation = _session.GetAutomation();
+            var focused = automation.GetFocusedElement();
+
+            if (focused == null)
+                return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"No focused element found\"}").RootElement);
+
+            // If pid specified, verify the focused element belongs to that process
+            if (pid.HasValue) {
+                try {
+                    var focusedPid = focused.Properties.ProcessId.ValueOrDefault;
+                    if (focusedPid != pid.Value)
+                        return Task.FromResult(JsonDocument.Parse(
+                            $"{{\"success\": true, \"focused\": false, \"message\": \"Focused element belongs to process {focusedPid}, not {pid.Value}\"}}").RootElement);
+                }
+                catch { /* ignore if ProcessId unavailable */ }
+            }
+
+            var elementId = _session.CacheElement(focused);
+            var rect = focused.BoundingRectangle;
+
+            var result = new Dictionary<string, object?> {
+                ["success"] = true,
+                ["focused"] = true,
+                ["elementId"] = elementId,
+                ["name"] = focused.Name,
+                ["automationId"] = focused.AutomationId,
+                ["className"] = focused.ClassName,
+                ["controlType"] = focused.ControlType.ToString(),
+                ["boundingRectangle"] = new Dictionary<string, int> {
+                    ["x"] = (int)rect.X, ["y"] = (int)rect.Y,
+                    ["width"] = (int)rect.Width, ["height"] = (int)rect.Height
+                }
+            };
+
+            var json = JsonSerializer.Serialize(result);
+            return Task.FromResult(JsonDocument.Parse(json).RootElement);
         }
         catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
