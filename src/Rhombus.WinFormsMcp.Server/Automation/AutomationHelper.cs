@@ -1480,6 +1480,144 @@ public class AutomationHelper : IAutomationHelper {
         return results;
     }
 
+    // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements
+    public string RaiseEvent(AutomationElement element, string eventName) {
+        switch (eventName.ToLower()) {
+            case "invoke":
+                var invokePattern = element.Patterns.Invoke.PatternOrDefault
+                    ?? throw new InvalidOperationException("Element does not support InvokePattern");
+                invokePattern.Invoke();
+                return "Invoked";
+            case "toggle":
+                var togglePattern = element.Patterns.Toggle.PatternOrDefault
+                    ?? throw new InvalidOperationException("Element does not support TogglePattern");
+                togglePattern.Toggle();
+                return $"Toggled to {togglePattern.ToggleState.ValueOrDefault}";
+            case "expand":
+                var expandPattern = element.Patterns.ExpandCollapse.PatternOrDefault
+                    ?? throw new InvalidOperationException("Element does not support ExpandCollapsePattern");
+                expandPattern.Expand();
+                return "Expanded";
+            case "collapse":
+                var collapsePattern = element.Patterns.ExpandCollapse.PatternOrDefault
+                    ?? throw new InvalidOperationException("Element does not support ExpandCollapsePattern");
+                collapsePattern.Collapse();
+                return "Collapsed";
+            case "select":
+                var selectionPattern = element.Patterns.SelectionItem.PatternOrDefault
+                    ?? throw new InvalidOperationException("Element does not support SelectionItemPattern");
+                selectionPattern.Select();
+                return "Selected";
+            case "scroll_into_view":
+                var scrollItemPattern = element.Patterns.ScrollItem.PatternOrDefault
+                    ?? throw new InvalidOperationException("Element does not support ScrollItemPattern");
+                scrollItemPattern.ScrollIntoView();
+                return "Scrolled into view";
+            default:
+                throw new ArgumentException(
+                    $"Unknown event '{eventName}'. Supported: invoke, toggle, expand, collapse, select, scroll_into_view");
+        }
+    }
+
+    // COVERAGE_EXCEPTION: UIA event handlers require live automation and COM management
+    public async Task<(bool fired, string? eventDetails, long elapsedMs)> ListenForEventAsync(
+        AutomationElement? element, string eventType, int timeoutMs = 10000) {
+        if (_automation == null)
+            throw new ObjectDisposedException(nameof(AutomationHelper));
+
+        // UIA event registration has COM threading requirements that make it fragile.
+        // We use a polling-based approach instead, which is more reliable:
+        // - focus_changed: poll FocusedElement
+        // - structure_changed: poll child count
+        // - property_changed: use wait_for_condition instead (recommend to caller)
+        var stopwatch = Stopwatch.StartNew();
+
+        switch (eventType.ToLower()) {
+            case "focus_changed": {
+                var initialFocused = _automation.FocusedElement();
+                var initialName = initialFocused?.Name ?? "";
+                var initialId = initialFocused?.AutomationId ?? "";
+
+                while (stopwatch.ElapsedMilliseconds < timeoutMs) {
+                    await Task.Delay(100);
+                    try {
+                        var current = _automation.FocusedElement();
+                        var currentName = current?.Name ?? "";
+                        var currentId = current?.AutomationId ?? "";
+                        if (currentName != initialName || currentId != initialId)
+                            return (true, $"Focus changed to: {currentName} ({current?.ControlType})", stopwatch.ElapsedMilliseconds);
+                    }
+                    catch { /* element may be gone */ }
+                }
+                return (false, null, stopwatch.ElapsedMilliseconds);
+            }
+
+            case "structure_changed": {
+                var root = element ?? _automation.GetDesktop();
+                int initialCount;
+                try { initialCount = root.FindAllChildren().Length; }
+                catch { initialCount = 0; }
+
+                while (stopwatch.ElapsedMilliseconds < timeoutMs) {
+                    await Task.Delay(100);
+                    try {
+                        var currentCount = root.FindAllChildren().Length;
+                        if (currentCount != initialCount)
+                            return (true, $"Child count changed from {initialCount} to {currentCount}", stopwatch.ElapsedMilliseconds);
+                    }
+                    catch { /* element may be gone */ }
+                }
+                return (false, null, stopwatch.ElapsedMilliseconds);
+            }
+
+            case "property_changed":
+                // Property changes are better served by wait_for_condition
+                return (false, "Use wait_for_condition for property change detection — it provides comparison operators and specific property targeting", 0);
+
+            default:
+                throw new ArgumentException(
+                    $"Unknown event type '{eventType}'. Supported: focus_changed, structure_changed, property_changed");
+        }
+    }
+
+    // COVERAGE_EXCEPTION: Context menu operations require live UIA elements
+    public AutomationElement? OpenContextMenu(AutomationElement element) {
+        if (_automation == null)
+            throw new ObjectDisposedException(nameof(AutomationHelper));
+
+        // Try LegacyIAccessible DoDefaultAction first (some controls expose context menu this way)
+        var legacyPattern = element.Patterns.LegacyIAccessible.PatternOrDefault;
+        if (legacyPattern != null) {
+            try {
+                legacyPattern.DoDefaultAction();
+                Thread.Sleep(200);
+            }
+            catch { /* fall through to right-click */ }
+        }
+
+        // Right-click via mouse to open context menu
+        element.RightClick();
+        Thread.Sleep(300);
+
+        // Try to find the context menu that appeared
+        // Context menus are typically top-level windows with ControlType.Menu
+        var desktop = _automation.GetDesktop();
+        var menuCondition = new PropertyCondition(
+            _automation.PropertyLibrary.Element.ControlType,
+            FlaUI.Core.Definitions.ControlType.Menu);
+
+        var stopwatch = Stopwatch.StartNew();
+        while (stopwatch.ElapsedMilliseconds < 2000) {
+            var menus = desktop.FindAllChildren(menuCondition);
+            if (menus.Length > 0)
+                return menus[^1]; // Return the most recently opened menu
+
+            Thread.Sleep(100);
+        }
+
+        return null;
+    }
+
     // COVERAGE_EXCEPTION: Focus operations require live UIA desktop
     public AutomationElement? GetFocusedElement() {
         if (_automation == null)
