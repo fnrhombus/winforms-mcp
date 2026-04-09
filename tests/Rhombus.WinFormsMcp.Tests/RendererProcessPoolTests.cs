@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
+using Rhombus.WinFormsMcp.Server;
 using Rhombus.WinFormsMcp.Server.Automation;
 
 namespace Rhombus.WinFormsMcp.Tests;
@@ -6,6 +8,10 @@ namespace Rhombus.WinFormsMcp.Tests;
 [TestFixture]
 public class RendererProcessPoolTests {
     private static MemoryCache CreateCache() => new MemoryCache(new MemoryCacheOptions());
+    private static IOptions<McpServerOptions> CreateOptions(McpServerOptions? options = null) =>
+        Options.Create(options ?? new McpServerOptions());
+    private static RendererProcessPool CreatePool(McpServerOptions? options = null, string? hostBasePath = "/nonexistent") =>
+        new RendererProcessPool(CreateCache(), CreateOptions(options), hostBasePath);
     #region TFM Mapping
 
     [TestCase("net48", "net48")]
@@ -148,38 +154,21 @@ public class RendererProcessPoolTests {
 
     [Test]
     public void GetConfiguredTfm_WhenNotSet_ReturnsAuto() {
-        var original = Environment.GetEnvironmentVariable("TFM");
-        try {
-            Environment.SetEnvironmentVariable("TFM", null);
-            Assert.That(RendererProcessPool.GetConfiguredTfm(), Is.EqualTo("auto"));
-        }
-        finally {
-            Environment.SetEnvironmentVariable("TFM", original);
-        }
+        using var pool = CreatePool();
+        Assert.That(pool.GetConfiguredTfm(), Is.EqualTo("auto"));
     }
 
     [Test]
     public void GetConfiguredTfm_WhenSet_ReturnsValue() {
-        var original = Environment.GetEnvironmentVariable("TFM");
-        try {
-            Environment.SetEnvironmentVariable("TFM", "net48");
-            Assert.That(RendererProcessPool.GetConfiguredTfm(), Is.EqualTo("net48"));
-        }
-        finally {
-            Environment.SetEnvironmentVariable("TFM", original);
-        }
+        using var pool = CreatePool(new McpServerOptions { Tfm = "net48" });
+        Assert.That(pool.GetConfiguredTfm(), Is.EqualTo("net48"));
     }
 
     [Test]
-    public void GetConfiguredTfm_WhenEmpty_ReturnsAuto() {
-        var original = Environment.GetEnvironmentVariable("TFM");
-        try {
-            Environment.SetEnvironmentVariable("TFM", "  ");
-            Assert.That(RendererProcessPool.GetConfiguredTfm(), Is.EqualTo("auto"));
-        }
-        finally {
-            Environment.SetEnvironmentVariable("TFM", original);
-        }
+    public void GetConfiguredTfm_WhenNullOptions_ReturnsAuto() {
+        // When IOptions<McpServerOptions> provides a default McpServerOptions, Tfm defaults to "auto"
+        using var pool = CreatePool(new McpServerOptions());
+        Assert.That(pool.GetConfiguredTfm(), Is.EqualTo("auto"));
     }
 
     #endregion
@@ -188,13 +177,13 @@ public class RendererProcessPoolTests {
 
     [Test]
     public void Dispose_DoesNotThrow() {
-        var pool = new RendererProcessPool(CreateCache(), "/nonexistent");
+        var pool = CreatePool();
         Assert.DoesNotThrow(() => pool.Dispose());
     }
 
     [Test]
     public void RenderAsync_AfterDispose_ThrowsObjectDisposed() {
-        var pool = new RendererProcessPool(CreateCache(), "/nonexistent");
+        var pool = CreatePool();
         pool.Dispose();
         Assert.ThrowsAsync<ObjectDisposedException>(async () =>
             await pool.RenderAsync("content", null, null, "net8.0-windows"));
@@ -202,7 +191,7 @@ public class RendererProcessPoolTests {
 
     [Test]
     public void RenderAsync_AutoWithoutCsproj_ThrowsArgument() {
-        using var pool = new RendererProcessPool(CreateCache(), "/nonexistent");
+        using var pool = CreatePool();
         var ex = Assert.ThrowsAsync<ArgumentException>(async () =>
             await pool.RenderAsync("content", null, null, "auto"));
         Assert.That(ex!.Message, Does.Contain("csprojPath is required"));
@@ -227,7 +216,7 @@ public class RendererProcessPoolTests {
             Assert.Ignore("RendererHost not built. Run: dotnet build src/Rhombus.WinFormsMcp.RendererHost");
         }
 
-        using var pool = new RendererProcessPool(CreateCache(), hostBasePath);
+        using var pool = new RendererProcessPool(CreateCache(), CreateOptions(), hostBasePath);
 
         var designerContent = @"
 namespace TestApp {
@@ -268,7 +257,7 @@ namespace TestApp {
             Assert.Ignore("RendererHost not built.");
         }
 
-        using var pool = new RendererProcessPool(CreateCache(), hostBasePath);
+        using var pool = new RendererProcessPool(CreateCache(), CreateOptions(), hostBasePath);
 
         var designerContent = @"
 namespace TestApp {

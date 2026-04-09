@@ -7,9 +7,11 @@ using System.Threading.Tasks;
 
 using FlaUI.Core.AutomationElements;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using Rhombus.WinFormsMcp.Rendering;
 using Rhombus.WinFormsMcp.Server.Automation;
@@ -28,20 +30,18 @@ class Program {
             // Stdio transport — suppress all console logging to avoid corrupting JSON-RPC.
             .ConfigureLogging(logging => logging.ClearProviders())
             .ConfigureServices((context, services) => {
-                var headlessEnv = Environment.GetEnvironmentVariable("HEADLESS");
-                var headless = string.Equals(headlessEnv, "true", StringComparison.OrdinalIgnoreCase)
-                            || headlessEnv == "1";
+                var options = new McpServerOptions();
+                BindOptions(options, context.Configuration);
+                services.AddSingleton(Options.Create(options));
 
                 // Telemetry
-                var optOut = Environment.GetEnvironmentVariable("TELEMETRY_OPTOUT");
-                bool telemetryOptOut = string.Equals(optOut, "true", StringComparison.OrdinalIgnoreCase) || optOut == "1";
-                if (telemetryOptOut)
+                if (options.TelemetryOptOut)
                     services.AddSingleton<ITelemetry, NullTelemetry>();
                 else
                     services.AddSingleton<ITelemetry, Telemetry>();
 
                 services.AddMemoryCache();
-                services.AddSingleton<IAutomationHelper>(new AutomationHelper(headless));
+                services.AddSingleton<IAutomationHelper>(new AutomationHelper(options.Headless));
                 services.AddSingleton<ISessionManager, SessionManager>();
                 services.AddSingleton<RendererProcessPool>();
                 services.AddHostedService<AutomationServer>();
@@ -50,6 +50,17 @@ class Program {
 
         await host.RunAsync();
     }
+
+    internal static McpServerOptions BindOptions(McpServerOptions options, IConfiguration configuration) {
+        options.Headless = ParseBool(configuration["HEADLESS"]);
+        options.TelemetryOptOut = ParseBool(configuration["TELEMETRY_OPTOUT"]);
+        var tfm = configuration["TFM"];
+        options.Tfm = string.IsNullOrWhiteSpace(tfm) ? "auto" : tfm.Trim();
+        return options;
+    }
+
+    private static bool ParseBool(string? value) =>
+        string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) || value == "1";
 }
 
 /// <summary>
@@ -1245,7 +1256,7 @@ class AutomationServer : BackgroundService {
             var companionContent = System.IO.File.Exists(companionPath) ? System.IO.File.ReadAllText(companionPath) : null;
 
             // Determine TFM: env var override or auto-detect from csproj
-            var configuredTfm = RendererProcessPool.GetConfiguredTfm();
+            var configuredTfm = _rendererPool.GetConfiguredTfm();
             string? csprojPath = null;
             if (string.Equals(configuredTfm, "auto", StringComparison.OrdinalIgnoreCase)) {
                 var dir = Path.GetDirectoryName(designerFile)!;
