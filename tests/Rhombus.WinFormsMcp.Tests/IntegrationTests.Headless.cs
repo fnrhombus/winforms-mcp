@@ -177,14 +177,14 @@ public class IntegrationTestsHeadless {
     public void TestSendKeysWorkflow() {
         // Arrange
         _mockAutomation!
-            .Setup(a => a.SendKeys("test keys"))
+            .Setup(a => a.SendKeys("test keys", null))
             .Verifiable();
 
         // Act
-        _mockAutomation.Object.SendKeys("test keys");
+        _mockAutomation.Object.SendKeys("test keys", null);
 
         // Assert
-        _mockAutomation.Verify(a => a.SendKeys("test keys"), Times.Once);
+        _mockAutomation.Verify(a => a.SendKeys("test keys", null), Times.Once);
     }
 
     [Test]
@@ -328,7 +328,7 @@ public class IntegrationTestsHeadless {
             .Verifiable();
 
         _mockAutomation
-            .Setup(a => a.SendKeys("test"))
+            .Setup(a => a.SendKeys("test", null))
             .Verifiable();
 
         // Act & Assert
@@ -337,8 +337,8 @@ public class IntegrationTestsHeadless {
         );
 
         // Recovery - Continue with other operations
-        _mockAutomation.Object.SendKeys("test");
-        _mockAutomation.Verify(a => a.SendKeys("test"), Times.Once);
+        _mockAutomation.Object.SendKeys("test", null);
+        _mockAutomation.Verify(a => a.SendKeys("test", null), Times.Once);
     }
 
     [Test]

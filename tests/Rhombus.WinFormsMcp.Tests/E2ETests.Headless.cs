@@ -39,7 +39,7 @@ public class E2ETestsHeadless {
             .Verifiable();
 
         _mockAutomation
-            .Setup(a => a.SendKeys("^s"))
+            .Setup(a => a.SendKeys("^s", null))
             .Verifiable();
 
         // Act
@@ -380,7 +380,7 @@ public class E2ETestsHeadless {
             .Verifiable();
 
         _mockAutomation
-            .Setup(a => a.SendKeys("{TAB}"))
+            .Setup(a => a.SendKeys("{TAB}", null))
             .Verifiable();
 
         _mockAutomation
@@ -394,7 +394,7 @@ public class E2ETestsHeadless {
 
         // Assert
         _mockAutomation.Verify(a => a.TypeText(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "Username", true), Times.Once);
-        _mockAutomation.Verify(a => a.SendKeys("{TAB}"), Times.Once);
+        _mockAutomation.Verify(a => a.SendKeys("{TAB}", null), Times.Once);
         _mockAutomation.Verify(a => a.TypeText(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "Password", true), Times.Once);
     }
 

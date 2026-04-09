@@ -19,7 +19,9 @@ using FlaUI.UIA2;
 namespace Rhombus.WinFormsMcp.Server.Automation;
 
 /// <summary>
-/// Helper class for WinForms UI automation using FlaUI with UIA2 backend
+/// Helper class for WinForms UI automation using FlaUI with UIA2 backend.
+/// When headless, processes are launched on a hidden desktop (CreateDesktop)
+/// for complete UI isolation — no focus stealing, no visible windows.
 /// </summary>
 public class AutomationHelper : IAutomationHelper {
     private UIA2Automation? _automation;
@@ -27,37 +29,99 @@ public class AutomationHelper : IAutomationHelper {
     private readonly ConcurrentDictionary<int, StringBuilder> _stderrBuffers = new();
     private readonly object _lock = new object();
 
+    /// <summary>Desktop handle for the hidden desktop (IntPtr.Zero when not headless).</summary>
+    private IntPtr _hiddenDesktop;
+    private const string HiddenDesktopName = "McpAutomation";
+
+    /// <summary>Maps PID → desktop handle. Headless-launched processes get _hiddenDesktop; attached processes get IntPtr.Zero (default desktop).</summary>
+    private readonly ConcurrentDictionary<int, IntPtr> _processDesktops = new();
+
+    /// <summary>Maps PID → HWND found via EnumDesktopWindows (for hidden desktop processes where Process.MainWindowHandle is zero).</summary>
+    private readonly ConcurrentDictionary<int, IntPtr> _processWindows = new();
+
+    /// <summary>Maps PID → native process handle from CreateProcess (for exit code access).</summary>
+    private readonly ConcurrentDictionary<int, IntPtr> _nativeProcessHandles = new();
+
     public bool Headless { get; }
 
     public AutomationHelper(bool headless = false) {
         Headless = headless;
         _automation = new UIA2Automation();
+
+        if (headless) {
+            _hiddenDesktop = NativeMethods.CreateHiddenDesktop(HiddenDesktopName);
+            if (_hiddenDesktop == IntPtr.Zero)
+                throw new InvalidOperationException(
+                    $"Failed to create hidden desktop '{HiddenDesktopName}'. " +
+                    "Headless mode requires the CreateDesktop Win32 API.");
+        }
     }
 
     /// <summary>
-    /// Launch a WinForms application
+    /// Launch a WinForms application.
+    /// When headless, uses CreateProcess to launch on the hidden desktop for complete UI isolation.
+    /// When not headless, uses standard Process.Start on the user's visible desktop.
     /// </summary>
     public Process LaunchApp(string path, string? arguments = null, string? workingDirectory = null) {
-        var psi = new ProcessStartInfo {
-            FileName = path,
-            Arguments = arguments ?? string.Empty,
-            WorkingDirectory = workingDirectory ?? string.Empty,
-            UseShellExecute = false,
-            CreateNoWindow = Headless,
-            RedirectStandardError = true,
-            WindowStyle = Headless ? ProcessWindowStyle.Hidden : ProcessWindowStyle.Normal
-        };
+        Process process;
 
-        var process = Process.Start(psi) ?? throw new InvalidOperationException($"Failed to launch {path}");
+        if (Headless && _hiddenDesktop != IntPtr.Zero) {
+            // Build command line: quote the path, append arguments
+            var commandLine = string.IsNullOrEmpty(arguments)
+                ? $"\"{path}\""
+                : $"\"{path}\" {arguments}";
 
-        // Capture stderr asynchronously to avoid deadlocks
-        var stderrBuffer = new StringBuilder();
-        _stderrBuffers[process.Id] = stderrBuffer;
-        process.ErrorDataReceived += (sender, e) => {
-            if (e.Data != null)
-                stderrBuffer.AppendLine(e.Data);
-        };
-        process.BeginErrorReadLine();
+            var result = NativeMethods.LaunchOnDesktop(HiddenDesktopName, commandLine, workingDirectory);
+            if (result.Pid < 0)
+                throw new InvalidOperationException($"Failed to launch {path} on hidden desktop");
+
+            // Get the Process object while the native handle is still open (prevents zombie cleanup race)
+            process = Process.GetProcessById(result.Pid);
+            // Keep native handle for exit code access (Process.ExitCode can fail for GetProcessById-obtained objects)
+            _nativeProcessHandles[result.Pid] = result.ProcessHandle;
+            _processDesktops[result.Pid] = _hiddenDesktop;
+
+            // Capture stderr asynchronously (same pattern as the non-headless path)
+            if (result.Stderr != null) {
+                var stderrBuffer = new StringBuilder();
+                _stderrBuffers[result.Pid] = stderrBuffer;
+                var reader = result.Stderr;
+                _ = Task.Run(async () => {
+                    try {
+                        while (true) {
+                            var line = await reader.ReadLineAsync();
+                            if (line == null) break;
+                            stderrBuffer.AppendLine(line);
+                        }
+                    }
+                    catch { }
+                    finally { reader.Dispose(); }
+                });
+            }
+        }
+        else {
+            var psi = new ProcessStartInfo {
+                FileName = path,
+                Arguments = arguments ?? string.Empty,
+                WorkingDirectory = workingDirectory ?? string.Empty,
+                UseShellExecute = false,
+                CreateNoWindow = false,
+                RedirectStandardError = true,
+                WindowStyle = ProcessWindowStyle.Normal
+            };
+
+            process = Process.Start(psi) ?? throw new InvalidOperationException($"Failed to launch {path}");
+            _processDesktops[process.Id] = IntPtr.Zero; // default desktop
+
+            // Capture stderr asynchronously to avoid deadlocks
+            var stderrBuffer = new StringBuilder();
+            _stderrBuffers[process.Id] = stderrBuffer;
+            process.ErrorDataReceived += (sender, e) => {
+                if (e.Data != null)
+                    stderrBuffer.AppendLine(e.Data);
+            };
+            process.BeginErrorReadLine();
+        }
 
         try {
             process.WaitForInputIdle(5000);
@@ -75,10 +139,11 @@ public class AutomationHelper : IAutomationHelper {
     }
 
     /// <summary>
-    /// Attach to a running process
+    /// Attach to a running process (on the user's visible desktop).
     /// </summary>
     public Process AttachToProcess(int pid) {
         var process = Process.GetProcessById(pid);
+        _processDesktops[pid] = IntPtr.Zero; // attached processes are always on the default desktop
         lock (_lock) {
             _launchedProcesses[pid.ToString()] = process;
         }
@@ -86,7 +151,7 @@ public class AutomationHelper : IAutomationHelper {
     }
 
     /// <summary>
-    /// Attach to a running process by name
+    /// Attach to a running process by name (on the user's visible desktop).
     /// </summary>
     public Process AttachToProcessByName(string name) {
         var processes = Process.GetProcessesByName(name);
@@ -94,6 +159,7 @@ public class AutomationHelper : IAutomationHelper {
             throw new InvalidOperationException($"No process found with name: {name}");
 
         var process = processes[0];
+        _processDesktops[process.Id] = IntPtr.Zero;
         lock (_lock) {
             _launchedProcesses[process.Id.ToString()] = process;
         }
@@ -101,19 +167,85 @@ public class AutomationHelper : IAutomationHelper {
     }
 
     /// <summary>
-    /// Get main window element of a process
+    /// Get main window element of a process.
+    /// For hidden desktop processes, uses EnumDesktopWindows + SetThreadDesktop to find and access the window.
+    /// For default desktop processes, uses Process.MainWindowHandle as before.
     /// </summary>
     public AutomationElement? GetMainWindow(int pid) {
         if (_automation == null)
             throw new ObjectDisposedException(nameof(AutomationHelper));
 
         try {
+            var desktop = GetDesktopForProcess(pid);
+
+            if (desktop != IntPtr.Zero) {
+                // Hidden desktop: find HWND via EnumDesktopWindows, access via SetThreadDesktop
+                var hwnd = GetOrFindWindowHandle(pid, desktop);
+                if (hwnd == IntPtr.Zero) return null;
+
+                return NativeMethods.WithDesktop(desktop, () => _automation.FromHandle(hwnd));
+            }
+
+            // Default desktop: standard path
             var process = Process.GetProcessById(pid);
+            if (process.MainWindowHandle == IntPtr.Zero) return null;
             return _automation.FromHandle(process.MainWindowHandle);
         }
         catch {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Get or discover the HWND for a process on a hidden desktop.
+    /// Caches the result for subsequent calls.
+    /// </summary>
+    private IntPtr GetOrFindWindowHandle(int pid, IntPtr desktop) {
+        if (_processWindows.TryGetValue(pid, out var cached) && cached != IntPtr.Zero)
+            return cached;
+
+        var hwnd = NativeMethods.FindWindowOnDesktop(desktop, pid);
+        if (hwnd != IntPtr.Zero)
+            _processWindows[pid] = hwnd;
+        return hwnd;
+    }
+
+    /// <summary>
+    /// Returns the desktop handle for a tracked process, or IntPtr.Zero for the default desktop.
+    /// </summary>
+    private IntPtr GetDesktopForProcess(int pid) {
+        return _processDesktops.TryGetValue(pid, out var desktop) ? desktop : IntPtr.Zero;
+    }
+
+    /// <summary>
+    /// Returns true if the given process is running on the hidden desktop.
+    /// </summary>
+    private bool IsOnHiddenDesktop(int pid) {
+        return GetDesktopForProcess(pid) != IntPtr.Zero;
+    }
+
+    /// <summary>
+    /// Returns true if the given element belongs to a process on the hidden desktop.
+    /// </summary>
+    private bool IsOnHiddenDesktop(AutomationElement element) {
+        try {
+            var pid = element.Properties.ProcessId.ValueOrDefault;
+            return pid > 0 && IsOnHiddenDesktop(pid);
+        }
+        catch {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Throws if the element is on the hidden desktop and the operation requires input simulation.
+    /// </summary>
+    private void ThrowIfHeadless(AutomationElement element, string operation, string? alternative = null) {
+        if (!IsOnHiddenDesktop(element)) return;
+        var msg = $"{operation} requires input simulation and is not available for headless processes (the target element belongs to a process on the hidden desktop).";
+        if (alternative != null)
+            msg += $" Use {alternative} instead.";
+        throw new InvalidOperationException(msg);
     }
 
     /// <summary>
@@ -161,7 +293,9 @@ public class AutomationHelper : IAutomationHelper {
     }
 
     /// <summary>
-    /// Find multiple elements matching condition
+    /// Find multiple elements matching condition.
+    /// When parent is from a hidden desktop process, UIA queries work because
+    /// GetMainWindow already called SetThreadDesktop before returning the element.
     /// </summary>
     public AutomationElement[]? FindAll(ConditionBase condition, AutomationElement? parent = null, int timeoutMs = 5000) {
         if (_automation == null)
@@ -209,6 +343,28 @@ public class AutomationHelper : IAutomationHelper {
     }
 
     /// <summary>
+    /// Switch the calling thread to a process's desktop, execute an action, then restore.
+    /// No-op for default desktop processes.
+    /// </summary>
+    public T OnProcessDesktop<T>(int pid, Func<T> action) {
+        var desktop = GetDesktopForProcess(pid);
+        if (desktop != IntPtr.Zero)
+            return NativeMethods.WithDesktop(desktop, action);
+        return action();
+    }
+
+    /// <summary>
+    /// Non-generic overload.
+    /// </summary>
+    public void OnProcessDesktop(int pid, Action action) {
+        var desktop = GetDesktopForProcess(pid);
+        if (desktop != IntPtr.Zero)
+            NativeMethods.WithDesktop(desktop, action);
+        else
+            action();
+    }
+
+    /// <summary>
     /// Check if element exists
     /// </summary>
     public bool ElementExists(string automationId, AutomationElement? parent = null) {
@@ -216,35 +372,87 @@ public class AutomationHelper : IAutomationHelper {
     }
 
     /// <summary>
-    /// Click element
+    /// Click element using UIA InvokePattern (works on hidden desktops).
+    /// Falls back to mouse simulation for double-click or when InvokePattern is unavailable.
     /// </summary>
     public void Click(AutomationElement element, bool doubleClick = false) {
         if (doubleClick) {
+            // No UIA pattern for double-click; requires mouse simulation (default desktop only)
+            ThrowIfHeadless(element, "Double-click", "single click_element (which uses UIA InvokePattern)");
             element.DoubleClick();
+            return;
         }
-        else {
-            element.Click();
+
+        // Prefer InvokePattern — it's a direct UIA call, works across desktops
+        var invokePattern = element.Patterns.Invoke.PatternOrDefault;
+        if (invokePattern != null) {
+            invokePattern.Invoke();
+            return;
         }
+
+        // Try TogglePattern for checkboxes/toggle buttons
+        var togglePattern = element.Patterns.Toggle.PatternOrDefault;
+        if (togglePattern != null) {
+            togglePattern.Toggle();
+            return;
+        }
+
+        // Try ExpandCollapsePattern for combo boxes/tree nodes
+        var expandPattern = element.Patterns.ExpandCollapse.PatternOrDefault;
+        if (expandPattern != null) {
+            var state = expandPattern.ExpandCollapseState;
+            if (state == FlaUI.Core.Definitions.ExpandCollapseState.Collapsed)
+                expandPattern.Expand();
+            else
+                expandPattern.Collapse();
+            return;
+        }
+
+        // Fallback: mouse simulation (only works on default desktop)
+        ThrowIfHeadless(element, "click_element (no UIA pattern available for this control)", "get_property to read state, or set_value to change it");
+        element.Click();
     }
 
     /// <summary>
-    /// Type text into element
+    /// Type text into element using UIA ValuePattern (works on hidden desktops).
+    /// Falls back to SendKeys when ValuePattern is unavailable (default desktop only).
     /// </summary>
     public void TypeText(AutomationElement element, string text, bool clearFirst = false) {
-        element.Focus();
+        var valuePattern = element.Patterns.Value.PatternOrDefault;
+        if (valuePattern != null && !valuePattern.IsReadOnly) {
+            if (clearFirst) {
+                valuePattern.SetValue(text);
+            }
+            else {
+                var current = valuePattern.Value ?? "";
+                valuePattern.SetValue(current + text);
+            }
+            return;
+        }
 
+        // Fallback: SendKeys (only works on default/active desktop)
+        ThrowIfHeadless(element, "type_text (ValuePattern not available on this control)", "send_keys on a visible process, or set_value if the control supports ValuePattern");
+        element.Focus();
         if (clearFirst) {
             System.Windows.Forms.SendKeys.SendWait("^a");
             Thread.Sleep(100);
         }
-
         System.Windows.Forms.SendKeys.SendWait(text);
     }
 
     /// <summary>
-    /// Set value on element
+    /// Set value on element using UIA ValuePattern (works on hidden desktops).
+    /// Falls back to SendKeys when ValuePattern is unavailable (default desktop only).
     /// </summary>
     public void SetValue(AutomationElement element, string value) {
+        var valuePattern = element.Patterns.Value.PatternOrDefault;
+        if (valuePattern != null && !valuePattern.IsReadOnly) {
+            valuePattern.SetValue(value);
+            return;
+        }
+
+        // Fallback: SendKeys (only works on default/active desktop)
+        ThrowIfHeadless(element, "set_value (ValuePattern not available or read-only on this control)");
         element.Focus();
         System.Windows.Forms.SendKeys.SendWait("^a");
         Thread.Sleep(50);
@@ -399,18 +607,44 @@ public class AutomationHelper : IAutomationHelper {
     }
 
     /// <summary>
-    /// Take screenshot of element or full desktop
+    /// Take screenshot of element or process window.
+    /// Uses PrintWindow (works on hidden desktops and off-screen windows).
+    /// Falls back to FlaUI Capture for default desktop elements.
     /// </summary>
     public void TakeScreenshot(string outputPath, AutomationElement? element = null) {
+        TakeScreenshot(outputPath, element, pid: null);
+    }
+
+    /// <summary>
+    /// Take screenshot with optional PID for PrintWindow-based capture.
+    /// When pid is provided (or element belongs to a hidden-desktop process), uses PrintWindow.
+    /// </summary>
+    public void TakeScreenshot(string outputPath, AutomationElement? element, int? pid) {
         try {
             Bitmap? bitmap = null;
 
-            if (element != null) {
-                bitmap = element.Capture();
+            // Try PrintWindow path for any process we know about
+            if (pid != null) {
+                bitmap = CaptureProcessWindow(pid.Value);
             }
-            else if (_automation != null) {
-                var desktop = _automation.GetDesktop();
-                bitmap = desktop.Capture();
+
+            // Try FlaUI Capture for elements on the default desktop
+            if (bitmap == null && element != null) {
+                try {
+                    bitmap = element.Capture();
+                }
+                catch {
+                    // FlaUI Capture failed (e.g., hidden desktop) — try PrintWindow via element's process
+                    var processId = element.Properties.ProcessId.ValueOrDefault;
+                    if (processId > 0)
+                        bitmap = CaptureProcessWindow(processId);
+                }
+            }
+
+            // Last resort: capture the whole default desktop
+            if (bitmap == null && _automation != null) {
+                var desktopElement = _automation.GetDesktop();
+                bitmap = desktopElement.Capture();
             }
 
             if (bitmap != null) {
@@ -424,9 +658,36 @@ public class AutomationHelper : IAutomationHelper {
     }
 
     /// <summary>
-    /// Drag and drop
+    /// Capture a process's main window using PrintWindow.
+    /// Works for both hidden desktop and default desktop processes.
+    /// </summary>
+    private Bitmap? CaptureProcessWindow(int pid) {
+        var desktop = GetDesktopForProcess(pid);
+
+        IntPtr hwnd;
+        if (desktop != IntPtr.Zero) {
+            hwnd = GetOrFindWindowHandle(pid, desktop);
+        }
+        else {
+            try {
+                hwnd = Process.GetProcessById(pid).MainWindowHandle;
+            }
+            catch {
+                return null;
+            }
+        }
+
+        return NativeMethods.CaptureWindow(hwnd);
+    }
+
+    /// <summary>
+    /// Drag and drop using mouse simulation.
+    /// NOTE: Only works on the default (visible) desktop. Not available for headless-launched processes.
     /// </summary>
     public void DragDrop(AutomationElement source, AutomationElement target) {
+        ThrowIfHeadless(source, "drag_drop", "click_element and set_value sequences");
+        ThrowIfHeadless(target, "drag_drop", "click_element and set_value sequences");
+
         var sourceBounds = source.BoundingRectangle;
         var targetBounds = target.BoundingRectangle;
 
@@ -456,9 +717,16 @@ public class AutomationHelper : IAutomationHelper {
     }
 
     /// <summary>
-    /// Send keyboard keys
+    /// Send keyboard keys using SendKeys simulation.
+    /// NOTE: Only works on the default (visible) desktop. Not available for headless-launched processes.
+    /// Use type_text/set_value (which use UIA ValuePattern) for text input on headless processes.
     /// </summary>
-    public void SendKeys(string keys) {
+    public void SendKeys(string keys, int? targetPid = null) {
+        if (targetPid != null && IsOnHiddenDesktop(targetPid.Value))
+            throw new InvalidOperationException(
+                "send_keys requires input simulation and is not available for headless processes " +
+                "(the target process is running on the hidden desktop). " +
+                "Use type_text or set_value (which use UIA ValuePattern) for text input on headless processes.");
         System.Windows.Forms.SendKeys.SendWait(keys);
     }
 
@@ -483,6 +751,10 @@ public class AutomationHelper : IAutomationHelper {
                 finally {
                     _launchedProcesses.Remove(pid.ToString());
                     _stderrBuffers.TryRemove(pid, out _);
+                    _processDesktops.TryRemove(pid, out _);
+                    _processWindows.TryRemove(pid, out _);
+                    if (_nativeProcessHandles.TryRemove(pid, out var nativeHandle))
+                        NativeMethods.CloseNativeHandle(nativeHandle);
                 }
             }
         }
@@ -614,9 +886,13 @@ public class AutomationHelper : IAutomationHelper {
             try {
                 result["exitCode"] = process.ExitCode;
             }
-            catch // COVERAGE_EXCEPTION: ExitCode can throw if process handle is invalid
-            {
-                result["exitCode"] = null;
+            catch {
+                // Process.ExitCode can fail for processes obtained via GetProcessById.
+                // Fall back to native GetExitCodeProcess for CreateProcess-launched processes.
+                if (_nativeProcessHandles.TryGetValue(pid, out var nativeHandle))
+                    result["exitCode"] = NativeMethods.GetExitCode(nativeHandle);
+                else
+                    result["exitCode"] = null;
             }
             result["responding"] = false;
             result["mainWindowTitle"] = "";
@@ -827,9 +1103,19 @@ public class AutomationHelper : IAutomationHelper {
 
             _launchedProcesses.Clear();
             _stderrBuffers.Clear();
+            _processDesktops.Clear();
+            _processWindows.Clear();
+            foreach (var handle in _nativeProcessHandles.Values)
+                NativeMethods.CloseNativeHandle(handle);
+            _nativeProcessHandles.Clear();
         }
 
         _automation?.Dispose();
         _automation = null;
+
+        if (_hiddenDesktop != IntPtr.Zero) {
+            NativeMethods.CloseHiddenDesktop(_hiddenDesktop);
+            _hiddenDesktop = IntPtr.Zero;
+        }
     }
 }
