@@ -1,4 +1,4 @@
-namespace Rhombus.WinFormsMcp.Server.Automation;
+namespace Rhombus.WinFormsMcp.Rendering;
 
 /// <summary>
 /// Sentinel value indicating an expression could not be evaluated

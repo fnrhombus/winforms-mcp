@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Rhombus.WinFormsMcp.Server.Automation;
+namespace Rhombus.WinFormsMcp.Rendering;
 
 /// <summary>
 /// Shared helper methods for form rendering: file resolution, project discovery, and designer file parsing.

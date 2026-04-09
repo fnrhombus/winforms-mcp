@@ -12,7 +12,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Rhombus.WinFormsMcp.Server.Automation;
+namespace Rhombus.WinFormsMcp.Rendering;
 
 /// <summary>
 /// Renders WinForms .Designer.cs files to PNG images using
@@ -205,15 +205,29 @@ public class DesignSurfaceFormRenderer {
         width = Math.Max(width, 100);
         height = Math.Max(height, 100);
 
-        view.ClientSize = new Size(width, height);
+        // The DesignSurface view paints form chrome (title bar, borders) and
+        // scrollbar gutters inside the view's client area. To prevent clipping,
+        // set the view's client area to the Form's full Size (client + chrome)
+        // plus scrollbar gutter dimensions.
+        if (_rootControl is Form chromeForm) {
+            if (!chromeForm.IsHandleCreated)
+                _ = chromeForm.Handle;
+            view.ClientSize = new Size(
+                chromeForm.Size.Width + SystemInformation.VerticalScrollBarWidth,
+                chromeForm.Size.Height + SystemInformation.HorizontalScrollBarHeight);
+        } else {
+            view.ClientSize = new Size(width, height);
+        }
 
         // Force handle creation
         if (!view.IsHandleCreated) {
             _ = view.Handle;
         }
 
-        using var bitmap = new Bitmap(width, height);
-        view.DrawToBitmap(bitmap, new Rectangle(0, 0, width, height));
+        var bmpWidth = view.ClientSize.Width;
+        var bmpHeight = view.ClientSize.Height;
+        using var bitmap = new Bitmap(bmpWidth, bmpHeight);
+        view.DrawToBitmap(bitmap, new Rectangle(0, 0, bmpWidth, bmpHeight));
 
         using var ms = new MemoryStream();
         bitmap.Save(ms, ImageFormat.Png);

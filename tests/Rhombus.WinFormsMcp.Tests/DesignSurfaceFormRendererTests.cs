@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-using Rhombus.WinFormsMcp.Server.Automation;
+using Rhombus.WinFormsMcp.Rendering;
 
 namespace Rhombus.WinFormsMcp.Tests;
 

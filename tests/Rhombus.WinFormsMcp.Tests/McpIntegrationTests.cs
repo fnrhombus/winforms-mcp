@@ -272,6 +272,7 @@ namespace Test {
 
     [Test]
     [Timeout(60000)]
+    [Category("RequiresClaude")]
     public async Task ClaudeMcpGet_ShowsServerWithAllTools() {
         // Check claude CLI is available
         var claudePath = FindClaude();

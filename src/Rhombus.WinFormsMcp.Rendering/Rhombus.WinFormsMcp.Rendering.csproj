@@ -1,24 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <!-- Every WinForms-capable TFM. The process pool picks the closest match
-         to the target project's framework, guaranteeing assembly compatibility. -->
-    <!-- Three builds cover all WinForms-capable frameworks:
-         net48           = all .NET Framework (4.6.1-4.8.x, forward-compatible)
-         netcoreapp3.1   = .NET Core 3.0/3.1
-         net8.0-windows  = .NET 5/6/7/8 (forward-compatible runtime) -->
+    <!-- Match RendererHost's TFMs so both Server and RendererHost can reference this library -->
     <TargetFrameworks>net48;netcoreapp3.1;net8.0-windows</TargetFrameworks>
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>Rhombus.WinFormsMcp.RendererHost</AssemblyName>
-    <RootNamespace>Rhombus.WinFormsMcp.RendererHost</RootNamespace>
+    <RootNamespace>Rhombus.WinFormsMcp.Rendering</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Rhombus.WinFormsMcp.Rendering\Rhombus.WinFormsMcp.Rendering.csproj" />
+    <InternalsVisibleTo Include="Rhombus.WinFormsMcp.Tests" />
+  </ItemGroup>
+
+  <!-- Roslyn for parsing .Designer.cs files -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
   </ItemGroup>
 
   <!-- .NET Framework needs explicit assembly references + backported packages -->
@@ -29,7 +27,6 @@
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
-  <!-- netcoreapp3.1 needs UseWindowsForms but doesn't use the -windows suffix -->
   <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
