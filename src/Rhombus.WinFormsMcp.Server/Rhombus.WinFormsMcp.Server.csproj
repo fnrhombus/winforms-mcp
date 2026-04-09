@@ -35,7 +35,7 @@
 
   <ItemGroup>
     <!-- FlaUI for WinForms automation (UIA2 for maximum compatibility) -->
-    <PackageReference Include="FlaUI.UIA2" Version="4.0.0" />
+    <PackageReference Include="FlaUI.UIA2" Version="5.0.0" />
     <PackageReference Include="FlaUI.Core" Version="4.0.0" />
 
     <!-- System.Drawing for screenshots -->
