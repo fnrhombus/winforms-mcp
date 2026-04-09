@@ -126,6 +126,10 @@ See `docs/HEADLESS_MODE.md` for the full technical reference aimed at AI agent c
 
 This project follows a **dev/master branching strategy** with **Semantic Versioning (SemVer)** according to https://semver.org/.
 
+### Root Checkout
+
+**NEVER switch the branch of the root working directory.** The root checkout must stay on `dev` at all times. All feature/fix branch work must be done in git worktrees (`git worktree add` or `isolation: "worktree"` for agents). Switching the root checkout disrupts the working environment and risks losing uncommitted state.
+
 ### Branch Strategy
 
 - **dev** - Integration branch
@@ -145,14 +149,27 @@ This project follows a **dev/master branching strategy** with **Semantic Version
   - Branch naming: `feature/<issue-number>-short-description` or `fix/<issue-number>-short-description`
   - Use `isolation: "worktree"` when spawning agents for implementation work
 
+### Issue Selection
+
+When asked to pick an issue to work on, **skip** any issue with these labels:
+- `blocked` — waiting on an external dependency
+- `in progress` — already being worked on
+- `wontfix` — intentionally declined
+- `duplicate` — already covered by another issue
+- `invalid` — not a real issue
+- `question` — needs discussion, not implementation
+
+Only pick issues that are open, unlabelled or labelled `enhancement`/`bug`/`good first issue`/`help wanted`.
+
 ### Development Workflow
 
 1. **Write up the issue** in GitHub (bug or feature), with appropriate labels
-2. **Create a feature branch** from dev (e.g., `feature/42-add-widget`)
-3. **Do all work in a worktree** on that branch
-4. **Open a PR** against dev, referencing the issue
-5. **Merge the PR** into dev
-6. **Clean up** after merge — remote branch is auto-deleted by GitHub; locally delete the branch and remove the worktree
+2. **Label the issue `in progress`** when starting work (`gh issue edit N --add-label "in progress"`)
+3. **Create a feature branch** from dev (e.g., `feature/42-add-widget`)
+4. **Do all work in a worktree** on that branch
+5. **Open a PR** against dev, referencing the issue
+6. **Merge the PR** into dev
+7. **Clean up** after merge — remote branch is auto-deleted by GitHub; locally delete the branch and remove the worktree
 
 ```bash
 # Feature development (always via worktree + PR)
