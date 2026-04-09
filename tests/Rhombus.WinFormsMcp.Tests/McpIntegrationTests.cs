@@ -128,6 +128,9 @@ public class McpIntegrationTests {
             "scroll_element",
             "get_table_data",
             "set_table_cell",
+            "manage_window",
+            "list_windows",
+            "get_focused_element",
         };
 
         var expectedSet = new HashSet<string>(expectedTools);

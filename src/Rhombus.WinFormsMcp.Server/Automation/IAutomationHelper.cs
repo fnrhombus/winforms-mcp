@@ -205,4 +205,19 @@ public interface IAutomationHelper : IDisposable {
     /// Set a cell value in a DataGridView or Grid control.
     /// </summary>
     (string? previousValue, string? newValue) SetTableCell(AutomationElement element, int row, int column, string value);
+
+    /// <summary>
+    /// Manage a window: maximize, minimize, restore, resize, or move.
+    /// </summary>
+    Dictionary<string, object?> ManageWindow(int pid, string action, int? width = null, int? height = null, int? x = null, int? y = null);
+
+    /// <summary>
+    /// List all top-level windows for a process.
+    /// </summary>
+    List<Dictionary<string, object?>> ListWindows(int pid);
+
+    /// <summary>
+    /// Get the currently focused element.
+    /// </summary>
+    AutomationElement? GetFocusedElement();
 }

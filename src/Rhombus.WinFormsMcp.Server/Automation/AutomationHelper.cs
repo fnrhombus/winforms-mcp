@@ -1362,6 +1362,137 @@ public class AutomationHelper : IAutomationHelper {
         }
     }
 
+    // COVERAGE_EXCEPTION: Window management requires live UIA elements
+    public Dictionary<string, object?> ManageWindow(int pid, string action, int? width = null, int? height = null, int? x = null, int? y = null) {
+        if (_automation == null)
+            throw new ObjectDisposedException(nameof(AutomationHelper));
+
+        var mainWindow = GetMainWindow(pid)
+            ?? throw new InvalidOperationException($"Could not find main window for process {pid}");
+
+        var window = mainWindow.AsWindow();
+        var windowPattern = mainWindow.Patterns.Window.PatternOrDefault;
+        var transformPattern = mainWindow.Patterns.Transform.PatternOrDefault;
+
+        switch (action.ToLower()) {
+            case "maximize":
+                if (windowPattern != null)
+                    windowPattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+                else
+                    throw new InvalidOperationException("Window does not support WindowPattern");
+                break;
+            case "minimize":
+                if (windowPattern != null)
+                    windowPattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Minimized);
+                else
+                    throw new InvalidOperationException("Window does not support WindowPattern");
+                break;
+            case "restore":
+                if (windowPattern != null)
+                    windowPattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Normal);
+                else
+                    throw new InvalidOperationException("Window does not support WindowPattern");
+                break;
+            case "resize":
+                if (transformPattern != null && transformPattern.CanResize.ValueOrDefault)
+                    transformPattern.Resize(width ?? 800, height ?? 600);
+                else
+                    throw new InvalidOperationException("Window does not support resizing via TransformPattern");
+                break;
+            case "move":
+                if (transformPattern != null && transformPattern.CanMove.ValueOrDefault)
+                    transformPattern.Move(x ?? 0, y ?? 0);
+                else
+                    throw new InvalidOperationException("Window does not support moving via TransformPattern");
+                break;
+            case "close":
+                window.Close();
+                break;
+            default:
+                throw new ArgumentException($"Invalid action '{action}'. Use maximize, minimize, restore, resize, move, or close.");
+        }
+
+        // Return current state
+        var rect = mainWindow.BoundingRectangle;
+        var state = windowPattern?.WindowVisualState.ValueOrDefault.ToString() ?? "unknown";
+        return new Dictionary<string, object?> {
+            ["windowState"] = state,
+            ["boundingRectangle"] = new Dictionary<string, int> {
+                ["x"] = (int)rect.X, ["y"] = (int)rect.Y,
+                ["width"] = (int)rect.Width, ["height"] = (int)rect.Height
+            }
+        };
+    }
+
+    // COVERAGE_EXCEPTION: Window enumeration requires live processes
+    public List<Dictionary<string, object?>> ListWindows(int pid) {
+        if (_automation == null)
+            throw new ObjectDisposedException(nameof(AutomationHelper));
+
+        var desktop = GetDesktopForProcess(pid);
+        var results = new List<Dictionary<string, object?>>();
+
+        if (desktop != IntPtr.Zero) {
+            // Hidden desktop: enumerate via EnumDesktopWindows
+            NativeMethods.WithDesktop(desktop, () => {
+                var desktopElement = _automation.GetDesktop();
+                var condition = new PropertyCondition(
+                    _automation.PropertyLibrary.Element.ProcessId, pid);
+                var windows = desktopElement.FindAllChildren(condition);
+
+                foreach (var win in windows) {
+                    var rect = win.BoundingRectangle;
+                    results.Add(new Dictionary<string, object?> {
+                        ["title"] = win.Name,
+                        ["className"] = win.ClassName,
+                        ["isVisible"] = !win.IsOffscreen,
+                        ["controlType"] = win.ControlType.ToString(),
+                        ["boundingRectangle"] = new Dictionary<string, int> {
+                            ["x"] = (int)rect.X, ["y"] = (int)rect.Y,
+                            ["width"] = (int)rect.Width, ["height"] = (int)rect.Height
+                        }
+                    });
+                }
+                return 0;
+            });
+        } else {
+            // Default desktop: use standard UIA tree
+            var desktopElement = _automation.GetDesktop();
+            var condition = new PropertyCondition(
+                _automation.PropertyLibrary.Element.ProcessId, pid);
+            var windows = desktopElement.FindAllChildren(condition);
+
+            foreach (var win in windows) {
+                var rect = win.BoundingRectangle;
+                results.Add(new Dictionary<string, object?> {
+                    ["title"] = win.Name,
+                    ["className"] = win.ClassName,
+                    ["isVisible"] = !win.IsOffscreen,
+                    ["controlType"] = win.ControlType.ToString(),
+                    ["boundingRectangle"] = new Dictionary<string, int> {
+                        ["x"] = (int)rect.X, ["y"] = (int)rect.Y,
+                        ["width"] = (int)rect.Width, ["height"] = (int)rect.Height
+                    }
+                });
+            }
+        }
+
+        return results;
+    }
+
+    // COVERAGE_EXCEPTION: Focus operations require live UIA desktop
+    public AutomationElement? GetFocusedElement() {
+        if (_automation == null)
+            throw new ObjectDisposedException(nameof(AutomationHelper));
+
+        try {
+            return _automation.FocusedElement();
+        }
+        catch {
+            return null;
+        }
+    }
+
     private (string? previousValue, string? newValue) SetTableCellViaGrid(AutomationElement element, int row, int column, string value) {
         var grid = element.AsGrid();
         var rows = grid.Rows;
