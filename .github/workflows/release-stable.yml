@@ -126,7 +126,46 @@ jobs:
         $body | Out-File -FilePath changelog.md -Encoding utf8 -NoNewline
         Write-Host "Changelog:`n$body"
 
+    - name: Create distribution
+      id: dist
+      shell: pwsh
+      run: |
+        $serverBin = "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows"
+        $hostBin   = "src/Rhombus.WinFormsMcp.RendererHost/bin/Release"
+        $stagingDir = "dist-staging"
+
+        # Stage server binaries
+        New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
+        Copy-Item -Path "$serverBin/winformsmcp.exe" -Destination "$stagingDir/" -Force
+        Get-ChildItem -Path $serverBin -Filter "*.dll" | ForEach-Object {
+          Copy-Item -Path $_.FullName -Destination "$stagingDir/" -Force
+        }
+
+        # Stage RendererHost binaries (one subfolder per TFM)
+        foreach ($tfm in @("net48", "netcoreapp3.1", "net8.0-windows")) {
+          $src = "$hostBin/$tfm"
+          $dest = "$stagingDir/rendererhost/$tfm"
+          if (Test-Path $src) {
+            New-Item -ItemType Directory -Path $dest -Force | Out-Null
+            Copy-Item -Path "$src/*" -Destination $dest -Recurse -Force
+            Write-Host "Copied RendererHost/$tfm -> $dest"
+          } else {
+            Write-Warning "RendererHost build output not found: $src"
+          }
+        }
+
+        # Create zip for GitHub Release
+        $zipName = "winformsmcp-v${{ steps.version.outputs.version }}-win-x64.zip"
+        Compress-Archive -Path "$stagingDir/*" -DestinationPath $zipName -Force
+        Write-Host "Created $zipName"
+        echo "zip_path=$zipName" >> $env:GITHUB_OUTPUT
+
+        # Copy staged files to npm/dist
+        New-Item -ItemType Directory -Path "npm/dist" -Force | Out-Null
+        Copy-Item -Path "$stagingDir/*" -Destination "npm/dist/" -Recurse -Force
+
     - name: Create GitHub Release
+      id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -137,19 +176,15 @@ jobs:
         draft: false
         prerelease: false
 
-    - name: Create NPM distribution
-      run: |
-        mkdir -p npm/dist
-        # Copy binaries
-        $exeFile = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows" -Filter "winformsmcp.exe" | Select-Object -First 1
-        $dllFiles = Get-ChildItem -Path "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows" -Filter "*.dll"
-        if ($exeFile) {
-          Copy-Item -Path $exeFile.FullName -Destination "npm/dist/" -Force
-        }
-        foreach ($dll in $dllFiles) {
-          Copy-Item -Path $dll.FullName -Destination "npm/dist/" -Force
-        }
-      shell: pwsh
+    - name: Upload release zip
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ steps.dist.outputs.zip_path }}
+        asset_name: ${{ steps.dist.outputs.zip_path }}
+        asset_content_type: application/zip
 
     - name: Publish to NPM
       run: |
