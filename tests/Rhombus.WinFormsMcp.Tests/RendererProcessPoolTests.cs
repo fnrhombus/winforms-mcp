@@ -306,7 +306,7 @@ namespace TestApp {
     private static string FindRepoRoot(string startDir) {
         var dir = startDir;
         while (dir != null) {
-            if (Directory.Exists(Path.Combine(dir, ".git")))
+            if (File.Exists(Path.Combine(dir, "Rhombus.WinFormsMcp.sln")))
                 return dir;
             dir = Path.GetDirectoryName(dir);
         }
