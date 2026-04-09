@@ -2,11 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 using FlaUI.Core.AutomationElements;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 using Rhombus.WinFormsMcp.Rendering;
 using Rhombus.WinFormsMcp.Server.Automation;
@@ -14,45 +17,38 @@ using Rhombus.WinFormsMcp.Server.Automation;
 namespace Rhombus.WinFormsMcp.Server;
 
 /// <summary>
-/// fnWindowsMCP - MCP Server for WinForms Automation
+/// WinFormsMcp - MCP Server for WinForms Automation
 ///
 /// This server provides tools for automating WinForms applications in a headless manner.
 /// It communicates via JSON-RPC over stdio (compatible with Claude Code).
 /// </summary>
 class Program {
-    private static AutomationServer? _server;
-
     static async Task Main(string[] args) {
-        try {
-            var headlessEnv = Environment.GetEnvironmentVariable("HEADLESS");
-            var headless = string.Equals(headlessEnv, "true", StringComparison.OrdinalIgnoreCase)
-                        || headlessEnv == "1";
+        var host = Host.CreateDefaultBuilder(args)
+            // Stdio transport — suppress all console logging to avoid corrupting JSON-RPC.
+            .ConfigureLogging(logging => logging.ClearProviders())
+            .ConfigureServices((context, services) => {
+                var headlessEnv = Environment.GetEnvironmentVariable("HEADLESS");
+                var headless = string.Equals(headlessEnv, "true", StringComparison.OrdinalIgnoreCase)
+                            || headlessEnv == "1";
 
-            var services = new ServiceCollection();
+                // Telemetry
+                var optOut = Environment.GetEnvironmentVariable("TELEMETRY_OPTOUT");
+                bool telemetryOptOut = string.Equals(optOut, "true", StringComparison.OrdinalIgnoreCase) || optOut == "1";
+                if (telemetryOptOut)
+                    services.AddSingleton<ITelemetry, NullTelemetry>();
+                else
+                    services.AddSingleton<ITelemetry, Telemetry>();
 
-            // Telemetry
-            var optOut = Environment.GetEnvironmentVariable("TELEMETRY_OPTOUT");
-            bool telemetryOptOut = string.Equals(optOut, "true", StringComparison.OrdinalIgnoreCase) || optOut == "1";
-            if (telemetryOptOut)
-                services.AddSingleton<ITelemetry, NullTelemetry>();
-            else
-                services.AddSingleton<ITelemetry, Telemetry>();
+                services.AddMemoryCache();
+                services.AddSingleton<IAutomationHelper>(new AutomationHelper(headless));
+                services.AddSingleton<ISessionManager, SessionManager>();
+                services.AddSingleton<RendererProcessPool>();
+                services.AddHostedService<AutomationServer>();
+            })
+            .Build();
 
-            services.AddMemoryCache();
-            services.AddSingleton<IAutomationHelper>(new AutomationHelper(headless));
-            services.AddSingleton<ISessionManager, SessionManager>();
-            services.AddSingleton<RendererProcessPool>();
-            services.AddSingleton<AutomationServer>();
-
-            var provider = services.BuildServiceProvider();
-            _server = provider.GetRequiredService<AutomationServer>();
-            await _server.RunAsync();
-        }
-        catch (Exception ex) {
-            Console.Error.WriteLine($"Fatal error: {ex.Message}");
-            Console.Error.WriteLine(ex.StackTrace);
-            Environment.Exit(1);
-        }
+        await host.RunAsync();
     }
 }
 
@@ -108,19 +104,22 @@ class SessionManager : ISessionManager {
 }
 
 /// <summary>
-/// Core MCP server implementation handling JSON-RPC communication
+/// Core MCP server implementation handling JSON-RPC communication.
+/// Runs as a hosted service — the host starts it and manages its lifetime.
 /// </summary>
-class AutomationServer {
+class AutomationServer : BackgroundService {
     private readonly Dictionary<string, Func<JsonElement, Task<JsonElement>>> _tools;
     private int _nextId = 1;
     private readonly ISessionManager _session;
     private readonly RendererProcessPool _rendererPool;
     private readonly ITelemetry _telemetry;
+    private readonly IHostApplicationLifetime _lifetime;
 
-    public AutomationServer(ISessionManager session, RendererProcessPool rendererPool, ITelemetry telemetry) {
+    public AutomationServer(ISessionManager session, RendererProcessPool rendererPool, ITelemetry telemetry, IHostApplicationLifetime lifetime) {
         _session = session;
         _rendererPool = rendererPool;
         _telemetry = telemetry;
+        _lifetime = lifetime;
         _tools = new Dictionary<string, Func<JsonElement, Task<JsonElement>>>
         {
             // Element Tools
@@ -180,7 +179,7 @@ class AutomationServer {
         };
     }
 
-    public async Task RunAsync() {
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
         var reader = Console.In;
         // Use raw stdout stream with explicit LF to avoid Windows CRLF (\r\n),
         // which breaks Node.js JSON parsing when it splits on \n and sees trailing \r.
@@ -191,8 +190,8 @@ class AutomationServer {
         };
 
         // Process incoming messages — wait for client to send initialize first
-        while (true) {
-            var line = await reader.ReadLineAsync();
+        while (!stoppingToken.IsCancellationRequested) {
+            var line = await reader.ReadLineAsync(stoppingToken);
             if (line == null)
                 break;
             if (string.IsNullOrWhiteSpace(line))
@@ -213,6 +212,9 @@ class AutomationServer {
                 await writer.WriteLineAsync(JsonSerializer.Serialize(response));
                 await writer.FlushAsync();
             }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
+                break;
+            }
             catch (Exception ex) {
                 _telemetry.TrackException(ex);
                 var error = new {
@@ -229,9 +231,11 @@ class AutomationServer {
             }
         }
 
-        // Clean up renderer host processes on exit
+        // Stdin closed or cancellation requested — tell the host to shut down
+        // so all hosted services stop and DI containers are disposed.
         _rendererPool.Dispose();
         _telemetry.Flush();
+        _lifetime.StopApplication();
     }
 
     private static object GetRequestId(JsonElement request) {
