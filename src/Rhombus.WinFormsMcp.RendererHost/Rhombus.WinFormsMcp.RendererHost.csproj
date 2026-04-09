@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Every WinForms-capable TFM. The process pool picks the closest match
+         to the target project's framework, guaranteeing assembly compatibility. -->
+    <!-- Three builds cover all WinForms-capable frameworks:
+         net48           = all .NET Framework (4.6.1-4.8.x, forward-compatible)
+         netcoreapp3.1   = .NET Core 3.0/3.1
+         net8.0-windows  = .NET 5/6/7/8 (forward-compatible runtime) -->
+    <TargetFrameworks>net48;netcoreapp3.1;net8.0-windows</TargetFrameworks>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>Rhombus.WinFormsMcp.RendererHost</AssemblyName>
+    <RootNamespace>Rhombus.WinFormsMcp.RendererHost</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- Roslyn for parsing .Designer.cs files -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+  </ItemGroup>
+
+  <!-- Share rendering source files from the Server project -->
+  <ItemGroup>
+    <Compile Include="..\Rhombus.WinFormsMcp.Server\Automation\DesignSurfaceFormRenderer.cs" Link="Rendering\DesignSurfaceFormRenderer.cs" />
+    <Compile Include="..\Rhombus.WinFormsMcp.Server\Automation\FormRenderingHelpers.cs" Link="Rendering\FormRenderingHelpers.cs" />
+    <Compile Include="..\Rhombus.WinFormsMcp.Server\Automation\EvaluationSkipped.cs" Link="Rendering\EvaluationSkipped.cs" />
+  </ItemGroup>
+
+  <!-- .NET Framework needs explicit assembly references + backported packages -->
+  <ItemGroup Condition="$(TargetFramework.StartsWith('net4'))">
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Design" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <!-- netcoreapp3.1 needs UseWindowsForms but doesn't use the -windows suffix -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+</Project>

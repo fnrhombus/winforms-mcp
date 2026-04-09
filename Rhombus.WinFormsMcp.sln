@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -12,6 +12,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{E5FE0ABE-65D5-4527-A8EE-A98179BF82B7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhombus.WinFormsMcp.Tests", "tests\Rhombus.WinFormsMcp.Tests\Rhombus.WinFormsMcp.Tests.csproj", "{24993B7F-6A47-401D-9E46-5549E43B453C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rhombus.WinFormsMcp.RendererHost", "src\Rhombus.WinFormsMcp.RendererHost\Rhombus.WinFormsMcp.RendererHost.csproj", "{7747AEEF-2768-44DA-B9B7-1028A930DA75}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -34,10 +36,15 @@ Global
 		{24993B7F-6A47-401D-9E46-5549E43B453C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{24993B7F-6A47-401D-9E46-5549E43B453C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{24993B7F-6A47-401D-9E46-5549E43B453C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7747AEEF-2768-44DA-B9B7-1028A930DA75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7747AEEF-2768-44DA-B9B7-1028A930DA75}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7747AEEF-2768-44DA-B9B7-1028A930DA75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7747AEEF-2768-44DA-B9B7-1028A930DA75}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{FA611870-BD2A-4DB9-A782-9A8630B47599} = {746C1254-339C-407D-8FC2-BE71CAA87016}
 		{01D5E487-4971-4F3C-A56A-0494E70A9B26} = {746C1254-339C-407D-8FC2-BE71CAA87016}
 		{24993B7F-6A47-401D-9E46-5549E43B453C} = {E5FE0ABE-65D5-4527-A8EE-A98179BF82B7}
+		{7747AEEF-2768-44DA-B9B7-1028A930DA75} = {746C1254-339C-407D-8FC2-BE71CAA87016}
 	EndGlobalSection
 EndGlobal

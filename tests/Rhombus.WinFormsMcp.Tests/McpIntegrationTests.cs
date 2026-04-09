@@ -122,11 +122,17 @@ public class McpIntegrationTests {
             "click_menu_item",
             "get_element_tree",
         };
-new Set
-        foreach (var expected in expectedTools) {
-            Assert.That(toolNames, Does.Contain(expected),
-                $"Missing expected tool: {expected}");
-        }
+
+        var expectedSet = new HashSet<string>(expectedTools);
+        var missing = new HashSet<string>(expectedSet);
+        missing.ExceptWith(toolNames);
+        var extra = new HashSet<string>(toolNames);
+        extra.ExceptWith(expectedSet);
+
+        Assert.Multiple(() => {
+            Assert.That(missing, Is.Empty, $"Missing tools: {string.Join(", ", missing)}");
+            Assert.That(extra, Is.Empty, $"Unexpected tools: {string.Join(", ", extra)}");
+        });
 
         TestContext.WriteLine($"Server exposes {toolNames.Count} tools:");
         foreach (var name in toolNames.OrderBy(n => n)) {

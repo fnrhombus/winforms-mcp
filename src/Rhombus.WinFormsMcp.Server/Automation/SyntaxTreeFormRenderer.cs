@@ -767,11 +767,3 @@ public class SyntaxTreeFormRenderer {
         File.WriteAllBytes(outputPath, pngBytes);
     }
 }
-
-/// <summary>
-/// Sentinel type indicating an expression could not be evaluated and should be skipped.
-/// </summary>
-internal sealed class EvaluationSkipped {
-    public static readonly EvaluationSkipped Instance = new();
-    private EvaluationSkipped() { }
-}
