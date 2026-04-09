@@ -1,6 +1,6 @@
-# fnWindowsMCP Quick Start Guide
+# Rhombus.WinFormsMcp Quick Start Guide
 
-Get up and running with fnWindowsMCP in 5 minutes.
+Get up and running with Rhombus.WinFormsMcp in 5 minutes.
 
 ## Prerequisites
 
@@ -13,8 +13,8 @@ Get up and running with fnWindowsMCP in 5 minutes.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/fnWindowsMCP.git
-cd fnWindowsMCP
+git clone https://github.com/rhom6us/winforms-mcp.git
+cd winforms-mcp
 ```
 
 ### 2. Build the Solution
@@ -36,7 +36,7 @@ You should see tests passing (some may require automation setup).
 ### Step 1: Start the MCP Server
 
 ```bash
-dotnet run --project src/fnWindowsMCP.Server/fnWindowsMCP.Server.csproj
+dotnet run --project src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj
 ```
 
 The server is now listening on stdin/stdout for JSON-RPC messages.
@@ -71,7 +71,7 @@ First, find a text element and interact with it:
   "params": {
     "name": "send_keys",
     "arguments": {
-      "keys": "Hello from fnWindowsMCP!"
+      "keys": "Hello from Rhombus.WinFormsMcp!"
     }
   }
 }
@@ -98,7 +98,7 @@ First, find a text element and interact with it:
 ### Run the Test Application
 
 ```bash
-dotnet run --project src/fnWindowsMCP.TestApp/fnWindowsMCP.TestApp.csproj
+dotnet run --project src/Rhombus.WinFormsMcp.TestApp/Rhombus.WinFormsMcp.TestApp.csproj
 ```
 
 A WinForms window appears with various controls.
@@ -279,12 +279,12 @@ Then type text:
 ## Project Structure
 
 ```
-fnWindowsMCP/
+Rhombus.WinFormsMcp/
 ├── src/
-│   ├── fnWindowsMCP.Server/     # MCP server (main)
-│   └── fnWindowsMCP.TestApp/    # Test WinForms app
+│   ├── Rhombus.WinFormsMcp.Server/     # MCP server (main)
+│   └── Rhombus.WinFormsMcp.TestApp/    # Test WinForms app
 ├── tests/
-│   └── fnWindowsMCP.Tests/      # NUnit tests
+│   └── Rhombus.WinFormsMcp.Tests/      # NUnit tests
 ├── docs/
 │   ├── EXAMPLES.md              # Detailed examples
 │   └── QUICKSTART.md            # This file
@@ -332,9 +332,9 @@ fnWindowsMCP/
 ## Next Steps
 
 1. Read [EXAMPLES.md](EXAMPLES.md) for detailed workflows
-2. Run the [TestApp](src/fnWindowsMCP.TestApp/) to explore controls
+2. Run the [TestApp](../src/Rhombus.WinFormsMcp.TestApp/) to explore controls
 3. Check the [API Reference](../README.md#mcp-tool-reference)
-4. Run the [test suite](tests/fnWindowsMCP.Tests/) to verify
+4. Run the [test suite](../tests/Rhombus.WinFormsMcp.Tests/) to verify
 
 ## Performance Tips
 
@@ -346,14 +346,14 @@ fnWindowsMCP/
 
 ## Integration with Claude Code
 
-To use fnWindowsMCP with Claude Code, configure it as an MCP server in your workspace:
+To use Rhombus.WinFormsMcp with Claude Code, configure it as an MCP server in your workspace:
 
 ```json
 {
   "mcp": {
-    "fnWindowsMCP": {
+    "winforms-mcp": {
       "command": "dotnet",
-      "args": ["run", "--project", "path/to/fnWindowsMCP.Server/fnWindowsMCP.Server.csproj"]
+      "args": ["run", "--project", "path/to/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj"]
     }
   }
 }
