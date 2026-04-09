@@ -87,6 +87,7 @@ class AutomationServer {
     private readonly SyntaxTreeFormRenderer _formRenderer = new();
     private readonly InProcessFormRenderer _inProcessSyntaxTreeFormRenderer = new();
     private readonly CompiledFormRenderer _compiledSyntaxTreeFormRenderer = new();
+    private readonly RendererProcessPool _rendererPool = new();
 
     public AutomationServer(bool headless = false) {
         _session = new SessionManager(headless);
@@ -177,6 +178,9 @@ class AutomationServer {
                 await writer.FlushAsync();
             }
         }
+
+        // Clean up renderer host processes on exit
+        _rendererPool.Dispose();
     }
 
     private static object GetRequestId(JsonElement request) {
@@ -835,28 +839,39 @@ class AutomationServer {
         }
     }
 
-    private Task<JsonElement> RenderForm(JsonElement args) {
+    private async Task<JsonElement> RenderForm(JsonElement args) {
         try {
             var designerFilePath = GetStringArg(args, "designerFilePath") ?? throw new ArgumentException("designerFilePath is required");
             var outputPath = GetStringArg(args, "outputPath");
 
-            byte[] pngBytes;
+            // Resolve the designer file and find the companion .cs
+            var designerFile = FormRenderingHelpers.ResolveDesignerFile(designerFilePath);
+            var designerContent = System.IO.File.ReadAllText(designerFile);
+
+            var idx = designerFile.LastIndexOf(".Designer.cs", StringComparison.OrdinalIgnoreCase);
+            var companionPath = idx >= 0 ? designerFile.Substring(0, idx) + ".cs" : designerFile;
+            var companionContent = System.IO.File.Exists(companionPath) ? System.IO.File.ReadAllText(companionPath) : null;
+
+            // Determine TFM: env var override or auto-detect from csproj
+            var configuredTfm = RendererProcessPool.GetConfiguredTfm();
+            string? csprojPath = null;
+            if (string.Equals(configuredTfm, "auto", StringComparison.OrdinalIgnoreCase)) {
+                var dir = Path.GetDirectoryName(designerFile)!;
+                csprojPath = FormRenderingHelpers.FindCsproj(dir);
+            }
+
+            var pngBytes = await _rendererPool.RenderAsync(
+                designerContent, companionContent, null, configuredTfm, csprojPath);
 
             if (!string.IsNullOrEmpty(outputPath)) {
-                // Save to disk AND return base64
-                _formRenderer.RenderDesignerFile(designerFilePath, outputPath);
-                pngBytes = System.IO.File.ReadAllBytes(outputPath);
-            }
-            else {
-                // No output path: render to bytes only
-                pngBytes = _formRenderer.RenderDesignerFileToBytes(designerFilePath);
+                System.IO.File.WriteAllBytes(outputPath, pngBytes);
             }
 
             var base64 = Convert.ToBase64String(pngBytes);
-            return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement);
+            return JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement;
         }
         catch (Exception ex) {
-            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+            return JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement;
         }
     }
 

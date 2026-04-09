@@ -62,7 +62,8 @@ public class DesignSurfaceFormRenderer {
         var designerContent = File.ReadAllText(designerFile);
 
         // Try to find companion .cs for base type detection
-        var companionPath = designerFile.Replace(".Designer.cs", ".cs", StringComparison.OrdinalIgnoreCase);
+        var idx = designerFile.LastIndexOf(".Designer.cs", StringComparison.OrdinalIgnoreCase);
+        var companionPath = idx >= 0 ? designerFile.Substring(0, idx) + ".cs" : designerFile;
         string? companionContent = null;
         if (File.Exists(companionPath) && !companionPath.Equals(designerFile, StringComparison.OrdinalIgnoreCase))
             companionContent = File.ReadAllText(companionPath);
@@ -915,8 +916,9 @@ public class DesignSurfaceFormRenderer {
     #region Utilities
 
     private static string ComputeHash(string content) {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(content));
-        return Convert.ToHexString(bytes);
+        using var sha = SHA256.Create();
+        var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(content));
+        return BitConverter.ToString(bytes).Replace("-", "");
     }
 
     #endregion
