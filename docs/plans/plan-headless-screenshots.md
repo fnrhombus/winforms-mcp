@@ -10,7 +10,7 @@ The Rhombus.WinFormsMcp server needs to capture screenshots of WinForms applicat
 
 There are two distinct screenshot scenarios:
 
-1. **Form rendering from source code** (render_form, render_form_inprocess, render_form_compiled) -- These already work headlessly because they use `Form.DrawToBitmap()` which renders to an off-screen buffer without requiring a visible window or display.
+1. **Form rendering from source code** (`render_form`) -- Already works headlessly because it uses `DrawToBitmap()` via DesignSurface, which renders to an off-screen buffer without requiring a visible window or display.
 
 2. **Live application screenshot** (`take_screenshot` tool via `AutomationHelper.TakeScreenshot`) -- This uses FlaUI's `element.Capture()` / `desktop.Capture()`, which relies on `System.Drawing.Graphics.CopyFromScreen()` under the hood. This requires:
    - A visible, on-screen window with non-zero bounding rectangle
@@ -85,7 +85,7 @@ The current `_headless` flag sets `CreateNoWindow = true` and `WindowStyle = Pro
 - `DrawToBitmap()` works perfectly with off-screen windows because it uses `WM_PRINT` / `WM_PRINTCLIENT` messages that render to a provided DC rather than the screen.
 - **FlaUI's `element.Capture()`** uses `Graphics.CopyFromScreen()` which copies from the actual screen buffer. For off-screen windows, the pixels are NOT in the screen buffer, so `CopyFromScreen` captures garbage or black.
 - **However**, `element.BoundingRectangle` is still valid for off-screen windows (it will report the off-screen coordinates). FlaUI element discovery and UIA property access work fine.
-- The form renderers (SyntaxTreeFormRenderer, InProcessFormRenderer, CompiledFormRenderer) already use this approach with `DrawToBitmap`, proving it works for rendering.
+- The `render_form` tool (DesignSurfaceFormRenderer) already uses this approach with `DrawToBitmap`, proving it works for rendering.
 
 **Key insight:** Off-screen positioning + `DrawToBitmap` works, but only for forms you control. For the `take_screenshot` tool that captures arbitrary running applications, you can't call `DrawToBitmap` on an external process's window.
 
@@ -176,10 +176,10 @@ gfx.ReleaseHdc(hdc);
 
 ### Approach 6: Headless Form Rendering Without Launching the App
 
-**Concept:** Extend the InProcessFormRenderer approach to handle the `take_screenshot` use case. Instead of launching an external app, compile the form source code in-process and use `DrawToBitmap`.
+**Concept:** Extend the DesignSurfaceFormRenderer approach to handle the `take_screenshot` use case. Instead of launching an external app, render the form via DesignSurface and use `DrawToBitmap`.
 
 **Findings:**
-- The InProcessFormRenderer already does exactly this for form preview. It compiles `.Designer.cs` code via Roslyn, instantiates the form, and calls `DrawToBitmap`.
+- The `render_form` tool already does exactly this for form preview. It parses `.Designer.cs` code via Roslyn, instantiates controls on a DesignSurface, and calls `DrawToBitmap`.
 - **However**, this only works for static form previews. The `take_screenshot` tool is meant to capture a RUNNING application's current state -- with data loaded, user interactions applied, dynamic content, etc.
 - You cannot use `DrawToBitmap` on an external process's form from another process.
 - This approach is fundamentally different from live screenshot capture.
