@@ -121,6 +121,7 @@ Set `HEADLESS=true` to launch apps on a hidden Windows desktop (`CreateDesktop` 
 |----------|---------|-------------|
 | `HEADLESS` | `false` | Run launched apps on a hidden desktop |
 | `TFM` | `auto` | Lock rendering to a specific framework (`net48`, `netcoreapp3.1`, `net8.0-windows`) |
+| `TELEMETRY_OPTOUT` | `false` | Set to `true` or `1` to disable anonymous usage telemetry |
 
 ## Documentation
 

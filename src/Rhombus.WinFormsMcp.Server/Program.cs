@@ -182,6 +182,7 @@ class AutomationServer {
                 await writer.FlushAsync();
             }
             catch (Exception ex) {
+                Telemetry.TrackException(ex);
                 var error = new {
                     jsonrpc = "2.0",
                     id = (object?)null,
@@ -198,6 +199,7 @@ class AutomationServer {
 
         // Clean up renderer host processes on exit
         _rendererPool.Dispose();
+        Telemetry.Flush();
     }
 
     private static object GetRequestId(JsonElement request) {
@@ -259,7 +261,19 @@ class AutomationServer {
             if (!_tools.ContainsKey(toolName))
                 throw new InvalidOperationException($"Unknown tool: {toolName}");
 
-            var result = await _tools[toolName](toolArgs);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            JsonElement result;
+            try {
+                result = await _tools[toolName](toolArgs);
+            }
+            catch (Exception ex) {
+                sw.Stop();
+                Telemetry.TrackToolCall(toolName, sw.Elapsed);
+                Telemetry.TrackException(ex);
+                throw;
+            }
+            sw.Stop();
+            Telemetry.TrackToolCall(toolName, sw.Elapsed);
 
             // If the tool returned image data, respond with an MCP image content block
             if (result.TryGetProperty("imageBase64", out var imgData) && imgData.ValueKind == JsonValueKind.String) {
