@@ -229,14 +229,14 @@ public class AutomationHelperHeadlessTests {
     public void TestSendKeys() {
         // Arrange
         _mockAutomation!
-            .Setup(a => a.SendKeys("test"))
+            .Setup(a => a.SendKeys("test", null))
             .Verifiable();
 
         // Act
-        _mockAutomation.Object.SendKeys("test");
+        _mockAutomation.Object.SendKeys("test", null);
 
         // Assert
-        _mockAutomation.Verify(a => a.SendKeys("test"), Times.Once);
+        _mockAutomation.Verify(a => a.SendKeys("test", null), Times.Once);
     }
 
     [Test]

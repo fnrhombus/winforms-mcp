@@ -12,7 +12,7 @@ An [MCP server](https://modelcontextprotocol.io) that gives Claude (and any MCP-
 - **See and operate running apps** — launch processes, find elements, click, type, drag-drop, and take screenshots, all through FlaUI/UIA2 automation
 - **Design-time form preview** — renders `.Designer.cs` files to pixel-accurate PNGs *without building the project*, the same way Visual Studio's WYSIWYG designer works
 - **Every framework, every version** — .NET Framework 4.x, .NET Core 3.x, .NET 5–9+. Out-of-process rendering automatically matches your project's target framework
-- **Headless by default** — no monitor, no desktop session, no problem. Built for CI/CD, remote machines, and background agents
+- **Headless mode** — launch apps on a hidden desktop with zero focus stealing. Built for CI/CD, remote machines, and background agents
 - **Zero configuration** — one line in your MCP config and you're running. No per-project setup, no framework selection, no build step required
 
 ## Getting Started
@@ -100,11 +100,36 @@ Override the auto-detection with the `TFM` environment variable if needed:
 }
 ```
 
+## Headless Mode
+
+When `HEADLESS=true`, launched applications run on a hidden Windows desktop (`CreateDesktop` API) with complete UI isolation:
+
+- **Zero focus stealing** — the app cannot steal focus, show TopMost windows, or flash in the taskbar, even if it calls `this.Activate()` or `SetForegroundWindow`
+- **Invisible to the user** — the hidden desktop is entirely separate from the user's visible desktop
+- **Full automation support** — element discovery, clicking, typing, and screenshots all work through UIA patterns and PrintWindow
+- **Mixed mode** — attach to visible apps and launch headless apps in the same session. Each process is automatically routed to its correct desktop.
+
+Enable it in your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "winforms-mcp": {
+      "command": "npx",
+      "args": ["-y", "@rhom6us/winforms-mcp"],
+      "env": { "HEADLESS": "true" }
+    }
+  }
+}
+```
+
+**Limitations:** `send_keys` and `drag_drop` require input simulation and only work on the visible desktop (i.e., with `attach_to_process`). For headless processes, use `type_text`/`set_value` (which use UIA ValuePattern) and `click_element` (which uses UIA InvokePattern) instead.
+
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `HEADLESS` | `true` | Hide launched application windows. Set to `false` to show them. |
+| `HEADLESS` | `false` | Launch applications on a hidden desktop for zero-disruption automation. Set to `true` to enable. |
 | `TFM` | `auto` | Lock rendering to a specific framework (`net48`, `netcoreapp3.1`, `net8.0-windows`), or `auto` to detect from the project. |
 
 ## Documentation
@@ -114,6 +139,7 @@ For detailed setup instructions, tool reference, examples, and troubleshooting, 
 - [Claude Code Setup Guide](docs/CLAUDE_CODE_SETUP.md) — step-by-step MCP configuration
 - [Quick Start](docs/QUICKSTART.md) — first automation in 5 minutes
 - [Examples](docs/EXAMPLES.md) — common workflows and patterns
+- [Headless Mode](docs/HEADLESS_MODE.md) — hidden desktop architecture and tool compatibility
 
 ## Contributing
 

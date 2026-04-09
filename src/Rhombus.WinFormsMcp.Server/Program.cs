@@ -22,8 +22,8 @@ class Program {
     static async Task Main(string[] args) {
         try {
             var headlessEnv = Environment.GetEnvironmentVariable("HEADLESS");
-            var headless = !string.Equals(headlessEnv, "false", StringComparison.OrdinalIgnoreCase)
-                        && headlessEnv != "0";
+            var headless = string.Equals(headlessEnv, "true", StringComparison.OrdinalIgnoreCase)
+                        || headlessEnv == "1";
 
             _server = new AutomationServer(headless);
             await _server.RunAsync();
@@ -389,12 +389,15 @@ class AutomationServer {
             new
             {
                 name = "take_screenshot",
-                description = "Take a screenshot of the application or element. Returns the image as base64 data that Claude can see directly. Optionally saves to disk if outputPath is provided.",
+                description = "Take a screenshot of the application or element. Returns the image as base64 data that Claude can see directly. " +
+                    "Uses PrintWindow for capture, which works for both visible and headless (hidden desktop) processes. " +
+                    "Provide pid for the most reliable capture path. Optionally saves to disk if outputPath is provided.",
                 inputSchema = new
                 {
                     type = "object",
                     properties = new
                     {
+                        pid = new { type = "integer", description = "Process ID — captures the process's main window via PrintWindow (recommended)" },
                         outputPath = new { type = "string", description = "Path to save the screenshot (optional). If omitted, captures to a temp file, converts to base64, and deletes the temp file." },
                         elementPath = new { type = "string", description = "Specific element to screenshot (optional)" }
                     }
@@ -480,6 +483,123 @@ class AutomationServer {
                         depth = new { type = "integer", description = "Maximum depth to traverse (default 3)" },
                         maxElements = new { type = "integer", description = "Maximum total elements to include (default 50)" }
                     }
+                }
+            },
+            // ── Previously undocumented tools ──
+            new
+            {
+                name = "set_value",
+                description = "Set a value on a UI element using UIA ValuePattern. Works on text boxes, combo boxes, and other value-holding controls. " +
+                    "Unlike type_text, this sets the value directly without simulating keystrokes — works on hidden desktops.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        elementId = new { type = "string", description = "Cached element ID (e.g. elem_1)" },
+                        value = new { type = "string", description = "Value to set on the element" }
+                    },
+                    required = new[] { "elementId", "value" }
+                }
+            },
+            new
+            {
+                name = "attach_to_process",
+                description = "Attach to a running process by PID or process name. Use this to automate an application that is already running " +
+                    "(e.g., an app launched outside the MCP server). Always attaches on the default (visible) desktop. " +
+                    "Provide either pid or processName (not both).",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        pid = new { type = "integer", description = "Process ID to attach to" },
+                        processName = new { type = "string", description = "Process name to attach to (e.g. \"notepad\"). Finds the first matching process." }
+                    }
+                }
+            },
+            new
+            {
+                name = "close_app",
+                description = "Close a running application. By default sends WM_CLOSE for a graceful shutdown. " +
+                    "Use force=true to kill the process immediately (Process.Kill).",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        pid = new { type = "integer", description = "Process ID of the application to close" },
+                        force = new { type = "boolean", description = "If true, forcefully kill the process instead of graceful close (default false)" }
+                    },
+                    required = new[] { "pid" }
+                }
+            },
+            new
+            {
+                name = "element_exists",
+                description = "Quick boolean check for whether a UI element with the given AutomationId exists. " +
+                    "Uses a short 1-second timeout. Use this for fast existence checks before attempting interactions.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        automationId = new { type = "string", description = "AutomationId of the element to check" }
+                    },
+                    required = new[] { "automationId" }
+                }
+            },
+            new
+            {
+                name = "wait_for_element",
+                description = "Wait for a UI element to appear, polling at 100ms intervals. " +
+                    "Use this after actions that trigger async UI changes (e.g., opening a dialog, loading data). " +
+                    "Returns whether the element was found within the timeout period.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        automationId = new { type = "string", description = "AutomationId of the element to wait for" },
+                        timeoutMs = new { type = "integer", description = "Maximum time to wait in milliseconds (default 10000)" }
+                    },
+                    required = new[] { "automationId" }
+                }
+            },
+            new
+            {
+                name = "drag_drop",
+                description = "Perform a drag-and-drop operation from one element to another. " +
+                    "Uses mouse simulation — only works on the default (visible) desktop, not on hidden desktops. " +
+                    "Both elements must be cached from a prior find_element or get_element_tree call.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        sourceElementId = new { type = "string", description = "Cached element ID of the drag source" },
+                        targetElementId = new { type = "string", description = "Cached element ID of the drop target" }
+                    },
+                    required = new[] { "sourceElementId", "targetElementId" }
+                }
+            },
+            new
+            {
+                name = "send_keys",
+                description = "Send keyboard input to the application. Uses SendKeys syntax: " +
+                    "^ = Ctrl, % = Alt, + = Shift, {ENTER}, {TAB}, {ESC}, {DELETE}, {F1}-{F12}, etc. " +
+                    "Examples: \"^a\" (Ctrl+A), \"^c\" (Ctrl+C), \"%{F4}\" (Alt+F4), \"+{TAB}\" (Shift+Tab). " +
+                    "Uses input simulation — only works on the default (visible) desktop. " +
+                    "For text input on hidden desktops, use type_text or set_value instead.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        keys = new { type = "string", description = "Keys to send using SendKeys syntax" },
+                        pid = new { type = "integer", description = "Optional process ID to focus before sending keys" }
+                    },
+                    required = new[] { "keys" }
                 }
             }
         };
@@ -677,6 +797,7 @@ class AutomationServer {
         try {
             var outputPath = GetStringArg(args, "outputPath");
             var elementId = GetStringArg(args, "elementId");
+            var pid = GetNullableIntArg(args, "pid");
 
             var automation = _session.GetAutomation();
             AutomationElement? element = null;
@@ -690,7 +811,7 @@ class AutomationServer {
                 ? Path.Combine(Path.GetTempPath(), $"screenshot_{Guid.NewGuid():N}.png")
                 : outputPath!;
 
-            automation.TakeScreenshot(screenshotPath, element);
+            automation.TakeScreenshot(screenshotPath, element, pid);
 
             // Read the file and convert to base64
             var imageBytes = File.ReadAllBytes(screenshotPath);
@@ -762,9 +883,10 @@ class AutomationServer {
     private Task<JsonElement> SendKeys(JsonElement args) {
         try {
             var keys = GetStringArg(args, "keys") ?? throw new ArgumentException("keys is required");
+            var pid = GetNullableIntArg(args, "pid");
 
             var automation = _session.GetAutomation();
-            automation.SendKeys(keys);
+            automation.SendKeys(keys, pid);
 
             return Task.FromResult(JsonDocument.Parse("{\"success\": true, \"message\": \"Keys sent\"}").RootElement);
         }

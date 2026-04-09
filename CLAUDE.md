@@ -97,6 +97,21 @@ The server maintains session state across tool calls:
 - Cached automation elements with generated IDs (elem_1, elem_2, etc.)
 - Active AutomationHelper instance
 - Process tracking with PIDs
+- Per-process desktop routing (hidden vs default desktop)
+- Native process handles for exit code access (CreateProcess-launched processes)
+
+### Headless Mode (Hidden Desktop)
+
+When `HEADLESS=true`, the server creates a hidden desktop via `CreateDesktop("McpAutomation")` within `WinSta0`. Key implementation details:
+
+- **Process launch:** Uses `CreateProcess` P/Invoke with `STARTUPINFO.lpDesktop = "WinSta0\\McpAutomation"` (cannot use `Process.Start`)
+- **Element discovery:** Requires `SetThreadDesktop(hDesktop)` before FlaUI/UIA calls; handled transparently by `OnProcessDesktop()`
+- **Screenshots:** Uses `PrintWindow(hwnd, hdc, PW_RENDERFULLCONTENT)` — flag 2, not flag 0 (flag 0 returns blank on hidden desktops)
+- **Interaction:** Uses UIA patterns (InvokePattern, ValuePattern, etc.) instead of input simulation (SendKeys/mouse)
+- **`send_keys`/`drag_drop`:** Only work on the default desktop (input simulation targets the active desktop's input queue)
+- **Mixed sessions:** `attach_to_process` always uses the default desktop; `launch_app` uses the hidden desktop. Desktop routing is per-process, per-call.
+
+See `docs/HEADLESS_MODE.md` for the full technical reference aimed at AI agent consumers.
 
 ### Error Handling
 

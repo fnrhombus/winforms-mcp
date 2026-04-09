@@ -93,6 +93,11 @@ public interface IAutomationHelper : IDisposable {
     void TakeScreenshot(string outputPath, AutomationElement? element = null);
 
     /// <summary>
+    /// Take screenshot with optional PID for PrintWindow-based capture.
+    /// </summary>
+    void TakeScreenshot(string outputPath, AutomationElement? element, int? pid);
+
+    /// <summary>
     /// Drag and drop
     /// </summary>
     void DragDrop(AutomationElement source, AutomationElement target);
@@ -100,7 +105,7 @@ public interface IAutomationHelper : IDisposable {
     /// <summary>
     /// Send keyboard keys
     /// </summary>
-    void SendKeys(string keys);
+    void SendKeys(string keys, int? targetPid = null);
 
     /// <summary>
     /// Close application
@@ -138,6 +143,17 @@ public interface IAutomationHelper : IDisposable {
     /// <param name="menuPath">Array of menu item names forming the path (e.g. ["File", "Save As"])</param>
     /// <param name="pid">Optional process ID to scope the search to a specific window</param>
     void ClickMenuItem(string[] menuPath, int? pid = null);
+
+    /// <summary>
+    /// Switch the calling thread to a process's desktop, execute an action, then restore.
+    /// No-op for default desktop processes.
+    /// </summary>
+    T OnProcessDesktop<T>(int pid, Func<T> action);
+
+    /// <summary>
+    /// Non-generic overload.
+    /// </summary>
+    void OnProcessDesktop(int pid, Action action);
 
     /// <summary>
     /// Build a tree of UI automation elements starting from a root element.
