@@ -288,7 +288,7 @@ namespace Test {
             mcpServers = new Dictionary<string, object> {
                 ["winforms-mcp"] = new {
                     command = "dotnet",
-                    args = new[] { "run", "--project", ServerProjectPath, "--no-build" },
+                    args = new[] { "run", "--project", ServerProjectPath },
                     env = new Dictionary<string, string> { ["HEADLESS"] = "true" }
                 }
             }
