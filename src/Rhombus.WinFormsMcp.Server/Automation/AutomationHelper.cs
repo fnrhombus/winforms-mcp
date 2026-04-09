@@ -10,6 +10,8 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.Logging;
+
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Conditions;
@@ -42,10 +44,13 @@ public class AutomationHelper : IAutomationHelper {
     /// <summary>Maps PID → native process handle from CreateProcess (for exit code access).</summary>
     private readonly ConcurrentDictionary<int, IntPtr> _nativeProcessHandles = new();
 
+    private readonly ILogger<AutomationHelper>? _logger;
+
     public bool Headless { get; }
 
-    public AutomationHelper(bool headless = false) {
+    public AutomationHelper(bool headless = false, ILogger<AutomationHelper>? logger = null) {
         Headless = headless;
+        _logger = logger;
         _automation = new UIA2Automation();
 
         if (headless) {
@@ -54,6 +59,7 @@ public class AutomationHelper : IAutomationHelper {
                 throw new InvalidOperationException(
                     $"Failed to create hidden desktop '{HiddenDesktopName}'. " +
                     "Headless mode requires the CreateDesktop Win32 API.");
+            _logger?.LogInformation("Headless mode enabled, created hidden desktop: {Desktop}", HiddenDesktopName);
         }
     }
 
@@ -63,6 +69,7 @@ public class AutomationHelper : IAutomationHelper {
     /// When not headless, uses standard Process.Start on the user's visible desktop.
     /// </summary>
     public Process LaunchApp(string path, string? arguments = null, string? workingDirectory = null) {
+        _logger?.LogInformation("Launching process: {Path}", path);
         Process process;
 
         if (Headless && _hiddenDesktop != IntPtr.Zero) {
@@ -142,6 +149,7 @@ public class AutomationHelper : IAutomationHelper {
     /// Attach to a running process (on the user's visible desktop).
     /// </summary>
     public Process AttachToProcess(int pid) {
+        _logger?.LogInformation("Attaching to process: {Pid}", pid);
         var process = Process.GetProcessById(pid);
         _processDesktops[pid] = IntPtr.Zero; // attached processes are always on the default desktop
         lock (_lock) {
@@ -734,6 +742,7 @@ public class AutomationHelper : IAutomationHelper {
     /// Close application
     /// </summary>
     public void CloseApp(int pid, bool force = false) {
+        _logger?.LogInformation("Closing process: {Pid}", pid);
         lock (_lock) {
             if (_launchedProcesses.TryGetValue(pid.ToString(), out var process)) {
                 try {
