@@ -185,4 +185,24 @@ public interface IAutomationHelper : IDisposable {
     /// <param name="desiredState">Optional desired state: "on", "off", "indeterminate", or null to just toggle</param>
     /// <returns>Tuple of (previousState, currentState)</returns>
     (string previousState, string currentState) Toggle(AutomationElement element, string? desiredState = null);
+
+    /// <summary>
+    /// Scroll within a scrollable control.
+    /// </summary>
+    /// <param name="element">The scrollable element</param>
+    /// <param name="direction">up, down, left, right</param>
+    /// <param name="amount">Number of scroll units (default 1)</param>
+    /// <param name="scrollType">line or page (default line)</param>
+    /// <returns>Current scroll percentages and scrollability</returns>
+    Dictionary<string, object> Scroll(AutomationElement element, string direction, int amount = 1, string scrollType = "line");
+
+    /// <summary>
+    /// Read data from a DataGridView or Grid control.
+    /// </summary>
+    Dictionary<string, object?> GetTableData(AutomationElement element, int startRow = 0, int rowCount = 50, int[]? columns = null);
+
+    /// <summary>
+    /// Set a cell value in a DataGridView or Grid control.
+    /// </summary>
+    (string? previousValue, string? newValue) SetTableCell(AutomationElement element, int row, int column, string value);
 }

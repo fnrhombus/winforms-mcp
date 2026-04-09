@@ -124,6 +124,11 @@ class AutomationServer {
             { "wait_for_condition", WaitForCondition },
             { "toggle_element", ToggleElement },
 
+            // Data & Scroll Tools
+            { "scroll_element", ScrollElement },
+            { "get_table_data", GetTableData },
+            { "set_table_cell", SetTableCell },
+
             // Event Tools
             { "raise_event", RaiseEvent },
             { "listen_for_event", ListenForEvent },
@@ -644,6 +649,63 @@ class AutomationServer {
                     },
                     required = new[] { "elementId" }
                 }
+            },
+            // ── Phase 2: Data-Heavy Apps ──
+            new
+            {
+                name = "scroll_element",
+                description = "Scroll within a scrollable control (ListBox, DataGridView, TreeView, Panel, etc.) using UIA ScrollPattern. " +
+                    "Works on hidden desktops. Returns the current scroll position percentages.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        elementId = new { type = "string", description = "Cached element ID of the scrollable control" },
+                        direction = new { type = "string", description = "Scroll direction: up, down, left, right" },
+                        amount = new { type = "integer", description = "Number of scroll units (default 1)" },
+                        scrollType = new { type = "string", description = "Scroll granularity: 'line' (default) or 'page'" }
+                    },
+                    required = new[] { "elementId", "direction" }
+                }
+            },
+            new
+            {
+                name = "get_table_data",
+                description = "Read data from a DataGridView or other grid control. Returns structured JSON with headers, row count, " +
+                    "column count, and cell values. Supports pagination via startRow/rowCount for large grids. " +
+                    "Works with both WinForms DataGridView and generic UIA Grid controls.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        elementId = new { type = "string", description = "Cached element ID of the grid/table control" },
+                        startRow = new { type = "integer", description = "First row to return (zero-based, default 0)" },
+                        rowCount = new { type = "integer", description = "Maximum number of rows to return (default 50)" },
+                        columns = new { type = "array", description = "Optional array of column indices to include (default: all)", items = new { type = "integer" } }
+                    },
+                    required = new[] { "elementId" }
+                }
+            },
+            new
+            {
+                name = "set_table_cell",
+                description = "Set a cell value in a DataGridView or grid control. " +
+                    "Navigates to the cell and sets its value via ValuePattern, falling back to click-to-edit. " +
+                    "Returns the previous and new values.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        elementId = new { type = "string", description = "Cached element ID of the grid/table control" },
+                        row = new { type = "integer", description = "Zero-based row index" },
+                        column = new { type = "integer", description = "Zero-based column index" },
+                        value = new { type = "string", description = "Value to set in the cell" }
+                    },
+                    required = new[] { "elementId", "row", "column", "value" }
+                }
             }
         };
     }
@@ -1038,6 +1100,81 @@ class AutomationServer {
             automation.ClickMenuItem(menuPath, pid);
 
             return Task.FromResult(JsonDocument.Parse("{\"success\": true}").RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> ScrollElement(JsonElement args) {
+        try {
+            var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
+            var direction = GetStringArg(args, "direction") ?? throw new ArgumentException("direction is required");
+            var amount = GetIntArg(args, "amount", 1);
+            var scrollType = GetStringArg(args, "scrollType") ?? "line";
+
+            var element = _session.GetElement(elementId);
+            if (element == null)
+                return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement);
+
+            var automation = _session.GetAutomation();
+            var result = automation.Scroll(element, direction, amount, scrollType);
+
+            var json = JsonSerializer.Serialize(new Dictionary<string, object>(result) { ["success"] = true });
+            return Task.FromResult(JsonDocument.Parse(json).RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> GetTableData(JsonElement args) {
+        try {
+            var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
+            var startRow = GetIntArg(args, "startRow", 0);
+            var rowCount = GetIntArg(args, "rowCount", 50);
+            int[]? columns = null;
+            if (args.TryGetProperty("columns", out var colsProp) && colsProp.ValueKind == JsonValueKind.Array) {
+                columns = colsProp.EnumerateArray()
+                    .Where(c => c.ValueKind == JsonValueKind.Number)
+                    .Select(c => c.GetInt32())
+                    .ToArray();
+            }
+
+            var element = _session.GetElement(elementId);
+            if (element == null)
+                return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement);
+
+            var automation = _session.GetAutomation();
+            var result = automation.GetTableData(element, startRow, rowCount, columns);
+            result["success"] = true;
+
+            var json = JsonSerializer.Serialize(result);
+            return Task.FromResult(JsonDocument.Parse(json).RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private Task<JsonElement> SetTableCell(JsonElement args) {
+        try {
+            var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
+            var row = GetIntArg(args, "row");
+            var column = GetIntArg(args, "column");
+            var value = GetStringArg(args, "value") ?? throw new ArgumentException("value is required");
+
+            var element = _session.GetElement(elementId);
+            if (element == null)
+                return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement);
+
+            var automation = _session.GetAutomation();
+            var (previousValue, newValue) = automation.SetTableCell(element, row, column, value);
+
+            var prevJson = previousValue == null ? "null" : $"\"{EscapeJson(previousValue)}\"";
+            var newJson = newValue == null ? "null" : $"\"{EscapeJson(newValue)}\"";
+            return Task.FromResult(JsonDocument.Parse(
+                $"{{\"success\": true, \"previousValue\": {prevJson}, \"newValue\": {newJson}}}").RootElement);
         }
         catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);

@@ -125,6 +125,9 @@ public class McpIntegrationTests {
             "send_keys",
             "wait_for_condition",
             "toggle_element",
+            "scroll_element",
+            "get_table_data",
+            "set_table_cell",
         };
 
         var expectedSet = new HashSet<string>(expectedTools);
