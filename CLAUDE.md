@@ -128,10 +128,9 @@ This project follows a **dev/master branching strategy** with **Semantic Version
 
 ### Branch Strategy
 
-- **dev** - Development branch for active work
-  - All feature development happens here
-  - Commit after each completed task
-  - Push after each completed feature
+- **dev** - Integration branch
+  - Receives merges from feature branches via PR
+  - **No meaningful work directly on dev** — only trivial changes that don't have a GitHub issue
   - Triggers beta releases on push
 
 - **master** - Stable release branch
@@ -140,27 +139,33 @@ This project follows a **dev/master branching strategy** with **Semantic Version
   - Triggers stable releases on push
   - Requires passing CI from dev before merge
 
-- **feature/** - Optional feature branches
-  - Use when work spans multiple pushes
-  - Create from dev, merge back to dev
-  - Prevents premature beta releases
+- **feature/** - Feature branches (required for all issues)
+  - **All bugs and features must have a GitHub issue first**
+  - Create from dev, work in a worktree, merge back to dev via PR
+  - Branch naming: `feature/<issue-number>-short-description` or `fix/<issue-number>-short-description`
+  - Use `isolation: "worktree"` when spawning agents for implementation work
 
-### Workflow Commands
+### Development Workflow
+
+1. **Write up the issue** in GitHub (bug or feature), with appropriate labels
+2. **Create a feature branch** from dev (e.g., `feature/42-add-widget`)
+3. **Do all work in a worktree** on that branch
+4. **Open a PR** against dev, referencing the issue
+5. **Merge the PR** into dev
+6. **Clean up** after merge — remote branch is auto-deleted by GitHub; locally delete the branch and remove the worktree
 
 ```bash
-# Daily development on dev branch
+# Feature development (always via worktree + PR)
 git checkout dev
-# ... make changes ...
-git add .
-git commit -m "feat: add new feature"  # Commit after task completion
-git push  # Push after feature completion - triggers beta release
+git checkout -b feature/42-add-widget
+# ... make changes in worktree ...
+git push -u origin feature/42-add-widget
+gh pr create --base dev --title "feat: add widget" --body "Closes #42"
 
-# For multi-push work, use feature branches
-git checkout -b feature/my-feature
-# ... make multiple commits and pushes ...
-git checkout dev
-git merge feature/my-feature
-git push  # Single beta release when feature is done
+# After PR is merged — clean up local branch and worktree
+git checkout dev && git pull
+git branch -d feature/42-add-widget
+git worktree prune
 
 # Release to production (when ready)
 ./scripts/merge-to-master.ps1  # PowerShell
