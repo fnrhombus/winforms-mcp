@@ -1,8 +1,3 @@
-using FlaUI.Core;
-using FlaUI.Core.AutomationElements;
-using FlaUI.Core.Conditions;
-using FlaUI.Core.Definitions;
-using FlaUI.UIA2;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -15,22 +10,26 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+using FlaUI.Core;
+using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Conditions;
+using FlaUI.Core.Definitions;
+using FlaUI.UIA2;
+
 namespace Rhombus.WinFormsMcp.Server.Automation;
 
 /// <summary>
 /// Helper class for WinForms UI automation using FlaUI with UIA2 backend
 /// </summary>
-public class AutomationHelper : IAutomationHelper
-{
+public class AutomationHelper : IAutomationHelper {
     private UIA2Automation? _automation;
-    private readonly Dictionary<string, Process> _launchedProcesses = new();
+    private readonly Dictionary<string, Process> _launchedProcesses = [];
     private readonly ConcurrentDictionary<int, StringBuilder> _stderrBuffers = new();
     private readonly object _lock = new object();
 
     public bool Headless { get; }
 
-    public AutomationHelper(bool headless = false)
-    {
+    public AutomationHelper(bool headless = false) {
         Headless = headless;
         _automation = new UIA2Automation();
     }
@@ -38,10 +37,8 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Launch a WinForms application
     /// </summary>
-    public Process LaunchApp(string path, string? arguments = null, string? workingDirectory = null)
-    {
-        var psi = new ProcessStartInfo
-        {
+    public Process LaunchApp(string path, string? arguments = null, string? workingDirectory = null) {
+        var psi = new ProcessStartInfo {
             FileName = path,
             Arguments = arguments ?? string.Empty,
             WorkingDirectory = workingDirectory ?? string.Empty,
@@ -56,15 +53,13 @@ public class AutomationHelper : IAutomationHelper
         // Capture stderr asynchronously to avoid deadlocks
         var stderrBuffer = new StringBuilder();
         _stderrBuffers[process.Id] = stderrBuffer;
-        process.ErrorDataReceived += (sender, e) =>
-        {
+        process.ErrorDataReceived += (sender, e) => {
             if (e.Data != null)
                 stderrBuffer.AppendLine(e.Data);
         };
         process.BeginErrorReadLine();
 
-        try
-        {
+        try {
             process.WaitForInputIdle(5000);
         }
         catch (InvalidOperationException) // COVERAGE_EXCEPTION: Console apps without GUI throw here
@@ -72,8 +67,7 @@ public class AutomationHelper : IAutomationHelper
             // Process does not have a graphical interface (e.g., console app)
         }
 
-        lock (_lock)
-        {
+        lock (_lock) {
             _launchedProcesses[process.Id.ToString()] = process;
         }
 
@@ -83,11 +77,9 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Attach to a running process
     /// </summary>
-    public Process AttachToProcess(int pid)
-    {
+    public Process AttachToProcess(int pid) {
         var process = Process.GetProcessById(pid);
-        lock (_lock)
-        {
+        lock (_lock) {
             _launchedProcesses[pid.ToString()] = process;
         }
         return process;
@@ -96,15 +88,13 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Attach to a running process by name
     /// </summary>
-    public Process AttachToProcessByName(string name)
-    {
+    public Process AttachToProcessByName(string name) {
         var processes = Process.GetProcessesByName(name);
         if (processes.Length == 0)
             throw new InvalidOperationException($"No process found with name: {name}");
 
         var process = processes[0];
-        lock (_lock)
-        {
+        lock (_lock) {
             _launchedProcesses[process.Id.ToString()] = process;
         }
         return process;
@@ -113,18 +103,15 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Get main window element of a process
     /// </summary>
-    public AutomationElement? GetMainWindow(int pid)
-    {
+    public AutomationElement? GetMainWindow(int pid) {
         if (_automation == null)
             throw new ObjectDisposedException(nameof(AutomationHelper));
 
-        try
-        {
+        try {
             var process = Process.GetProcessById(pid);
             return _automation.FromHandle(process.MainWindowHandle);
         }
-        catch
-        {
+        catch {
             return null;
         }
     }
@@ -132,8 +119,7 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Find element by AutomationId
     /// </summary>
-    public AutomationElement? FindByAutomationId(string automationId, AutomationElement? parent = null, int timeoutMs = 5000)
-    {
+    public AutomationElement? FindByAutomationId(string automationId, AutomationElement? parent = null, int timeoutMs = 5000) {
         if (_automation == null)
             throw new ObjectDisposedException(nameof(AutomationHelper));
 
@@ -144,8 +130,7 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Find element by Name
     /// </summary>
-    public AutomationElement? FindByName(string name, AutomationElement? parent = null, int timeoutMs = 5000)
-    {
+    public AutomationElement? FindByName(string name, AutomationElement? parent = null, int timeoutMs = 5000) {
         if (_automation == null)
             throw new ObjectDisposedException(nameof(AutomationHelper));
 
@@ -156,8 +141,7 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Find element by ClassName
     /// </summary>
-    public AutomationElement? FindByClassName(string className, AutomationElement? parent = null, int timeoutMs = 5000)
-    {
+    public AutomationElement? FindByClassName(string className, AutomationElement? parent = null, int timeoutMs = 5000) {
         if (_automation == null)
             throw new ObjectDisposedException(nameof(AutomationHelper));
 
@@ -168,8 +152,7 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Find element by ControlType
     /// </summary>
-    public AutomationElement? FindByControlType(ControlType controlType, AutomationElement? parent = null, int timeoutMs = 5000)
-    {
+    public AutomationElement? FindByControlType(ControlType controlType, AutomationElement? parent = null, int timeoutMs = 5000) {
         if (_automation == null)
             throw new ObjectDisposedException(nameof(AutomationHelper));
 
@@ -180,18 +163,15 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Find multiple elements matching condition
     /// </summary>
-    public AutomationElement[]? FindAll(ConditionBase condition, AutomationElement? parent = null, int timeoutMs = 5000)
-    {
+    public AutomationElement[]? FindAll(ConditionBase condition, AutomationElement? parent = null, int timeoutMs = 5000) {
         if (_automation == null)
             throw new ObjectDisposedException(nameof(AutomationHelper));
 
         var root = parent ?? _automation.GetDesktop();
         var stopwatch = Stopwatch.StartNew();
 
-        while (stopwatch.ElapsedMilliseconds < timeoutMs)
-        {
-            try
-            {
+        while (stopwatch.ElapsedMilliseconds < timeoutMs) {
+            try {
                 var elements = root.FindAllChildren(condition);
                 if (elements.Length > 0)
                     return elements;
@@ -207,18 +187,15 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Find element with retry/timeout
     /// </summary>
-    private AutomationElement? FindElement(ConditionBase condition, AutomationElement? parent, int timeoutMs)
-    {
+    private AutomationElement? FindElement(ConditionBase condition, AutomationElement? parent, int timeoutMs) {
         if (_automation == null)
             throw new ObjectDisposedException(nameof(AutomationHelper));
 
         var root = parent ?? _automation.GetDesktop();
         var stopwatch = Stopwatch.StartNew();
 
-        while (stopwatch.ElapsedMilliseconds < timeoutMs)
-        {
-            try
-            {
+        while (stopwatch.ElapsedMilliseconds < timeoutMs) {
+            try {
                 var element = root.FindFirstChild(condition);
                 if (element != null)
                     return element;
@@ -234,22 +211,18 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Check if element exists
     /// </summary>
-    public bool ElementExists(string automationId, AutomationElement? parent = null)
-    {
+    public bool ElementExists(string automationId, AutomationElement? parent = null) {
         return FindByAutomationId(automationId, parent, 1000) != null;
     }
 
     /// <summary>
     /// Click element
     /// </summary>
-    public void Click(AutomationElement element, bool doubleClick = false)
-    {
-        if (doubleClick)
-        {
+    public void Click(AutomationElement element, bool doubleClick = false) {
+        if (doubleClick) {
             element.DoubleClick();
         }
-        else
-        {
+        else {
             element.Click();
         }
     }
@@ -257,12 +230,10 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Type text into element
     /// </summary>
-    public void TypeText(AutomationElement element, string text, bool clearFirst = false)
-    {
+    public void TypeText(AutomationElement element, string text, bool clearFirst = false) {
         element.Focus();
 
-        if (clearFirst)
-        {
+        if (clearFirst) {
             System.Windows.Forms.SendKeys.SendWait("^a");
             Thread.Sleep(100);
         }
@@ -273,8 +244,7 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Set value on element
     /// </summary>
-    public void SetValue(AutomationElement element, string value)
-    {
+    public void SetValue(AutomationElement element, string value) {
         element.Focus();
         System.Windows.Forms.SendKeys.SendWait("^a");
         Thread.Sleep(50);
@@ -287,10 +257,8 @@ public class AutomationHelper : IAutomationHelper
     /// value, text, isChecked, toggleState, isSelected, selectedItem, items, itemCount,
     /// boundingRectangle, isExpanded, min, max, current.
     /// </summary>
-    public object? GetProperty(AutomationElement element, string propertyName)
-    {
-        return propertyName.ToLower() switch
-        {
+    public object? GetProperty(AutomationElement element, string propertyName) {
+        return propertyName.ToLower() switch {
             "name" => element.Name,
             "automationid" => element.AutomationId,
             "classname" => element.ClassName,
@@ -330,8 +298,7 @@ public class AutomationHelper : IAutomationHelper
     }
 
     // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
-    private static object? GetValuePatternValue(AutomationElement element)
-    {
+    private static object? GetValuePatternValue(AutomationElement element) {
         var pattern = element.Patterns.Value;
         if (pattern.IsSupported)
             return pattern.Pattern.Value.ValueOrDefault;
@@ -341,8 +308,7 @@ public class AutomationHelper : IAutomationHelper
     }
 
     // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
-    private static object? GetTogglePatternState(AutomationElement element)
-    {
+    private static object? GetTogglePatternState(AutomationElement element) {
         var pattern = element.Patterns.Toggle;
         if (pattern.IsSupported)
             return pattern.Pattern.ToggleState.ValueOrDefault.ToString();
@@ -351,8 +317,7 @@ public class AutomationHelper : IAutomationHelper
     }
 
     // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
-    private static object? GetSelectionItemPatternIsSelected(AutomationElement element)
-    {
+    private static object? GetSelectionItemPatternIsSelected(AutomationElement element) {
         var pattern = element.Patterns.SelectionItem;
         if (pattern.IsSupported)
             return pattern.Pattern.IsSelected.ValueOrDefault;
@@ -361,11 +326,9 @@ public class AutomationHelper : IAutomationHelper
     }
 
     // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
-    private static object? GetSelectionPatternSelectedItem(AutomationElement element)
-    {
+    private static object? GetSelectionPatternSelectedItem(AutomationElement element) {
         var pattern = element.Patterns.Selection;
-        if (pattern.IsSupported)
-        {
+        if (pattern.IsSupported) {
             var selection = pattern.Pattern.Selection.ValueOrDefault;
             if (selection != null && selection.Length > 0)
                 return selection[0].Name;
@@ -376,26 +339,22 @@ public class AutomationHelper : IAutomationHelper
     }
 
     // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
-    private static object? GetChildItemNames(AutomationElement element)
-    {
+    private static object? GetChildItemNames(AutomationElement element) {
         var children = element.FindAllChildren();
         var names = children.Select(c => c.Name ?? "").ToArray();
         return JsonSerializer.Serialize(names);
     }
 
     // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
-    private static object? GetChildItemCount(AutomationElement element)
-    {
+    private static object? GetChildItemCount(AutomationElement element) {
         var children = element.FindAllChildren();
         return children.Length;
     }
 
     // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
-    private static object? GetBoundingRectangleJson(AutomationElement element)
-    {
+    private static object? GetBoundingRectangleJson(AutomationElement element) {
         var rect = element.BoundingRectangle;
-        return JsonSerializer.Serialize(new
-        {
+        return JsonSerializer.Serialize(new {
             x = rect.X,
             y = rect.Y,
             width = rect.Width,
@@ -404,8 +363,7 @@ public class AutomationHelper : IAutomationHelper
     }
 
     // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
-    private static object? GetExpandCollapseState(AutomationElement element)
-    {
+    private static object? GetExpandCollapseState(AutomationElement element) {
         var pattern = element.Patterns.ExpandCollapse;
         if (pattern.IsSupported)
             return pattern.Pattern.ExpandCollapseState.ValueOrDefault.ToString();
@@ -414,8 +372,7 @@ public class AutomationHelper : IAutomationHelper
     }
 
     // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
-    private static object? GetRangeValueMin(AutomationElement element)
-    {
+    private static object? GetRangeValueMin(AutomationElement element) {
         var pattern = element.Patterns.RangeValue;
         if (pattern.IsSupported)
             return pattern.Pattern.Minimum.ValueOrDefault;
@@ -424,8 +381,7 @@ public class AutomationHelper : IAutomationHelper
     }
 
     // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
-    private static object? GetRangeValueMax(AutomationElement element)
-    {
+    private static object? GetRangeValueMax(AutomationElement element) {
         var pattern = element.Patterns.RangeValue;
         if (pattern.IsSupported)
             return pattern.Pattern.Maximum.ValueOrDefault;
@@ -434,8 +390,7 @@ public class AutomationHelper : IAutomationHelper
     }
 
     // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
-    private static object? GetRangeValueCurrent(AutomationElement element)
-    {
+    private static object? GetRangeValueCurrent(AutomationElement element) {
         var pattern = element.Patterns.RangeValue;
         if (pattern.IsSupported)
             return pattern.Pattern.Value.ValueOrDefault;
@@ -446,30 +401,24 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Take screenshot of element or full desktop
     /// </summary>
-    public void TakeScreenshot(string outputPath, AutomationElement? element = null)
-    {
-        try
-        {
+    public void TakeScreenshot(string outputPath, AutomationElement? element = null) {
+        try {
             Bitmap? bitmap = null;
 
-            if (element != null)
-            {
+            if (element != null) {
                 bitmap = element.Capture();
             }
-            else if (_automation != null)
-            {
+            else if (_automation != null) {
                 var desktop = _automation.GetDesktop();
                 bitmap = desktop.Capture();
             }
 
-            if (bitmap != null)
-            {
+            if (bitmap != null) {
                 bitmap.Save(outputPath, ImageFormat.Png);
                 bitmap.Dispose();
             }
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             throw new InvalidOperationException($"Failed to take screenshot: {ex.Message}", ex);
         }
     }
@@ -477,8 +426,7 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Drag and drop
     /// </summary>
-    public void DragDrop(AutomationElement source, AutomationElement target)
-    {
+    public void DragDrop(AutomationElement source, AutomationElement target) {
         var sourceBounds = source.BoundingRectangle;
         var targetBounds = target.BoundingRectangle;
 
@@ -510,28 +458,21 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Send keyboard keys
     /// </summary>
-    public void SendKeys(string keys)
-    {
+    public void SendKeys(string keys) {
         System.Windows.Forms.SendKeys.SendWait(keys);
     }
 
     /// <summary>
     /// Close application
     /// </summary>
-    public void CloseApp(int pid, bool force = false)
-    {
-        lock (_lock)
-        {
-            if (_launchedProcesses.TryGetValue(pid.ToString(), out var process))
-            {
-                try
-                {
-                    if (force)
-                    {
+    public void CloseApp(int pid, bool force = false) {
+        lock (_lock) {
+            if (_launchedProcesses.TryGetValue(pid.ToString(), out var process)) {
+                try {
+                    if (force) {
                         process.Kill();
                     }
-                    else
-                    {
+                    else {
                         process.CloseMainWindow();
                         process.WaitForExit(5000);
                         if (!process.HasExited)
@@ -539,8 +480,7 @@ public class AutomationHelper : IAutomationHelper
                     }
                 }
                 catch { }
-                finally
-                {
+                finally {
                     _launchedProcesses.Remove(pid.ToString());
                     _stderrBuffers.TryRemove(pid, out _);
                 }
@@ -551,11 +491,9 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Wait for element to appear
     /// </summary>
-    public async Task<bool> WaitForElementAsync(string automationId, AutomationElement? parent = null, int timeoutMs = 10000)
-    {
+    public async Task<bool> WaitForElementAsync(string automationId, AutomationElement? parent = null, int timeoutMs = 10000) {
         var stopwatch = Stopwatch.StartNew();
-        while (stopwatch.ElapsedMilliseconds < timeoutMs)
-        {
+        while (stopwatch.ElapsedMilliseconds < timeoutMs) {
             if (FindByAutomationId(automationId, parent, 500) != null)
                 return true;
 
@@ -568,14 +506,11 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Get all child elements
     /// </summary>
-    public AutomationElement[]? GetAllChildren(AutomationElement element)
-    {
-        try
-        {
+    public AutomationElement[]? GetAllChildren(AutomationElement element) {
+        try {
             return element.FindAllChildren();
         }
-        catch
-        {
+        catch {
             return null;
         }
     }
@@ -583,16 +518,14 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Build a tree of UI automation elements starting from a root element.
     /// </summary>
-    public List<Dictionary<string, object?>> GetElementTree(AutomationElement root, int depth = 3, int maxElements = 50, Func<AutomationElement, string>? cacheElement = null)
-    {
+    public List<Dictionary<string, object?>> GetElementTree(AutomationElement root, int depth = 3, int maxElements = 50, Func<AutomationElement, string>? cacheElement = null) {
         var result = new List<Dictionary<string, object?>>();
         int elementCount = 0;
         BuildElementTree(root, depth, maxElements, cacheElement, result, ref elementCount);
         return result;
     }
 
-    private void BuildElementTree(AutomationElement parent, int remainingDepth, int maxElements, Func<AutomationElement, string>? cacheElement, List<Dictionary<string, object?>> targetList, ref int elementCount)
-    {
+    private void BuildElementTree(AutomationElement parent, int remainingDepth, int maxElements, Func<AutomationElement, string>? cacheElement, List<Dictionary<string, object?>> targetList, ref int elementCount) {
         if (remainingDepth <= 0 || elementCount >= maxElements)
             return;
 
@@ -600,15 +533,13 @@ public class AutomationHelper : IAutomationHelper
         if (children == null)
             return;
 
-        foreach (var child in children)
-        {
+        foreach (var child in children) {
             if (elementCount >= maxElements)
                 break;
 
             elementCount++;
 
-            var node = new Dictionary<string, object?>
-            {
+            var node = new Dictionary<string, object?> {
                 ["name"] = TryGetElementProperty(() => child.Name),
                 ["controlType"] = TryGetElementProperty(() => child.ControlType.ToString()),
                 ["automationId"] = TryGetElementProperty(() => child.AutomationId),
@@ -616,30 +547,25 @@ public class AutomationHelper : IAutomationHelper
                 ["isOffscreen"] = TryGetElementProperty(() => (object)child.IsOffscreen),
             };
 
-            try
-            {
+            try {
                 var rect = child.BoundingRectangle;
-                node["boundingRectangle"] = new Dictionary<string, object>
-                {
+                node["boundingRectangle"] = new Dictionary<string, object> {
                     ["x"] = rect.X,
                     ["y"] = rect.Y,
                     ["width"] = rect.Width,
                     ["height"] = rect.Height
                 };
             }
-            catch
-            {
+            catch {
                 node["boundingRectangle"] = null;
             }
 
-            if (cacheElement != null)
-            {
+            if (cacheElement != null) {
                 node["elementId"] = cacheElement(child);
             }
 
             var childList = new List<Dictionary<string, object?>>();
-            if (remainingDepth > 1 && elementCount < maxElements)
-            {
+            if (remainingDepth > 1 && elementCount < maxElements) {
                 BuildElementTree(child, remainingDepth - 1, maxElements, cacheElement, childList, ref elementCount);
             }
             node["children"] = childList;
@@ -651,21 +577,18 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Get the status of a process including whether it is running, responding, exit code, and captured stderr.
     /// </summary>
-    public Dictionary<string, object?> GetProcessStatus(int pid)
-    {
+    public Dictionary<string, object?> GetProcessStatus(int pid) {
         var result = new Dictionary<string, object?>();
 
         Process? process = null;
-        lock (_lock)
-        {
+        lock (_lock) {
             _launchedProcesses.TryGetValue(pid.ToString(), out process);
         }
 
         // If not in our tracked processes, try to get it from the system
         process ??= TryGetProcessById(pid);
 
-        if (process == null)
-        {
+        if (process == null) {
             result["isRunning"] = false;
             result["hasExited"] = true;
             result["exitCode"] = null;
@@ -676,8 +599,7 @@ public class AutomationHelper : IAutomationHelper
         }
 
         bool hasExited;
-        try
-        {
+        try {
             hasExited = process.HasExited;
         }
         catch // COVERAGE_EXCEPTION: Process access can throw if handle is invalid
@@ -688,10 +610,8 @@ public class AutomationHelper : IAutomationHelper
         result["isRunning"] = !hasExited;
         result["hasExited"] = hasExited;
 
-        if (hasExited)
-        {
-            try
-            {
+        if (hasExited) {
+            try {
                 result["exitCode"] = process.ExitCode;
             }
             catch // COVERAGE_EXCEPTION: ExitCode can throw if process handle is invalid
@@ -701,19 +621,16 @@ public class AutomationHelper : IAutomationHelper
             result["responding"] = false;
             result["mainWindowTitle"] = "";
         }
-        else
-        {
+        else {
             result["exitCode"] = null;
-            try
-            {
+            try {
                 result["responding"] = process.Responding;
             }
             catch // COVERAGE_EXCEPTION: Responding can throw for processes without a UI
             {
                 result["responding"] = false;
             }
-            try
-            {
+            try {
                 result["mainWindowTitle"] = process.MainWindowTitle ?? "";
             }
             catch // COVERAGE_EXCEPTION: MainWindowTitle can throw for some processes
@@ -729,8 +646,7 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Get captured stderr output for a process.
     /// </summary>
-    internal string GetStderr(int pid)
-    {
+    internal string GetStderr(int pid) {
         return _stderrBuffers.TryGetValue(pid, out var buffer) ? buffer.ToString() : "";
     }
 
@@ -738,18 +654,15 @@ public class AutomationHelper : IAutomationHelper
     /// Select an item in a combo box, list box, or similar selection control.
     /// Handles the expand-find-select pattern automatically.
     /// </summary>
-    public string SelectItem(AutomationElement element, string? value = null, int? index = null)
-    {
+    public string SelectItem(AutomationElement element, string? value = null, int? index = null) {
         if (value == null && index == null)
             throw new ArgumentException("Either value or index must be provided");
 
         // COVERAGE_EXCEPTION: FlaUI pattern interactions require real UI controls
-        try
-        {
+        try {
             // Try to expand the control first (for combo boxes)
             var expandPattern = element.Patterns.ExpandCollapse.PatternOrDefault;
-            if (expandPattern != null)
-            {
+            if (expandPattern != null) {
                 expandPattern.Expand();
                 Thread.Sleep(200); // Wait for dropdown to appear
             }
@@ -761,15 +674,11 @@ public class AutomationHelper : IAutomationHelper
 
             AutomationElement? targetItem = null;
 
-            if (value != null)
-            {
+            if (value != null) {
                 // Find by text value
-                foreach (var child in children)
-                {
-                    try
-                    {
-                        if (string.Equals(child.Name, value, StringComparison.OrdinalIgnoreCase))
-                        {
+                foreach (var child in children) {
+                    try {
+                        if (string.Equals(child.Name, value, StringComparison.OrdinalIgnoreCase)) {
                             targetItem = child;
                             break;
                         }
@@ -780,8 +689,7 @@ public class AutomationHelper : IAutomationHelper
                 if (targetItem == null)
                     throw new InvalidOperationException($"Item with value '{value}' not found in the selection control");
             }
-            else if (index != null)
-            {
+            else if (index != null) {
                 if (index.Value < 0 || index.Value >= children.Length)
                     throw new ArgumentOutOfRangeException(nameof(index), $"Index {index.Value} is out of range. Control has {children.Length} items.");
 
@@ -790,16 +698,13 @@ public class AutomationHelper : IAutomationHelper
 
             // Try SelectionItemPattern first
             var selectionPattern = targetItem!.Patterns.SelectionItem.PatternOrDefault;
-            if (selectionPattern != null)
-            {
+            if (selectionPattern != null) {
                 selectionPattern.Select();
             }
-            else
-            {
+            else {
                 // Fall back to scrolling into view and clicking
                 var scrollPattern = targetItem.Patterns.ScrollItem.PatternOrDefault;
-                if (scrollPattern != null)
-                {
+                if (scrollPattern != null) {
                     scrollPattern.ScrollIntoView();
                     Thread.Sleep(100);
                 }
@@ -807,17 +712,16 @@ public class AutomationHelper : IAutomationHelper
             }
 
             // Collapse if we expanded
-            if (expandPattern != null)
-            {
-                try { expandPattern.Collapse(); } catch { }
+            if (expandPattern != null) {
+                try { expandPattern.Collapse(); }
+                catch { }
             }
 
             return targetItem.Name ?? "";
         }
         catch (ArgumentException) { throw; }
         catch (InvalidOperationException) { throw; }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             throw new InvalidOperationException($"Failed to select item: {ex.Message}", ex);
         }
     }
@@ -825,8 +729,7 @@ public class AutomationHelper : IAutomationHelper
     /// <summary>
     /// Navigate and click a menu item in a menu bar or context menu.
     /// </summary>
-    public void ClickMenuItem(string[] menuPath, int? pid = null)
-    {
+    public void ClickMenuItem(string[] menuPath, int? pid = null) {
         if (menuPath == null || menuPath.Length == 0)
             throw new ArgumentException("menuPath must contain at least one menu item name");
 
@@ -835,21 +738,18 @@ public class AutomationHelper : IAutomationHelper
 
         // COVERAGE_EXCEPTION: FlaUI menu interactions require real UI with menu controls
         AutomationElement? searchRoot;
-        if (pid != null)
-        {
+        if (pid != null) {
             searchRoot = GetMainWindow(pid.Value);
             if (searchRoot == null)
                 throw new InvalidOperationException($"Could not find main window for process {pid.Value}");
         }
-        else
-        {
+        else {
             searchRoot = _automation.GetDesktop();
         }
 
         AutomationElement? currentParent = searchRoot;
 
-        for (int i = 0; i < menuPath.Length; i++)
-        {
+        for (int i = 0; i < menuPath.Length; i++) {
             var menuItemName = menuPath[i];
             AutomationElement? menuItem = null;
 
@@ -858,10 +758,8 @@ public class AutomationHelper : IAutomationHelper
             var stopwatch = Stopwatch.StartNew();
             var timeoutMs = 5000;
 
-            while (stopwatch.ElapsedMilliseconds < timeoutMs)
-            {
-                try
-                {
+            while (stopwatch.ElapsedMilliseconds < timeoutMs) {
+                try {
                     menuItem = currentParent!.FindFirstDescendant(condition);
                     if (menuItem != null)
                         break;
@@ -874,69 +772,53 @@ public class AutomationHelper : IAutomationHelper
             if (menuItem == null)
                 throw new InvalidOperationException($"Menu item '{menuItemName}' not found at level {i} of path [{string.Join(" > ", menuPath)}]");
 
-            if (i < menuPath.Length - 1)
-            {
+            if (i < menuPath.Length - 1) {
                 // Not the final item - expand/click to show submenu
                 var expandPattern = menuItem.Patterns.ExpandCollapse.PatternOrDefault;
-                if (expandPattern != null)
-                {
+                if (expandPattern != null) {
                     expandPattern.Expand();
                 }
-                else
-                {
+                else {
                     menuItem.Click();
                 }
                 Thread.Sleep(200); // Wait for submenu to appear
                 currentParent = menuItem;
             }
-            else
-            {
+            else {
                 // Final item - invoke or click it
                 var invokePattern = menuItem.Patterns.Invoke.PatternOrDefault;
-                if (invokePattern != null)
-                {
+                if (invokePattern != null) {
                     invokePattern.Invoke();
                 }
-                else
-                {
+                else {
                     menuItem.Click();
                 }
             }
         }
     }
 
-    private static Process? TryGetProcessById(int pid)
-    {
-        try
-        {
+    private static Process? TryGetProcessById(int pid) {
+        try {
             return Process.GetProcessById(pid);
         }
-        catch
-        {
+        catch {
             return null;
         }
     }
 
-    private static object? TryGetElementProperty(Func<object?> getter)
-    {
-        try
-        {
+    private static object? TryGetElementProperty(Func<object?> getter) {
+        try {
             return getter();
         }
-        catch
-        {
+        catch {
             return null;
         }
     }
 
-    public void Dispose()
-    {
-        lock (_lock)
-        {
-            foreach (var process in _launchedProcesses.Values)
-            {
-                try
-                {
+    public void Dispose() {
+        lock (_lock) {
+            foreach (var process in _launchedProcesses.Values) {
+                try {
                     if (!process.HasExited)
                         process.Kill();
                 }

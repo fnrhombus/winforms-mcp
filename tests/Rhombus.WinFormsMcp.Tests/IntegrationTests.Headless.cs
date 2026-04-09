@@ -1,25 +1,23 @@
 namespace Rhombus.WinFormsMcp.Tests;
 
-using Rhombus.WinFormsMcp.Server.Automation;
 using Moq;
+
+using Rhombus.WinFormsMcp.Server.Automation;
 
 /// <summary>
 /// Headless integration tests using mocks
 /// These tests verify complete workflows without requiring a GUI
 /// </summary>
-public class IntegrationTestsHeadless
-{
+public class IntegrationTestsHeadless {
     private Mock<IAutomationHelper>? _mockAutomation;
 
     [SetUp]
-    public void Setup()
-    {
+    public void Setup() {
         _mockAutomation = new Mock<IAutomationHelper>();
     }
 
     [Test]
-    public void TestApplicationLaunchWorkflow()
-    {
+    public void TestApplicationLaunchWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.LaunchApp("notepad.exe", null, null))
@@ -40,8 +38,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestFindElementWorkflow()
-    {
+    public void TestFindElementWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.FindByName("OK", null, 5000))
@@ -56,8 +53,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestClickElementWorkflow()
-    {
+    public void TestClickElementWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.Click(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), false))
@@ -71,8 +67,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestTypeTextWorkflow()
-    {
+    public void TestTypeTextWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.TypeText(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "Hello World", false))
@@ -86,8 +81,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestAttachToProcessByNameWorkflow()
-    {
+    public void TestAttachToProcessByNameWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.AttachToProcessByName("notepad"))
@@ -102,8 +96,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestAttachToNonExistentProcessThrows()
-    {
+    public void TestAttachToNonExistentProcessThrows() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.AttachToProcessByName("nonexistent"))
@@ -117,8 +110,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestElementExistenceCheckWorkflow()
-    {
+    public void TestElementExistenceCheckWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.ElementExists("testId", null))
@@ -134,8 +126,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestScreenshotCaptureWorkflow()
-    {
+    public void TestScreenshotCaptureWorkflow() {
         // Arrange
         var path = Path.Combine(Path.GetTempPath(), "test.png");
 
@@ -151,8 +142,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public async Task TestAsyncWaitForElementWorkflow()
-    {
+    public async Task TestAsyncWaitForElementWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.WaitForElementAsync("loadingSpinner", null, 10000))
@@ -168,8 +158,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestGetPropertyWorkflow()
-    {
+    public void TestGetPropertyWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetProperty(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "name"))
@@ -185,8 +174,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestSendKeysWorkflow()
-    {
+    public void TestSendKeysWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.SendKeys("test keys"))
@@ -200,8 +188,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestCloseAppWorkflow()
-    {
+    public void TestCloseAppWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.CloseApp(1234, false))
@@ -215,8 +202,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestMultipleOperationsSequenceWorkflow()
-    {
+    public void TestMultipleOperationsSequenceWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.Click(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), false))
@@ -238,8 +224,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestErrorRecoveryWorkflow()
-    {
+    public void TestErrorRecoveryWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.ElementExists("invalidId", null))
@@ -262,8 +247,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestDragDropWorkflow()
-    {
+    public void TestDragDropWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.DragDrop(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>()))
@@ -277,8 +261,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestSetValueWorkflow()
-    {
+    public void TestSetValueWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.SetValue(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "new value"))
@@ -294,8 +277,7 @@ public class IntegrationTestsHeadless
     // ===== NEGATIVE TESTS =====
 
     [Test]
-    public void TestLaunchFailureRecovery()
-    {
+    public void TestLaunchFailureRecovery() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.LaunchApp("badapp.exe", null, null))
@@ -318,8 +300,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestElementNotFoundInWorkflow()
-    {
+    public void TestElementNotFoundInWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.FindByName("NonExistentButton", null, 5000))
@@ -339,8 +320,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestScreenshotFailureDoesNotBreakWorkflow()
-    {
+    public void TestScreenshotFailureDoesNotBreakWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.TakeScreenshot("/invalid/path.png", null))
@@ -362,8 +342,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestMultipleFailuresInSequence()
-    {
+    public void TestMultipleFailuresInSequence() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.FindByName("Button1", null, 5000))
@@ -392,8 +371,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestInvalidElementInteraction()
-    {
+    public void TestInvalidElementInteraction() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.Click(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), false))
@@ -407,8 +385,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestDragDropWithInvalidElements()
-    {
+    public void TestDragDropWithInvalidElements() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.DragDrop(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>()))
@@ -422,8 +399,7 @@ public class IntegrationTestsHeadless
     }
 
     [Test]
-    public void TestGetPropertyWithNullElement()
-    {
+    public void TestGetPropertyWithNullElement() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetProperty(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), It.IsAny<string>()))

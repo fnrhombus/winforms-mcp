@@ -1,32 +1,28 @@
 namespace Rhombus.WinFormsMcp.Tests;
 
-using Rhombus.WinFormsMcp.Server.Automation;
 using System.Diagnostics;
 using System.Text;
+
+using Rhombus.WinFormsMcp.Server.Automation;
 
 /// <summary>
 /// End-to-End (E2E) tests for fnWindowsMCP
 /// These tests verify complete real-world automation workflows that users might perform
 /// </summary>
-public class E2ETests
-{
+public class E2ETests {
     private AutomationHelper? _automation;
     private List<Process> _launchedProcesses = new();
 
     [SetUp]
-    public void Setup()
-    {
+    public void Setup() {
         _automation = new AutomationHelper();
         _launchedProcesses.Clear();
     }
 
     [TearDown]
-    public void TearDown()
-    {
-        foreach (var process in _launchedProcesses)
-        {
-            try
-            {
+    public void TearDown() {
+        foreach (var process in _launchedProcesses) {
+            try {
                 if (!process.HasExited)
                     process.Kill();
             }
@@ -43,8 +39,7 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_TextEditingWorkflow()
-    {
+    public void E2E_TextEditingWorkflow() {
         // Scenario: User wants to create a text file with specific content
 
         // Step 1: Launch notepad
@@ -64,13 +59,11 @@ public class E2ETests
 
         // Step 4: Take screenshot to verify content was entered
         var screenshotPath = Path.Combine(Path.GetTempPath(), "e2e_notepad_content.png");
-        try
-        {
+        try {
             _automation?.TakeScreenshot(screenshotPath);
             Assert.That(File.Exists(screenshotPath), Is.True);
         }
-        finally
-        {
+        finally {
             if (File.Exists(screenshotPath))
                 File.Delete(screenshotPath);
         }
@@ -88,8 +81,7 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_RapidTextEntry()
-    {
+    public void E2E_RapidTextEntry() {
         // Scenario: User needs to enter multiple lines of text quickly
 
         var notepad = _automation?.LaunchApp("notepad.exe");
@@ -97,8 +89,7 @@ public class E2ETests
         Thread.Sleep(1500);
 
         // Enter multiple lines
-        for (int i = 1; i <= 5; i++)
-        {
+        for (int i = 1; i <= 5; i++) {
             _automation?.SendKeys($"Line {i}");
             _automation?.SendKeys("{ENTER}");
             Thread.Sleep(100);
@@ -106,13 +97,11 @@ public class E2ETests
 
         // Take screenshot after all entries
         var screenshotPath = Path.Combine(Path.GetTempPath(), "e2e_rapid_entry.png");
-        try
-        {
+        try {
             _automation?.TakeScreenshot(screenshotPath);
             Assert.That(File.Exists(screenshotPath), Is.True);
         }
-        finally
-        {
+        finally {
             if (File.Exists(screenshotPath))
                 File.Delete(screenshotPath);
         }
@@ -129,8 +118,7 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_MultipleApplicationLaunch()
-    {
+    public void E2E_MultipleApplicationLaunch() {
         // Scenario: User wants to launch and manage multiple applications simultaneously
 
         // Step 1: Launch first notepad
@@ -165,8 +153,7 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_FullApplicationLifecycleManagement()
-    {
+    public void E2E_FullApplicationLifecycleManagement() {
         // Scenario: Complete workflow from launch to close with state checks
 
         var notepad = _automation?.LaunchApp("notepad.exe");
@@ -205,8 +192,7 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_ScreenshotValidationWorkflow()
-    {
+    public void E2E_ScreenshotValidationWorkflow() {
         // Scenario: User wants to capture screenshots at different stages for validation
 
         var notepad = _automation?.LaunchApp("notepad.exe");
@@ -215,8 +201,7 @@ public class E2ETests
 
         var screenshotPaths = new List<string>();
 
-        try
-        {
+        try {
             // Take screenshot 1: Initial state
             var screenshot1 = Path.Combine(Path.GetTempPath(), $"e2e_initial_{Guid.NewGuid()}.png");
             screenshotPaths.Add(screenshot1);
@@ -241,11 +226,9 @@ public class E2ETests
             Assert.That(size1, Is.GreaterThan(0));
             Assert.That(size2, Is.GreaterThan(0));
         }
-        finally
-        {
+        finally {
             _automation?.CloseApp(notepad!.Id, force: true);
-            foreach (var path in screenshotPaths)
-            {
+            foreach (var path in screenshotPaths) {
                 if (File.Exists(path))
                     File.Delete(path);
             }
@@ -257,8 +240,7 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_MultiWindowScreenshotCapture()
-    {
+    public void E2E_MultiWindowScreenshotCapture() {
         // Scenario: Capture screenshots from multiple windows
 
         var notepad1 = _automation?.LaunchApp("notepad.exe");
@@ -271,8 +253,7 @@ public class E2ETests
 
         var screenshots = new List<string>();
 
-        try
-        {
+        try {
             // Get windows
             var window1 = _automation?.GetMainWindow(notepad1!.Id);
             var window2 = _automation?.GetMainWindow(notepad2!.Id);
@@ -294,13 +275,11 @@ public class E2ETests
             Assert.That(File.Exists(screenshot1), Is.True);
             Assert.That(File.Exists(screenshot2), Is.True);
         }
-        finally
-        {
+        finally {
             _automation?.CloseApp(notepad1!.Id, force: true);
             _automation?.CloseApp(notepad2!.Id, force: true);
 
-            foreach (var screenshot in screenshots)
-            {
+            foreach (var screenshot in screenshots) {
                 if (File.Exists(screenshot))
                     File.Delete(screenshot);
             }
@@ -316,8 +295,7 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_SimulatedUserTyping()
-    {
+    public void E2E_SimulatedUserTyping() {
         // Scenario: Simulate realistic user typing with pauses
 
         var notepad = _automation?.LaunchApp("notepad.exe");
@@ -327,8 +305,7 @@ public class E2ETests
         // Simulate user typing with thinking pauses
         string[] words = { "The", "quick", "brown", "fox", "jumps" };
 
-        foreach (var word in words)
-        {
+        foreach (var word in words) {
             _automation?.SendKeys(word);
             _automation?.SendKeys(" ");
             Thread.Sleep(300); // Simulate thinking time
@@ -338,13 +315,11 @@ public class E2ETests
 
         // Verify with screenshot
         var screenshotPath = Path.Combine(Path.GetTempPath(), "e2e_user_typing.png");
-        try
-        {
+        try {
             _automation?.TakeScreenshot(screenshotPath);
             Assert.That(File.Exists(screenshotPath), Is.True);
         }
-        finally
-        {
+        finally {
             if (File.Exists(screenshotPath))
                 File.Delete(screenshotPath);
             _automation?.CloseApp(notepad!.Id, force: true);
@@ -356,8 +331,7 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_SpecialCharactersAndKeyboardSequences()
-    {
+    public void E2E_SpecialCharactersAndKeyboardSequences() {
         // Scenario: User enters special characters and performs keyboard shortcuts
 
         var notepad = _automation?.LaunchApp("notepad.exe");
@@ -386,13 +360,11 @@ public class E2ETests
 
         // Verify with screenshot
         var screenshotPath = Path.Combine(Path.GetTempPath(), "e2e_special_chars.png");
-        try
-        {
+        try {
             _automation?.TakeScreenshot(screenshotPath);
             Assert.That(File.Exists(screenshotPath), Is.True);
         }
-        finally
-        {
+        finally {
             if (File.Exists(screenshotPath))
                 File.Delete(screenshotPath);
             _automation?.CloseApp(notepad!.Id, force: true);
@@ -408,12 +380,10 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_RapidApplicationCycling()
-    {
+    public void E2E_RapidApplicationCycling() {
         // Scenario: Rapidly launch and close applications to stress-test the system
 
-        for (int i = 0; i < 5; i++)
-        {
+        for (int i = 0; i < 5; i++) {
             var notepad = _automation?.LaunchApp("notepad.exe");
             _launchedProcesses.Add(notepad!);
             Thread.Sleep(500);
@@ -435,8 +405,7 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_StressTestManyInputs()
-    {
+    public void E2E_StressTestManyInputs() {
         // Scenario: Send many keyboard inputs in rapid succession
 
         var notepad = _automation?.LaunchApp("notepad.exe");
@@ -444,11 +413,9 @@ public class E2ETests
         Thread.Sleep(1500);
 
         // Send 100 lines
-        for (int i = 0; i < 100; i++)
-        {
+        for (int i = 0; i < 100; i++) {
             _automation?.SendKeys($"Line {i:D3} ");
-            if (i % 10 == 9)
-            {
+            if (i % 10 == 9) {
                 _automation?.SendKeys("{ENTER}");
             }
         }
@@ -457,13 +424,11 @@ public class E2ETests
 
         // Verify with screenshot
         var screenshotPath = Path.Combine(Path.GetTempPath(), "e2e_stress_test.png");
-        try
-        {
+        try {
             _automation?.TakeScreenshot(screenshotPath);
             Assert.That(File.Exists(screenshotPath), Is.True);
         }
-        finally
-        {
+        finally {
             if (File.Exists(screenshotPath))
                 File.Delete(screenshotPath);
             _automation?.CloseApp(notepad!.Id, force: true);
@@ -479,8 +444,7 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_ReattachmentWorkflow()
-    {
+    public void E2E_ReattachmentWorkflow() {
         // Scenario: Launch app, lose reference, reattach by name, and continue
 
         // Step 1: Launch
@@ -495,13 +459,11 @@ public class E2ETests
 
         // Step 3: Take screenshot
         var screenshotPath1 = Path.Combine(Path.GetTempPath(), "e2e_before_reattach.png");
-        try
-        {
+        try {
             _automation?.TakeScreenshot(screenshotPath1);
             Assert.That(File.Exists(screenshotPath1), Is.True);
         }
-        finally
-        {
+        finally {
             if (File.Exists(screenshotPath1))
                 File.Delete(screenshotPath1);
         }
@@ -518,13 +480,11 @@ public class E2ETests
 
         // Step 6: Take screenshot
         var screenshotPath2 = Path.Combine(Path.GetTempPath(), "e2e_after_reattach.png");
-        try
-        {
+        try {
             _automation?.TakeScreenshot(screenshotPath2);
             Assert.That(File.Exists(screenshotPath2), Is.True);
         }
-        finally
-        {
+        finally {
             if (File.Exists(screenshotPath2))
                 File.Delete(screenshotPath2);
         }
@@ -542,8 +502,7 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_ErrorRecoveryAndContinuation()
-    {
+    public void E2E_ErrorRecoveryAndContinuation() {
         // Scenario: User encounters error but continues with workflow
 
         var notepad = _automation?.LaunchApp("notepad.exe");
@@ -582,8 +541,7 @@ public class E2ETests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void E2E_ComplexMultiStepWorkflow()
-    {
+    public void E2E_ComplexMultiStepWorkflow() {
         // Scenario: Complex real-world workflow with multiple steps and state management
 
         var notepad = _automation?.LaunchApp("notepad.exe");
@@ -592,8 +550,7 @@ public class E2ETests
 
         var screenshots = new List<string>();
 
-        try
-        {
+        try {
             // Step 1: Write header
             _automation?.SendKeys("=== E2E Test Report ===");
             _automation?.SendKeys("{ENTER}{ENTER}");
@@ -606,8 +563,7 @@ public class E2ETests
             Thread.Sleep(300);
 
             // Step 3: Add sections
-            for (int i = 1; i <= 3; i++)
-            {
+            for (int i = 1; i <= 3; i++) {
                 _automation?.SendKeys($"Section {i}");
                 _automation?.SendKeys("{ENTER}");
                 _automation?.SendKeys($"  - Item 1");
@@ -633,11 +589,9 @@ public class E2ETests
             _automation?.TakeScreenshot(screenshot2);
             Assert.That(File.Exists(screenshot2), Is.True);
         }
-        finally
-        {
+        finally {
             _automation?.CloseApp(notepad!.Id, force: true);
-            foreach (var screenshot in screenshots)
-            {
+            foreach (var screenshot in screenshots) {
                 if (File.Exists(screenshot))
                     File.Delete(screenshot);
             }

@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+
 using FlaUI.Core.AutomationElements;
+
 using Rhombus.WinFormsMcp.Server.Automation;
 
 namespace Rhombus.WinFormsMcp.Server;
@@ -14,14 +16,11 @@ namespace Rhombus.WinFormsMcp.Server;
 /// This server provides tools for automating WinForms applications in a headless manner.
 /// It communicates via JSON-RPC over stdio (compatible with Claude Code).
 /// </summary>
-class Program
-{
+class Program {
     private static AutomationServer? _server;
 
-    static async Task Main(string[] args)
-    {
-        try
-        {
+    static async Task Main(string[] args) {
+        try {
             var headlessEnv = Environment.GetEnvironmentVariable("HEADLESS");
             var headless = !string.Equals(headlessEnv, "false", StringComparison.OrdinalIgnoreCase)
                         && headlessEnv != "0";
@@ -29,8 +28,7 @@ class Program
             _server = new AutomationServer(headless);
             await _server.RunAsync();
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             Console.Error.WriteLine($"Fatal error: {ex.Message}");
             Console.Error.WriteLine(ex.StackTrace);
             Environment.Exit(1);
@@ -41,48 +39,40 @@ class Program
 /// <summary>
 /// Session manager for tracking automation contexts and element references
 /// </summary>
-class SessionManager
-{
+class SessionManager {
     private readonly Dictionary<string, AutomationElement> _elementCache = new();
     private readonly Dictionary<int, object> _processContext = new();
     private int _nextElementId = 1;
     private AutomationHelper? _automation;
     private readonly bool _headless;
 
-    public SessionManager(bool headless = false)
-    {
+    public SessionManager(bool headless = false) {
         _headless = headless;
     }
 
-    public AutomationHelper GetAutomation()
-    {
+    public AutomationHelper GetAutomation() {
         return _automation ??= new AutomationHelper(_headless);
     }
 
-    public string CacheElement(AutomationElement element)
-    {
+    public string CacheElement(AutomationElement element) {
         var id = $"elem_{_nextElementId++}";
         _elementCache[id] = element;
         return id;
     }
 
-    public AutomationElement? GetElement(string elementId)
-    {
+    public AutomationElement? GetElement(string elementId) {
         return _elementCache.TryGetValue(elementId, out var elem) ? elem : null;
     }
 
-    public void ClearElement(string elementId)
-    {
+    public void ClearElement(string elementId) {
         _elementCache.Remove(elementId);
     }
 
-    public void CacheProcess(int pid, object context)
-    {
+    public void CacheProcess(int pid, object context) {
         _processContext[pid] = context;
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         _automation?.Dispose();
     }
 }
@@ -90,8 +80,7 @@ class SessionManager
 /// <summary>
 /// Core MCP server implementation handling JSON-RPC communication
 /// </summary>
-class AutomationServer
-{
+class AutomationServer {
     private readonly Dictionary<string, Func<JsonElement, Task<JsonElement>>> _tools;
     private int _nextId = 1;
     private readonly SessionManager _session;
@@ -99,8 +88,7 @@ class AutomationServer
     private readonly InProcessFormRenderer _inProcessSyntaxTreeFormRenderer = new();
     private readonly CompiledFormRenderer _compiledSyntaxTreeFormRenderer = new();
 
-    public AutomationServer(bool headless = false)
-    {
+    public AutomationServer(bool headless = false) {
         _session = new SessionManager(headless);
         _tools = new Dictionary<string, Func<JsonElement, Task<JsonElement>>>
         {
@@ -142,35 +130,30 @@ class AutomationServer
         };
     }
 
-    public async Task RunAsync()
-    {
+    public async Task RunAsync() {
         var reader = Console.In;
         // Use raw stdout stream with explicit LF to avoid Windows CRLF (\r\n),
         // which breaks Node.js JSON parsing when it splits on \n and sees trailing \r.
         var stdoutStream = Console.OpenStandardOutput();
-        var writer = new System.IO.StreamWriter(stdoutStream, new System.Text.UTF8Encoding(false))
-        {
+        var writer = new System.IO.StreamWriter(stdoutStream, new System.Text.UTF8Encoding(false)) {
             NewLine = "\n",
             AutoFlush = false
         };
 
         // Process incoming messages — wait for client to send initialize first
-        while (true)
-        {
+        while (true) {
             var line = await reader.ReadLineAsync();
             if (line == null)
                 break;
             if (string.IsNullOrWhiteSpace(line))
                 continue;
 
-            try
-            {
+            try {
                 var request = JsonDocument.Parse(line).RootElement;
 
                 // Notifications have no "id" — must never send a response
                 bool isNotification = !request.TryGetProperty("id", out _);
-                if (isNotification)
-                {
+                if (isNotification) {
                     await ProcessNotification(request);
                     continue;
                 }
@@ -180,14 +163,11 @@ class AutomationServer
                 await writer.WriteLineAsync(JsonSerializer.Serialize(response));
                 await writer.FlushAsync();
             }
-            catch (Exception ex)
-            {
-                var error = new
-                {
+            catch (Exception ex) {
+                var error = new {
                     jsonrpc = "2.0",
                     id = (object?)null,
-                    error = new
-                    {
+                    error = new {
                         code = -32603,
                         message = "Internal error",
                         data = new { details = ex.Message }
@@ -199,43 +179,35 @@ class AutomationServer
         }
     }
 
-    private static object GetRequestId(JsonElement request)
-    {
+    private static object GetRequestId(JsonElement request) {
         if (!request.TryGetProperty("id", out var id))
             return 0;
         return id.ValueKind == JsonValueKind.String ? (object)id.GetString()! : id.GetInt32();
     }
 
-    private Task ProcessNotification(JsonElement request)
-    {
+    private Task ProcessNotification(JsonElement request) {
         // Notifications are fire-and-forget; no response allowed.
         // "initialized" is the only one we currently receive.
         return Task.CompletedTask;
     }
 
-    private async Task<object> ProcessRequest(JsonElement request, object requestId)
-    {
+    private async Task<object> ProcessRequest(JsonElement request, object requestId) {
         if (!request.TryGetProperty("method", out var methodElement))
             throw new InvalidOperationException("Missing method");
 
         var method = methodElement.GetString();
-        if (method == "initialize")
-        {
-            return new
-            {
+        if (method == "initialize") {
+            return new {
                 jsonrpc = "2.0",
                 id = requestId,
-                result = new
-                {
+                result = new {
                     protocolVersion = "2024-11-05",
                     // Per MCP spec, capabilities.tools is an empty object {},
                     // not the tools list — tools are fetched via tools/list.
-                    capabilities = new
-                    {
+                    capabilities = new {
                         tools = new { }
                     },
-                    serverInfo = new
-                    {
+                    serverInfo = new {
                         name = "fnWindowsMCP",
                         version = "1.0.0"
                     }
@@ -243,21 +215,17 @@ class AutomationServer
             };
         }
 
-        if (method == "tools/list")
-        {
-            return new
-            {
+        if (method == "tools/list") {
+            return new {
                 jsonrpc = "2.0",
                 id = requestId,
-                result = new
-                {
+                result = new {
                     tools = GetToolDefinitions()
                 }
             };
         }
 
-        if (method == "tools/call")
-        {
+        if (method == "tools/call") {
             if (!request.TryGetProperty("params", out var paramsElement))
                 throw new InvalidOperationException("Missing params");
 
@@ -273,14 +241,11 @@ class AutomationServer
             var result = await _tools[toolName](toolArgs);
 
             // If the tool returned image data, respond with an MCP image content block
-            if (result.TryGetProperty("imageBase64", out var imgData) && imgData.ValueKind == JsonValueKind.String)
-            {
-                return new
-                {
+            if (result.TryGetProperty("imageBase64", out var imgData) && imgData.ValueKind == JsonValueKind.String) {
+                return new {
                     jsonrpc = "2.0",
                     id = requestId,
-                    result = new
-                    {
+                    result = new {
                         content = new object[]
                         {
                             new Dictionary<string, string>
@@ -294,12 +259,10 @@ class AutomationServer
                 };
             }
 
-            return new
-            {
+            return new {
                 jsonrpc = "2.0",
                 id = requestId,
-                result = new
-                {
+                result = new {
                     content = new[]
                     {
                         new
@@ -315,8 +278,7 @@ class AutomationServer
         throw new InvalidOperationException($"Unknown method: {method}");
     }
 
-    private object GetToolDefinitions()
-    {
+    private object GetToolDefinitions() {
         return new object[]
         {
             new
@@ -586,10 +548,8 @@ class AutomationServer
     }
 
     // Tool implementations
-    private Task<JsonElement> FindElement(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> FindElement(JsonElement args) {
+        try {
             var automation = _session.GetAutomation();
             var pid = GetIntArg(args, "pid");
             var automationId = GetStringArg(args, "automationId");
@@ -598,16 +558,13 @@ class AutomationServer
 
             AutomationElement? element = null;
 
-            if (!string.IsNullOrEmpty(automationId))
-            {
+            if (!string.IsNullOrEmpty(automationId)) {
                 element = automation.FindByAutomationId(automationId);
             }
-            else if (!string.IsNullOrEmpty(name))
-            {
+            else if (!string.IsNullOrEmpty(name)) {
                 element = automation.FindByName(name);
             }
-            else if (!string.IsNullOrEmpty(className))
-            {
+            else if (!string.IsNullOrEmpty(className)) {
                 element = automation.FindByClassName(className);
             }
 
@@ -617,16 +574,13 @@ class AutomationServer
             var elementId = _session.CacheElement(element);
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"elementId\": \"{elementId}\", \"name\": \"{element.Name ?? ""}\", \"automationId\": \"{element.AutomationId ?? ""}\", \"controlType\": \"{element.ControlType}\"}}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> ClickElement(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> ClickElement(JsonElement args) {
+        try {
             var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
             var doubleClick = GetBoolArg(args, "doubleClick", false);
 
@@ -639,16 +593,13 @@ class AutomationServer
 
             return Task.FromResult(JsonDocument.Parse("{\"success\": true, \"message\": \"Element clicked\"}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> TypeText(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> TypeText(JsonElement args) {
+        try {
             var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
             var text = GetStringArg(args, "text") ?? "";
             var clearFirst = GetBoolArg(args, "clearFirst", false);
@@ -662,16 +613,13 @@ class AutomationServer
 
             return Task.FromResult(JsonDocument.Parse("{\"success\": true, \"message\": \"Text typed\"}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> SetValue(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> SetValue(JsonElement args) {
+        try {
             var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
             var value = GetStringArg(args, "value") ?? "";
 
@@ -684,16 +632,13 @@ class AutomationServer
 
             return Task.FromResult(JsonDocument.Parse("{\"success\": true, \"message\": \"Value set\"}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> GetProperty(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> GetProperty(JsonElement args) {
+        try {
             var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
             var propertyName = GetStringArg(args, "propertyName") ?? "";
 
@@ -708,16 +653,13 @@ class AutomationServer
             var json = $"{{\"success\": true, \"propertyName\": \"{propertyName}\", \"value\": {valueJson}}}";
             return Task.FromResult(JsonDocument.Parse(json).RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> LaunchApp(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> LaunchApp(JsonElement args) {
+        try {
             var path = GetStringArg(args, "path") ?? throw new ArgumentException("path is required");
             var arguments = GetStringArg(args, "arguments");
             var workingDirectory = GetStringArg(args, "workingDirectory");
@@ -729,16 +671,13 @@ class AutomationServer
 
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"pid\": {process.Id}, \"processName\": \"{process.ProcessName}\"}}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> AttachToProcess(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> AttachToProcess(JsonElement args) {
+        try {
             var pid = GetIntArg(args, "pid");
             var processName = GetStringArg(args, "processName");
 
@@ -751,16 +690,13 @@ class AutomationServer
 
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"pid\": {process.Id}, \"processName\": \"{process.ProcessName}\"}}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> CloseApp(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> CloseApp(JsonElement args) {
+        try {
             var pid = GetIntArg(args, "pid");
             var force = GetBoolArg(args, "force", false);
 
@@ -769,23 +705,19 @@ class AutomationServer
 
             return Task.FromResult(JsonDocument.Parse("{\"success\": true, \"message\": \"Application closed\"}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> GetProcessStatus(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> GetProcessStatus(JsonElement args) {
+        try {
             var pid = GetIntArg(args, "pid");
 
             var automation = _session.GetAutomation();
             var status = automation.GetProcessStatus(pid);
 
-            var jsonObj = new Dictionary<string, object?>
-            {
+            var jsonObj = new Dictionary<string, object?> {
                 ["success"] = true,
                 ["isRunning"] = status["isRunning"],
                 ["hasExited"] = status["hasExited"],
@@ -798,16 +730,13 @@ class AutomationServer
             var json = JsonSerializer.Serialize(jsonObj);
             return Task.FromResult(JsonDocument.Parse(json).RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> TakeScreenshot(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> TakeScreenshot(JsonElement args) {
+        try {
             var outputPath = GetStringArg(args, "outputPath");
             var elementId = GetStringArg(args, "elementId");
 
@@ -830,24 +759,20 @@ class AutomationServer
             var base64 = Convert.ToBase64String(imageBytes);
 
             // Clean up temp file
-            if (useTempFile)
-            {
+            if (useTempFile) {
                 try { File.Delete(screenshotPath); }
                 catch { /* best-effort cleanup */ } // COVERAGE_EXCEPTION: Temp file cleanup race condition
             }
 
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> ElementExists(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> ElementExists(JsonElement args) {
+        try {
             var automationId = GetStringArg(args, "automationId") ?? throw new ArgumentException("automationId is required");
 
             var automation = _session.GetAutomation();
@@ -855,16 +780,13 @@ class AutomationServer
 
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"exists\": {(exists ? "true" : "false")}}}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private async Task<JsonElement> WaitForElement(JsonElement args)
-    {
-        try
-        {
+    private async Task<JsonElement> WaitForElement(JsonElement args) {
+        try {
             var automationId = GetStringArg(args, "automationId") ?? throw new ArgumentException("automationId is required");
             var timeoutMs = GetIntArg(args, "timeoutMs", 10000);
 
@@ -873,16 +795,13 @@ class AutomationServer
 
             return JsonDocument.Parse($"{{\"success\": true, \"found\": {(found ? "true" : "false")}}}").RootElement;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement;
         }
     }
 
-    private Task<JsonElement> DragDrop(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> DragDrop(JsonElement args) {
+        try {
             var sourceElementId = GetStringArg(args, "sourceElementId") ?? throw new ArgumentException("sourceElementId is required");
             var targetElementId = GetStringArg(args, "targetElementId") ?? throw new ArgumentException("targetElementId is required");
 
@@ -897,16 +816,13 @@ class AutomationServer
 
             return Task.FromResult(JsonDocument.Parse("{\"success\": true, \"message\": \"Drag and drop completed\"}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> SendKeys(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> SendKeys(JsonElement args) {
+        try {
             var keys = GetStringArg(args, "keys") ?? throw new ArgumentException("keys is required");
 
             var automation = _session.GetAutomation();
@@ -914,29 +830,24 @@ class AutomationServer
 
             return Task.FromResult(JsonDocument.Parse("{\"success\": true, \"message\": \"Keys sent\"}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> RenderForm(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> RenderForm(JsonElement args) {
+        try {
             var designerFilePath = GetStringArg(args, "designerFilePath") ?? throw new ArgumentException("designerFilePath is required");
             var outputPath = GetStringArg(args, "outputPath");
 
             byte[] pngBytes;
 
-            if (!string.IsNullOrEmpty(outputPath))
-            {
+            if (!string.IsNullOrEmpty(outputPath)) {
                 // Save to disk AND return base64
                 _formRenderer.RenderDesignerFile(designerFilePath, outputPath);
                 pngBytes = System.IO.File.ReadAllBytes(outputPath);
             }
-            else
-            {
+            else {
                 // No output path: render to bytes only
                 pngBytes = _formRenderer.RenderDesignerFileToBytes(designerFilePath);
             }
@@ -944,16 +855,13 @@ class AutomationServer
             var base64 = Convert.ToBase64String(pngBytes);
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> RenderFormInProcess(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> RenderFormInProcess(JsonElement args) {
+        try {
             var sourceFilePath = GetStringArg(args, "sourceFilePath") ?? throw new ArgumentException("sourceFilePath is required");
 
             var pngBytes = _inProcessSyntaxTreeFormRenderer.RenderForm(sourceFilePath);
@@ -961,16 +869,13 @@ class AutomationServer
 
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> RenderFormCompiled(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> RenderFormCompiled(JsonElement args) {
+        try {
             var sourceFilePath = GetStringArg(args, "sourceFilePath") ?? throw new ArgumentException("sourceFilePath is required");
 
             var pngBytes = _compiledSyntaxTreeFormRenderer.RenderForm(sourceFilePath);
@@ -978,16 +883,13 @@ class AutomationServer
 
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> GetElementTree(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> GetElementTree(JsonElement args) {
+        try {
             var automation = _session.GetAutomation();
             var pid = GetIntArg(args, "pid");
             var elementId = GetStringArg(args, "elementId");
@@ -996,14 +898,12 @@ class AutomationServer
 
             AutomationElement? root = null;
 
-            if (!string.IsNullOrEmpty(elementId))
-            {
+            if (!string.IsNullOrEmpty(elementId)) {
                 root = _session.GetElement(elementId!);
                 if (root == null)
                     return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement);
             }
-            else if (pid > 0)
-            {
+            else if (pid > 0) {
                 root = automation.GetMainWindow(pid);
                 if (root == null)
                     return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Could not find main window for the specified process\"}").RootElement);
@@ -1017,16 +917,13 @@ class AutomationServer
             var json = JsonSerializer.Serialize(new { success = true, tree, elementCount = tree.Count });
             return Task.FromResult(JsonDocument.Parse(json).RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> SelectItem(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> SelectItem(JsonElement args) {
+        try {
             var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
             var value = GetStringArg(args, "value");
             var index = GetNullableIntArg(args, "index");
@@ -1041,16 +938,13 @@ class AutomationServer
             var json = $"{{\"success\": true, \"selectedValue\": \"{EscapeJson(selectedValue)}\"}}";
             return Task.FromResult(JsonDocument.Parse(json).RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> ClickMenuItem(JsonElement args)
-    {
-        try
-        {
+    private Task<JsonElement> ClickMenuItem(JsonElement args) {
+        try {
             var menuPath = GetStringArrayArg(args, "menuPath") ?? throw new ArgumentException("menuPath is required");
             var pid = GetNullableIntArg(args, "pid");
 
@@ -1059,27 +953,23 @@ class AutomationServer
 
             return Task.FromResult(JsonDocument.Parse("{\"success\": true}").RootElement);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
         }
     }
 
-    private Task<JsonElement> RaiseEvent(JsonElement args)
-    {
+    private Task<JsonElement> RaiseEvent(JsonElement args) {
         // Event raising is handled by FlaUI patterns in future enhancement
         return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Event raising not yet implemented\"}").RootElement);
     }
 
-    private Task<JsonElement> ListenForEvent(JsonElement args)
-    {
+    private Task<JsonElement> ListenForEvent(JsonElement args) {
         // Event listening is handled by FlaUI event handlers in future enhancement
         return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Event listening not yet implemented\"}").RootElement);
     }
 
     // Helper methods
-    private string? GetStringArg(JsonElement args, string key)
-    {
+    private string? GetStringArg(JsonElement args, string key) {
         if (args.ValueKind == JsonValueKind.Null)
             return null;
 
@@ -1088,8 +978,7 @@ class AutomationServer
             : null;
     }
 
-    private int GetIntArg(JsonElement args, string key, int defaultValue = 0)
-    {
+    private int GetIntArg(JsonElement args, string key, int defaultValue = 0) {
         if (args.ValueKind == JsonValueKind.Null)
             return defaultValue;
 
@@ -1098,8 +987,7 @@ class AutomationServer
             : defaultValue;
     }
 
-    private bool GetBoolArg(JsonElement args, string key, bool defaultValue = false)
-    {
+    private bool GetBoolArg(JsonElement args, string key, bool defaultValue = false) {
         if (args.ValueKind == JsonValueKind.Null)
             return defaultValue;
 
@@ -1110,8 +998,7 @@ class AutomationServer
                 : defaultValue;
     }
 
-    private int? GetNullableIntArg(JsonElement args, string key)
-    {
+    private int? GetNullableIntArg(JsonElement args, string key) {
         if (args.ValueKind == JsonValueKind.Null)
             return null;
 
@@ -1120,8 +1007,7 @@ class AutomationServer
             : null;
     }
 
-    private string[]? GetStringArrayArg(JsonElement args, string key)
-    {
+    private string[]? GetStringArrayArg(JsonElement args, string key) {
         if (args.ValueKind == JsonValueKind.Null)
             return null;
 
@@ -1129,16 +1015,14 @@ class AutomationServer
             return null;
 
         var result = new List<string>();
-        foreach (var item in prop.EnumerateArray())
-        {
+        foreach (var item in prop.EnumerateArray()) {
             if (item.ValueKind == JsonValueKind.String)
                 result.Add(item.GetString()!);
         }
         return result.Count > 0 ? result.ToArray() : null;
     }
 
-    private string EscapeJson(string? value)
-    {
+    private string EscapeJson(string? value) {
         if (value == null)
             return "";
         return value.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");

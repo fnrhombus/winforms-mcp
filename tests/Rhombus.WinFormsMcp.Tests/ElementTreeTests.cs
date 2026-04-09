@@ -1,32 +1,31 @@
 namespace Rhombus.WinFormsMcp.Tests;
 
-using Rhombus.WinFormsMcp.Server.Automation;
-using Moq;
-using FlaUI.Core.AutomationElements;
 using System.Collections.Generic;
+
+using FlaUI.Core.AutomationElements;
+
+using Moq;
+
+using Rhombus.WinFormsMcp.Server.Automation;
 
 /// <summary>
 /// Tests for the GetElementTree functionality
 /// </summary>
-public class ElementTreeTests
-{
+public class ElementTreeTests {
     private Mock<IAutomationHelper>? _mockAutomation;
 
     [SetUp]
-    public void Setup()
-    {
+    public void Setup() {
         _mockAutomation = new Mock<IAutomationHelper>();
     }
 
     [TearDown]
-    public void TearDown()
-    {
+    public void TearDown() {
         _mockAutomation?.VerifyAll();
     }
 
     [Test]
-    public void TestGetElementTreeIsCalled()
-    {
+    public void TestGetElementTreeIsCalled() {
         // Arrange
         var expectedTree = new List<Dictionary<string, object?>>();
         _mockAutomation!
@@ -45,8 +44,7 @@ public class ElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeWithCustomDepth()
-    {
+    public void TestGetElementTreeWithCustomDepth() {
         // Arrange
         var expectedTree = new List<Dictionary<string, object?>>();
         _mockAutomation!
@@ -65,8 +63,7 @@ public class ElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeWithCustomMaxElements()
-    {
+    public void TestGetElementTreeWithCustomMaxElements() {
         // Arrange
         var expectedTree = new List<Dictionary<string, object?>>();
         _mockAutomation!
@@ -85,8 +82,7 @@ public class ElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeReturnsPopulatedTree()
-    {
+    public void TestGetElementTreeReturnsPopulatedTree() {
         // Arrange
         var expectedTree = new List<Dictionary<string, object?>>
         {
@@ -148,8 +144,7 @@ public class ElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeWithCacheCallback()
-    {
+    public void TestGetElementTreeWithCacheCallback() {
         // Arrange
         var cachedElements = new List<string>();
         _mockAutomation!
@@ -168,8 +163,7 @@ public class ElementTreeTests
             .Verifiable();
 
         // Act
-        var result = _mockAutomation.Object.GetElementTree(null!, 3, 50, el =>
-        {
+        var result = _mockAutomation.Object.GetElementTree(null!, 3, 50, el => {
             var id = $"elem_{cachedElements.Count + 1}";
             cachedElements.Add(id);
             return id;
@@ -181,8 +175,7 @@ public class ElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeWithNestedChildren()
-    {
+    public void TestGetElementTreeWithNestedChildren() {
         // Arrange
         var innerChildren = new List<Dictionary<string, object?>>
         {
@@ -225,8 +218,7 @@ public class ElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeDepthLimiting()
-    {
+    public void TestGetElementTreeDepthLimiting() {
         // Arrange - depth 1 should only return immediate children, no grandchildren
         var expectedTree = new List<Dictionary<string, object?>>
         {
@@ -256,8 +248,7 @@ public class ElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeMaxElementsCapping()
-    {
+    public void TestGetElementTreeMaxElementsCapping() {
         // Arrange - maxElements=2 should cap the number of returned elements
         var expectedTree = new List<Dictionary<string, object?>>
         {
@@ -288,8 +279,7 @@ public class ElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeWithNullProperties()
-    {
+    public void TestGetElementTreeWithNullProperties() {
         // Arrange - elements may have null properties
         var expectedTree = new List<Dictionary<string, object?>>
         {
@@ -324,8 +314,7 @@ public class ElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeDefaultParameters()
-    {
+    public void TestGetElementTreeDefaultParameters() {
         // Arrange - verify default parameters (depth=3, maxElements=50) are used
         _mockAutomation!
             .Setup(a => a.GetElementTree(
@@ -343,8 +332,7 @@ public class ElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeThrowsOnError()
-    {
+    public void TestGetElementTreeThrowsOnError() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetElementTree(
@@ -365,30 +353,25 @@ public class ElementTreeTests
 /// These test the actual tree-building logic using a real AutomationHelper
 /// against the desktop (no launched apps required).
 /// </summary>
-public class AutomationHelperElementTreeTests
-{
+public class AutomationHelperElementTreeTests {
     private AutomationHelper? _automation;
 
     [SetUp]
-    public void Setup()
-    {
+    public void Setup() {
         _automation = new AutomationHelper();
     }
 
     [TearDown]
-    public void TearDown()
-    {
+    public void TearDown() {
         _automation?.Dispose();
     }
 
     [Test]
-    public void TestGetElementTreeWithDepthZeroReturnsEmpty()
-    {
+    public void TestGetElementTreeWithDepthZeroReturnsEmpty() {
         // GetElementTree with depth=0 should return no children
         // We need a root element - use the desktop
         var desktop = GetDesktop();
-        if (desktop == null)
-        {
+        if (desktop == null) {
             Assert.Ignore("Cannot get desktop element in this environment");
             return;
         }
@@ -399,11 +382,9 @@ public class AutomationHelperElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeWithMaxElementsZeroReturnsEmpty()
-    {
+    public void TestGetElementTreeWithMaxElementsZeroReturnsEmpty() {
         var desktop = GetDesktop();
-        if (desktop == null)
-        {
+        if (desktop == null) {
             Assert.Ignore("Cannot get desktop element in this environment");
             return;
         }
@@ -414,19 +395,16 @@ public class AutomationHelperElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeCachesElements()
-    {
+    public void TestGetElementTreeCachesElements() {
         var desktop = GetDesktop();
-        if (desktop == null)
-        {
+        if (desktop == null) {
             Assert.Ignore("Cannot get desktop element in this environment");
             return;
         }
 
         var cachedIds = new List<string>();
         int counter = 0;
-        var result = _automation!.GetElementTree(desktop, depth: 1, maxElements: 5, cacheElement: el =>
-        {
+        var result = _automation!.GetElementTree(desktop, depth: 1, maxElements: 5, cacheElement: el => {
             var id = $"elem_{++counter}";
             cachedIds.Add(id);
             return id;
@@ -436,19 +414,16 @@ public class AutomationHelperElementTreeTests
         Assert.That(result.Count, Is.GreaterThanOrEqualTo(0));
         Assert.That(cachedIds.Count, Is.EqualTo(result.Count));
 
-        foreach (var node in result)
-        {
+        foreach (var node in result) {
             Assert.That(node.ContainsKey("elementId"), Is.True);
             Assert.That(node["elementId"], Is.Not.Null);
         }
     }
 
     [Test]
-    public void TestGetElementTreeRespectsMaxElements()
-    {
+    public void TestGetElementTreeRespectsMaxElements() {
         var desktop = GetDesktop();
-        if (desktop == null)
-        {
+        if (desktop == null) {
             Assert.Ignore("Cannot get desktop element in this environment");
             return;
         }
@@ -462,18 +437,15 @@ public class AutomationHelperElementTreeTests
     }
 
     [Test]
-    public void TestGetElementTreeNodeStructure()
-    {
+    public void TestGetElementTreeNodeStructure() {
         var desktop = GetDesktop();
-        if (desktop == null)
-        {
+        if (desktop == null) {
             Assert.Ignore("Cannot get desktop element in this environment");
             return;
         }
 
         var result = _automation!.GetElementTree(desktop, depth: 1, maxElements: 1);
-        if (result.Count == 0)
-        {
+        if (result.Count == 0) {
             Assert.Ignore("No children found on desktop");
             return;
         }
@@ -489,31 +461,25 @@ public class AutomationHelperElementTreeTests
         Assert.That(node.ContainsKey("children"), Is.True);
     }
 
-    private static int CountElements(List<Dictionary<string, object?>> tree)
-    {
+    private static int CountElements(List<Dictionary<string, object?>> tree) {
         int count = 0;
-        foreach (var node in tree)
-        {
+        foreach (var node in tree) {
             count++;
-            if (node.TryGetValue("children", out var childrenObj) && childrenObj is List<Dictionary<string, object?>> children)
-            {
+            if (node.TryGetValue("children", out var childrenObj) && childrenObj is List<Dictionary<string, object?>> children) {
                 count += CountElements(children);
             }
         }
         return count;
     }
 
-    private AutomationElement? GetDesktop()
-    {
-        try
-        {
+    private AutomationElement? GetDesktop() {
+        try {
             // Use reflection to access the internal _automation field for desktop
             var field = typeof(AutomationHelper).GetField("_automation", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var uia = field?.GetValue(_automation) as FlaUI.UIA2.UIA2Automation;
             return uia?.GetDesktop();
         }
-        catch
-        {
+        catch {
             return null;
         }
     }

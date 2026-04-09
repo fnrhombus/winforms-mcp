@@ -1,20 +1,20 @@
 using System.Drawing;
 using System.Windows.Forms;
+
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
 using Rhombus.WinFormsMcp.Server.Automation;
 
 namespace Rhombus.WinFormsMcp.Tests;
 
 [TestFixture]
 [Apartment(ApartmentState.STA)]
-public class SyntaxTreeFormRendererTests
-{
+public class SyntaxTreeFormRendererTests {
     private SyntaxTreeFormRenderer _renderer = null!;
 
     [SetUp]
-    public void Setup()
-    {
+    public void Setup() {
         _renderer = new SyntaxTreeFormRenderer();
     }
 
@@ -29,8 +29,7 @@ public class SyntaxTreeFormRendererTests
     [TestCase("System.Windows.Forms.Panel", typeof(Panel))]
     [TestCase("System.Windows.Forms.GroupBox", typeof(GroupBox))]
     [TestCase("System.Windows.Forms.ListBox", typeof(ListBox))]
-    public void ResolveType_StandardWinFormsTypes_ReturnsCorrectType(string typeName, Type expected)
-    {
+    public void ResolveType_StandardWinFormsTypes_ReturnsCorrectType(string typeName, Type expected) {
         var result = _renderer.ResolveType(typeName);
         Assert.That(result, Is.EqualTo(expected));
     }
@@ -40,22 +39,19 @@ public class SyntaxTreeFormRendererTests
     [TestCase("TextBox", typeof(TextBox))]
     [TestCase("Point", typeof(Point))]
     [TestCase("Size", typeof(Size))]
-    public void ResolveType_ShortNames_ReturnsCorrectType(string typeName, Type expected)
-    {
+    public void ResolveType_ShortNames_ReturnsCorrectType(string typeName, Type expected) {
         var result = _renderer.ResolveType(typeName);
         Assert.That(result, Is.EqualTo(expected));
     }
 
     [Test]
-    public void ResolveType_UnknownType_ReturnsNull()
-    {
+    public void ResolveType_UnknownType_ReturnsNull() {
         var result = _renderer.ResolveType("MyApp.CustomWidget");
         Assert.That(result, Is.Null);
     }
 
     [Test]
-    public void ResolveType_CachesResults()
-    {
+    public void ResolveType_CachesResults() {
         var first = _renderer.ResolveType("System.Windows.Forms.Button");
         var second = _renderer.ResolveType("System.Windows.Forms.Button");
         Assert.That(first, Is.SameAs(second));
@@ -66,56 +62,49 @@ public class SyntaxTreeFormRendererTests
     #region Expression Evaluation
 
     [Test]
-    public void EvaluateExpression_StringLiteral_ReturnsString()
-    {
+    public void EvaluateExpression_StringLiteral_ReturnsString() {
         var expr = ParseExpression("\"Hello World\"");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo("Hello World"));
     }
 
     [Test]
-    public void EvaluateExpression_IntLiteral_ReturnsInt()
-    {
+    public void EvaluateExpression_IntLiteral_ReturnsInt() {
         var expr = ParseExpression("42");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo(42));
     }
 
     [Test]
-    public void EvaluateExpression_FloatLiteral_ReturnsFloat()
-    {
+    public void EvaluateExpression_FloatLiteral_ReturnsFloat() {
         var expr = ParseExpression("8.25F");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo(8.25f));
     }
 
     [Test]
-    public void EvaluateExpression_BoolLiteral_ReturnsBool()
-    {
+    public void EvaluateExpression_BoolLiteral_ReturnsBool() {
         var expr = ParseExpression("true");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo(true));
     }
 
     [Test]
-    public void EvaluateExpression_ObjectCreation_Point()
-    {
+    public void EvaluateExpression_ObjectCreation_Point() {
         var expr = ParseExpression("new System.Drawing.Point(10, 20)");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo(new Point(10, 20)));
     }
 
     [Test]
-    public void EvaluateExpression_ObjectCreation_Size()
-    {
+    public void EvaluateExpression_ObjectCreation_Size() {
         var expr = ParseExpression("new System.Drawing.Size(400, 300)");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo(new Size(400, 300)));
     }
 
     [Test]
-    public void EvaluateExpression_ObjectCreation_Font()
-    {
+    public void EvaluateExpression_ObjectCreation_Font() {
         var expr = ParseExpression("new System.Drawing.Font(\"Segoe UI\", 9F)");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.InstanceOf<Font>());
@@ -125,48 +114,42 @@ public class SyntaxTreeFormRendererTests
     }
 
     [Test]
-    public void EvaluateExpression_StaticMember_ColorRed()
-    {
+    public void EvaluateExpression_StaticMember_ColorRed() {
         var expr = ParseExpression("System.Drawing.Color.Red");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo(Color.Red));
     }
 
     [Test]
-    public void EvaluateExpression_StaticMethod_ColorFromArgb()
-    {
+    public void EvaluateExpression_StaticMethod_ColorFromArgb() {
         var expr = ParseExpression("System.Drawing.Color.FromArgb(255, 0, 0)");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo(Color.FromArgb(255, 0, 0)));
     }
 
     [Test]
-    public void EvaluateExpression_EnumFlags_BitwiseOr()
-    {
+    public void EvaluateExpression_EnumFlags_BitwiseOr() {
         var expr = ParseExpression("System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo(AnchorStyles.Top | AnchorStyles.Left));
     }
 
     [Test]
-    public void EvaluateExpression_EnumFlags_MultipleOr()
-    {
+    public void EvaluateExpression_EnumFlags_MultipleOr() {
         var expr = ParseExpression("System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo(AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right));
     }
 
     [Test]
-    public void EvaluateExpression_Cast_ReturnsInnerValue()
-    {
+    public void EvaluateExpression_Cast_ReturnsInnerValue() {
         var expr = ParseExpression("((int)(284))");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo(284));
     }
 
     [Test]
-    public void EvaluateExpression_ArrayCreation_ObjectArray()
-    {
+    public void EvaluateExpression_ArrayCreation_ObjectArray() {
         var expr = ParseExpression("new object[] { \"A\", \"B\", \"C\" }");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.InstanceOf<object[]>());
@@ -178,16 +161,14 @@ public class SyntaxTreeFormRendererTests
     }
 
     [Test]
-    public void EvaluateExpression_Negation_ReturnsNegated()
-    {
+    public void EvaluateExpression_Negation_ReturnsNegated() {
         var expr = ParseExpression("-1");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo(-1));
     }
 
     [Test]
-    public void EvaluateExpression_UnknownExpression_ReturnsSkipped()
-    {
+    public void EvaluateExpression_UnknownExpression_ReturnsSkipped() {
         // An expression type we don't handle: typeof(...)
         var expr = ParseExpression("typeof(string)");
         var result = _renderer.EvaluateExpression(expr);
@@ -195,16 +176,14 @@ public class SyntaxTreeFormRendererTests
     }
 
     [Test]
-    public void EvaluateExpression_ResourceReference_ReturnsSkipped()
-    {
+    public void EvaluateExpression_ResourceReference_ReturnsSkipped() {
         var expr = ParseExpression("resources.GetObject(\"icon\")");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.InstanceOf<EvaluationSkipped>());
     }
 
     [Test]
-    public void EvaluateExpression_Padding()
-    {
+    public void EvaluateExpression_Padding() {
         var expr = ParseExpression("new System.Windows.Forms.Padding(3)");
         var result = _renderer.EvaluateExpression(expr);
         Assert.That(result, Is.EqualTo(new Padding(3)));
@@ -215,8 +194,7 @@ public class SyntaxTreeFormRendererTests
     #region Statement Execution
 
     [Test]
-    public void ExecuteStatement_ObjectCreation_StoresInFields()
-    {
+    public void ExecuteStatement_ObjectCreation_StoresInFields() {
         var designerCode = @"
 namespace Test {
     partial class TestForm {
@@ -230,20 +208,18 @@ namespace Test {
     }
 }";
         var outputPath = Path.Combine(Path.GetTempPath(), $"test_statement_{Guid.NewGuid()}.png");
-        try
-        {
+        try {
             _renderer.RenderDesignerCode(designerCode, outputPath);
             Assert.That(File.Exists(outputPath), Is.True);
         }
-        finally
-        {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+        finally {
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
         }
     }
 
     [Test]
-    public void ExecuteStatement_EventWireup_Skipped()
-    {
+    public void ExecuteStatement_EventWireup_Skipped() {
         // Event wireups should not throw
         var designerCode = @"
 namespace Test {
@@ -256,20 +232,18 @@ namespace Test {
     }
 }";
         var outputPath = Path.Combine(Path.GetTempPath(), $"test_event_{Guid.NewGuid()}.png");
-        try
-        {
+        try {
             _renderer.RenderDesignerCode(designerCode, outputPath);
             Assert.That(File.Exists(outputPath), Is.True);
         }
-        finally
-        {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+        finally {
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
         }
     }
 
     [Test]
-    public void ExecuteStatement_SuspendResumeLayout_DoesNotThrow()
-    {
+    public void ExecuteStatement_SuspendResumeLayout_DoesNotThrow() {
         var designerCode = @"
 namespace Test {
     partial class TestForm {
@@ -282,14 +256,13 @@ namespace Test {
     }
 }";
         var outputPath = Path.Combine(Path.GetTempPath(), $"test_layout_{Guid.NewGuid()}.png");
-        try
-        {
+        try {
             _renderer.RenderDesignerCode(designerCode, outputPath);
             Assert.That(File.Exists(outputPath), Is.True);
         }
-        finally
-        {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+        finally {
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
         }
     }
 
@@ -298,8 +271,7 @@ namespace Test {
     #region End-to-End
 
     [Test]
-    public void RenderDesignerCode_RealisticForm_ProducesValidPng()
-    {
+    public void RenderDesignerCode_RealisticForm_ProducesValidPng() {
         var designerCode = @"
 namespace TestApp {
     partial class MainForm {
@@ -367,23 +339,21 @@ namespace TestApp {
 }";
 
         var outputPath = Path.Combine(Path.GetTempPath(), $"test_e2e_{Guid.NewGuid()}.png");
-        try
-        {
+        try {
             _renderer.RenderDesignerCode(designerCode, outputPath);
 
             Assert.That(File.Exists(outputPath), Is.True);
             var fileInfo = new FileInfo(outputPath);
             Assert.That(fileInfo.Length, Is.GreaterThan(0));
         }
-        finally
-        {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+        finally {
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
         }
     }
 
     [Test]
-    public void RenderDesignerCode_NoInitializeComponent_ThrowsInvalidOperation()
-    {
+    public void RenderDesignerCode_NoInitializeComponent_ThrowsInvalidOperation() {
         var designerCode = @"
 namespace Test {
     partial class TestForm {
@@ -391,20 +361,18 @@ namespace Test {
     }
 }";
         var outputPath = Path.Combine(Path.GetTempPath(), $"test_noinit_{Guid.NewGuid()}.png");
-        try
-        {
+        try {
             Assert.Throws<InvalidOperationException>(() =>
                 _renderer.RenderDesignerCode(designerCode, outputPath));
         }
-        finally
-        {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+        finally {
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
         }
     }
 
     [Test]
-    public void RenderDesignerCode_UnknownControlTypes_SkipsGracefully()
-    {
+    public void RenderDesignerCode_UnknownControlTypes_SkipsGracefully() {
         var designerCode = @"
 namespace Test {
     partial class TestForm {
@@ -417,20 +385,18 @@ namespace Test {
     }
 }";
         var outputPath = Path.Combine(Path.GetTempPath(), $"test_unknown_{Guid.NewGuid()}.png");
-        try
-        {
+        try {
             _renderer.RenderDesignerCode(designerCode, outputPath);
             Assert.That(File.Exists(outputPath), Is.True);
         }
-        finally
-        {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+        finally {
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
         }
     }
 
     [Test]
-    public void RenderDesignerFile_ValidFile_ProducesPng()
-    {
+    public void RenderDesignerFile_ValidFile_ProducesPng() {
         var designerCode = @"
 namespace Test {
     partial class TestForm {
@@ -442,23 +408,22 @@ namespace Test {
 }";
         var designerPath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.Designer.cs");
         var outputPath = Path.Combine(Path.GetTempPath(), $"test_file_{Guid.NewGuid()}.png");
-        try
-        {
+        try {
             File.WriteAllText(designerPath, designerCode);
             _renderer.RenderDesignerFile(designerPath, outputPath);
             Assert.That(File.Exists(outputPath), Is.True);
             Assert.That(new FileInfo(outputPath).Length, Is.GreaterThan(0));
         }
-        finally
-        {
-            if (File.Exists(designerPath)) File.Delete(designerPath);
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+        finally {
+            if (File.Exists(designerPath))
+                File.Delete(designerPath);
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
         }
     }
 
     [Test]
-    public void RenderDesignerCode_FormWithFont()
-    {
+    public void RenderDesignerCode_FormWithFont() {
         var designerCode = @"
 namespace Test {
     partial class TestForm {
@@ -472,20 +437,18 @@ namespace Test {
     }
 }";
         var outputPath = Path.Combine(Path.GetTempPath(), $"test_font_{Guid.NewGuid()}.png");
-        try
-        {
+        try {
             _renderer.RenderDesignerCode(designerCode, outputPath);
             Assert.That(File.Exists(outputPath), Is.True);
         }
-        finally
-        {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+        finally {
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
         }
     }
 
     [Test]
-    public void RenderDesignerCode_FormWithAnchoredControls()
-    {
+    public void RenderDesignerCode_FormWithAnchoredControls() {
         var designerCode = @"
 namespace Test {
     partial class TestForm {
@@ -503,20 +466,18 @@ namespace Test {
     }
 }";
         var outputPath = Path.Combine(Path.GetTempPath(), $"test_anchor_{Guid.NewGuid()}.png");
-        try
-        {
+        try {
             _renderer.RenderDesignerCode(designerCode, outputPath);
             Assert.That(File.Exists(outputPath), Is.True);
         }
-        finally
-        {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+        finally {
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
         }
     }
 
     [Test]
-    public void RenderDesignerCode_WithoutThisPrefix_StillWorks()
-    {
+    public void RenderDesignerCode_WithoutThisPrefix_StillWorks() {
         // Modern format without this. prefix
         var designerCode = @"
 namespace Test {
@@ -530,20 +491,18 @@ namespace Test {
     }
 }";
         var outputPath = Path.Combine(Path.GetTempPath(), $"test_nothis_{Guid.NewGuid()}.png");
-        try
-        {
+        try {
             _renderer.RenderDesignerCode(designerCode, outputPath);
             Assert.That(File.Exists(outputPath), Is.True);
         }
-        finally
-        {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+        finally {
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
         }
     }
 
     [Test]
-    public void RenderDesignerCode_WithColorProperties()
-    {
+    public void RenderDesignerCode_WithColorProperties() {
         var designerCode = @"
 namespace Test {
     partial class TestForm {
@@ -559,14 +518,13 @@ namespace Test {
     }
 }";
         var outputPath = Path.Combine(Path.GetTempPath(), $"test_color_{Guid.NewGuid()}.png");
-        try
-        {
+        try {
             _renderer.RenderDesignerCode(designerCode, outputPath);
             Assert.That(File.Exists(outputPath), Is.True);
         }
-        finally
-        {
-            if (File.Exists(outputPath)) File.Delete(outputPath);
+        finally {
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
         }
     }
 
@@ -575,8 +533,7 @@ namespace Test {
     #region KitchenSink
 
     [Test]
-    public void RenderDesignerCode_CheckedListBox_ShowsItems()
-    {
+    public void RenderDesignerCode_CheckedListBox_ShowsItems() {
         var designerCode = @"
 namespace Test {
     partial class TestForm {
@@ -597,23 +554,20 @@ namespace Test {
     }
 
     [Test]
-    public void RenderDesignerFile_KitchenSink_ProducesPng()
-    {
+    public void RenderDesignerFile_KitchenSink_ProducesPng() {
         var designerPath = Path.Combine(TestContext.CurrentContext.TestDirectory,
             "TestData", "KitchenSink", "KitchenSinkForm.Designer.cs");
         if (!File.Exists(designerPath))
             Assert.Ignore("KitchenSink designer file not found.");
 
         var outputPath = Path.Combine(Path.GetTempPath(), "KitchenSink_roslyn.png");
-        try
-        {
+        try {
             _renderer.RenderDesignerFile(designerPath, outputPath);
             Assert.That(File.Exists(outputPath), Is.True);
             Assert.That(new FileInfo(outputPath).Length, Is.GreaterThan(0));
             TestContext.WriteLine($"Rendered: {outputPath}");
         }
-        finally
-        {
+        finally {
             // Keep for visual review - don't delete
         }
     }
@@ -622,8 +576,7 @@ namespace Test {
 
     #region Helpers
 
-    private static ExpressionSyntax ParseExpression(string expressionText)
-    {
+    private static ExpressionSyntax ParseExpression(string expressionText) {
         var code = $"class C {{ void M() {{ var x = {expressionText}; }} }}";
         var tree = CSharpSyntaxTree.ParseText(code);
         var root = tree.GetCompilationUnitRoot();

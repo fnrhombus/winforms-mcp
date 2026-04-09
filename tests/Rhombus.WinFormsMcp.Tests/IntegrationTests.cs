@@ -1,31 +1,27 @@
 namespace Rhombus.WinFormsMcp.Tests;
 
-using Rhombus.WinFormsMcp.Server.Automation;
 using System.Diagnostics;
 using System.Text.Json;
+
+using Rhombus.WinFormsMcp.Server.Automation;
 
 /// <summary>
 /// Integration tests for the fnWindowsMCP server
 /// These tests verify the complete JSON-RPC protocol flow and MCP server functionality
 /// </summary>
-public class IntegrationTests
-{
+public class IntegrationTests {
     private AutomationHelper? _automation;
     private Process? _testProcess;
 
     [SetUp]
-    public void Setup()
-    {
+    public void Setup() {
         _automation = new AutomationHelper();
     }
 
     [TearDown]
-    public void TearDown()
-    {
-        if (_testProcess != null && !_testProcess.HasExited)
-        {
-            try
-            {
+    public void TearDown() {
+        if (_testProcess is { HasExited: false }) {
+            try {
                 _testProcess.Kill();
             }
             catch { }
@@ -41,8 +37,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestApplicationLaunchAndWindowDiscovery()
-    {
+    public void TestApplicationLaunchAndWindowDiscovery() {
         // Arrange
         var appPath = "notepad.exe";
 
@@ -65,8 +60,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestApplicationLaunchWithWorkingDirectory()
-    {
+    public void TestApplicationLaunchWithWorkingDirectory() {
         // Arrange
         var tempDir = Path.GetTempPath();
         var appPath = "notepad.exe";
@@ -85,8 +79,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestCompleteProcessLifecycle()
-    {
+    public void TestCompleteProcessLifecycle() {
         // Arrange
         var appPath = "notepad.exe";
 
@@ -113,8 +106,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestForceCloseApplication()
-    {
+    public void TestForceCloseApplication() {
         // Arrange
         var appPath = "notepad.exe";
         var process = _automation?.LaunchApp(appPath);
@@ -138,8 +130,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestAttachToProcessById()
-    {
+    public void TestAttachToProcessById() {
         // Arrange
         var appPath = "notepad.exe";
         var launchedProcess = _automation?.LaunchApp(appPath);
@@ -159,8 +150,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestAttachToProcessByName()
-    {
+    public void TestAttachToProcessByName() {
         // Arrange
         var appPath = "notepad.exe";
         var launchedProcess = _automation?.LaunchApp(appPath);
@@ -181,8 +171,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestAttachToNonExistentProcess()
-    {
+    public void TestAttachToNonExistentProcess() {
         // Act & Assert - Should throw InvalidOperationException when process not found
         var ex = Assert.Throws<InvalidOperationException>(
             () => _automation?.AttachToProcessByName("nonexistent_process_12345")
@@ -199,8 +188,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestElementDiscoveryMethods()
-    {
+    public void TestElementDiscoveryMethods() {
         // Arrange
         var appPath = "notepad.exe";
         var process = _automation?.LaunchApp(appPath);
@@ -220,8 +208,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestElementExistenceChecking()
-    {
+    public void TestElementExistenceChecking() {
         // Arrange
         var appPath = "notepad.exe";
         var process = _automation?.LaunchApp(appPath);
@@ -240,8 +227,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestGetChildElements()
-    {
+    public void TestGetChildElements() {
         // Arrange
         var appPath = "notepad.exe";
         var process = _automation?.LaunchApp(appPath);
@@ -267,8 +253,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestKeyboardInput()
-    {
+    public void TestKeyboardInput() {
         // Arrange
         var appPath = "notepad.exe";
         var process = _automation?.LaunchApp(appPath);
@@ -288,8 +273,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestScreenshotCapture()
-    {
+    public void TestScreenshotCapture() {
         // Arrange
         var appPath = "notepad.exe";
         var process = _automation?.LaunchApp(appPath);
@@ -298,8 +282,7 @@ public class IntegrationTests
 
         var screenshotPath = Path.Combine(Path.GetTempPath(), $"integration_test_{Guid.NewGuid()}.png");
 
-        try
-        {
+        try {
             // Act
             _automation?.TakeScreenshot(screenshotPath);
             Thread.Sleep(500);
@@ -309,8 +292,7 @@ public class IntegrationTests
             var fileInfo = new FileInfo(screenshotPath);
             Assert.That(fileInfo.Length, Is.GreaterThan(0), "Screenshot file should not be empty");
         }
-        finally
-        {
+        finally {
             if (File.Exists(screenshotPath))
                 File.Delete(screenshotPath);
         }
@@ -321,8 +303,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestElementScreenshotCapture()
-    {
+    public void TestElementScreenshotCapture() {
         // Arrange
         var appPath = "notepad.exe";
         var process = _automation?.LaunchApp(appPath);
@@ -334,8 +315,7 @@ public class IntegrationTests
 
         var screenshotPath = Path.Combine(Path.GetTempPath(), $"element_screenshot_{Guid.NewGuid()}.png");
 
-        try
-        {
+        try {
             // Act
             _automation?.TakeScreenshot(screenshotPath, mainWindow);
             Thread.Sleep(500);
@@ -345,8 +325,7 @@ public class IntegrationTests
             var fileInfo = new FileInfo(screenshotPath);
             Assert.That(fileInfo.Length, Is.GreaterThan(0), "Element screenshot should not be empty");
         }
-        finally
-        {
+        finally {
             if (File.Exists(screenshotPath))
                 File.Delete(screenshotPath);
         }
@@ -361,8 +340,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public async Task TestAsyncElementWaitWithTimeout()
-    {
+    public async Task TestAsyncElementWaitWithTimeout() {
         // Arrange
         var appPath = "notepad.exe";
         var process = _automation?.LaunchApp(appPath);
@@ -386,8 +364,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public async Task TestMultipleAsyncOperations()
-    {
+    public async Task TestMultipleAsyncOperations() {
         // Arrange
         var appPath = "notepad.exe";
         var process = _automation?.LaunchApp(appPath);
@@ -417,8 +394,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestSessionPersistence()
-    {
+    public void TestSessionPersistence() {
         // Arrange
         var appPath = "notepad.exe";
 
@@ -436,16 +412,14 @@ public class IntegrationTests
 
         // Act 3 - Take screenshot to verify state
         var screenshotPath = Path.Combine(Path.GetTempPath(), "session_test.png");
-        try
-        {
+        try {
             _automation?.TakeScreenshot(screenshotPath);
 
             // Assert - Session should maintain state across operations
             Assert.That(File.Exists(screenshotPath), Is.True);
             Assert.That(!process1!.HasExited, "Process should still be running");
         }
-        finally
-        {
+        finally {
             if (File.Exists(screenshotPath))
                 File.Delete(screenshotPath);
         }
@@ -460,8 +434,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestErrorRecovery()
-    {
+    public void TestErrorRecovery() {
         // Arrange
         var appPath = "notepad.exe";
         var process = _automation?.LaunchApp(appPath);
@@ -487,8 +460,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestProcessCleanupOnError()
-    {
+    public void TestProcessCleanupOnError() {
         // Arrange
         var appPath = "notepad.exe";
         var process = _automation?.LaunchApp(appPath);
@@ -496,13 +468,11 @@ public class IntegrationTests
         Thread.Sleep(500);
 
         // Act
-        try
-        {
+        try {
             // Try some operations
             _automation?.GetMainWindow(process!.Id);
         }
-        finally
-        {
+        finally {
             _automation?.CloseApp(process!.Id);
         }
 
@@ -520,8 +490,7 @@ public class IntegrationTests
     /// </summary>
     [Test]
     [Ignore("Requires GUI - use headless variant for CI/CD")]
-    public void TestPropertyRetrieval()
-    {
+    public void TestPropertyRetrieval() {
         // Arrange
         var appPath = "notepad.exe";
         var process = _automation?.LaunchApp(appPath);

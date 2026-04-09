@@ -1,32 +1,30 @@
 namespace Rhombus.WinFormsMcp.Tests;
 
-using Rhombus.WinFormsMcp.Server.Automation;
-using Moq;
 using System.Diagnostics;
+
+using Moq;
+
+using Rhombus.WinFormsMcp.Server.Automation;
 
 /// <summary>
 /// Headless tests for AutomationHelper using mocks
 /// These tests verify AutomationHelper logic without requiring a GUI
 /// </summary>
-public class AutomationHelperHeadlessTests
-{
+public class AutomationHelperHeadlessTests {
     private Mock<IAutomationHelper>? _mockAutomation;
 
     [SetUp]
-    public void Setup()
-    {
+    public void Setup() {
         _mockAutomation = new Mock<IAutomationHelper>();
     }
 
     [TearDown]
-    public void TearDown()
-    {
+    public void TearDown() {
         _mockAutomation?.VerifyAll();
     }
 
     [Test]
-    public void TestAutomationHelperInitialization()
-    {
+    public void TestAutomationHelperInitialization() {
         // Arrange & Act
         _mockAutomation!.Setup(a => a.Dispose()).Verifiable();
 
@@ -36,8 +34,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestLaunchAppReturnsValidProcess()
-    {
+    public void TestLaunchAppReturnsValidProcess() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.LaunchApp("notepad.exe", null, null))
@@ -52,8 +49,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestLaunchAppWithArguments()
-    {
+    public void TestLaunchAppWithArguments() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.LaunchApp("notepad.exe", "/A", "C:\\"))
@@ -68,8 +64,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestAttachToProcess()
-    {
+    public void TestAttachToProcess() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.AttachToProcess(9999))
@@ -84,8 +79,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestAttachToProcessByName()
-    {
+    public void TestAttachToProcessByName() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.AttachToProcessByName("notepad"))
@@ -100,8 +94,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestGetMainWindow()
-    {
+    public void TestGetMainWindow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetMainWindow(1234))
@@ -116,8 +109,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestGetMainWindowReturnsNullWhenNotFound()
-    {
+    public void TestGetMainWindowReturnsNullWhenNotFound() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetMainWindow(9999))
@@ -132,8 +124,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestFindByAutomationId()
-    {
+    public void TestFindByAutomationId() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.FindByAutomationId("okButton", null, 5000))
@@ -148,8 +139,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestFindByName()
-    {
+    public void TestFindByName() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.FindByName("OK", null, 5000))
@@ -164,8 +154,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestElementExists()
-    {
+    public void TestElementExists() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.ElementExists("testId", null))
@@ -180,8 +169,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestElementDoesNotExist()
-    {
+    public void TestElementDoesNotExist() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.ElementExists("nonexistent", null))
@@ -196,8 +184,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestClickElement()
-    {
+    public void TestClickElement() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.Click(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), false))
@@ -211,8 +198,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestDoubleClickElement()
-    {
+    public void TestDoubleClickElement() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.Click(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), true))
@@ -226,8 +212,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestTypeText()
-    {
+    public void TestTypeText() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.TypeText(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "test", false))
@@ -241,8 +226,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestSendKeys()
-    {
+    public void TestSendKeys() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.SendKeys("test"))
@@ -256,8 +240,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestCloseApp()
-    {
+    public void TestCloseApp() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.CloseApp(1234, false))
@@ -271,8 +254,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestForceCloseApp()
-    {
+    public void TestForceCloseApp() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.CloseApp(1234, true))
@@ -286,8 +268,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public async Task TestWaitForElementAsync()
-    {
+    public async Task TestWaitForElementAsync() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.WaitForElementAsync("testId", null, 10000))
@@ -302,8 +283,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public async Task TestWaitForElementAsyncTimeout()
-    {
+    public async Task TestWaitForElementAsyncTimeout() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.WaitForElementAsync("nonexistent", null, 1000))
@@ -318,8 +298,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestTakeScreenshot()
-    {
+    public void TestTakeScreenshot() {
         // Arrange
         var screenshotPath = Path.Combine(Path.GetTempPath(), "test_screenshot.png");
 
@@ -335,8 +314,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestGetProperty()
-    {
+    public void TestGetProperty() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetProperty(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "name"))
@@ -364,8 +342,7 @@ public class AutomationHelperHeadlessTests
     [TestCase("min", 0.0)]
     [TestCase("max", 100.0)]
     [TestCase("current", 42.0)]
-    public void TestGetPropertyPatternBased(string propertyName, object expectedValue)
-    {
+    public void TestGetPropertyPatternBased(string propertyName, object expectedValue) {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetProperty(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), propertyName))
@@ -380,8 +357,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestGetPropertyUnsupportedPatternReturnsMessage()
-    {
+    public void TestGetPropertyUnsupportedPatternReturnsMessage() {
         // Arrange — simulate an element that doesn't support TogglePattern
         _mockAutomation!
             .Setup(a => a.GetProperty(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "togglestate"))
@@ -398,8 +374,7 @@ public class AutomationHelperHeadlessTests
     // ===== NEGATIVE TESTS =====
 
     [Test]
-    public void TestLaunchAppWithInvalidPath()
-    {
+    public void TestLaunchAppWithInvalidPath() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.LaunchApp("/invalid/path/nonexistent.exe", null, null))
@@ -413,8 +388,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestAttachToInvalidProcessId()
-    {
+    public void TestAttachToInvalidProcessId() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.AttachToProcess(99999))
@@ -428,8 +402,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestGetPropertyWithInvalidPropertyName()
-    {
+    public void TestGetPropertyWithInvalidPropertyName() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetProperty(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "invalidProperty"))
@@ -444,8 +417,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestTakeScreenshotWithInvalidPath()
-    {
+    public void TestTakeScreenshotWithInvalidPath() {
         // Arrange
         var invalidPath = "/invalid/path/screenshot.png";
 
@@ -461,8 +433,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestClickOnDisabledElement()
-    {
+    public void TestClickOnDisabledElement() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.Click(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), false))
@@ -476,8 +447,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestTypeTextOnReadOnlyElement()
-    {
+    public void TestTypeTextOnReadOnlyElement() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.TypeText(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "text", false))
@@ -491,8 +461,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestSetValueWithInvalidValue()
-    {
+    public void TestSetValueWithInvalidValue() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.SetValue(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), It.IsAny<string>()))
@@ -506,8 +475,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public async Task TestWaitForElementAsyncWithInvalidTimeout()
-    {
+    public async Task TestWaitForElementAsyncWithInvalidTimeout() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.WaitForElementAsync("element", null, -1))
@@ -524,8 +492,7 @@ public class AutomationHelperHeadlessTests
     // ===== SELECT ITEM TESTS =====
 
     [Test]
-    public void TestSelectItemByValue()
-    {
+    public void TestSelectItemByValue() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.SelectItem(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "Option A", null))
@@ -540,8 +507,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestSelectItemByIndex()
-    {
+    public void TestSelectItemByIndex() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.SelectItem(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), null, 2))
@@ -556,8 +522,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestSelectItemThrowsWhenNoValueOrIndex()
-    {
+    public void TestSelectItemThrowsWhenNoValueOrIndex() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.SelectItem(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), null, null))
@@ -571,8 +536,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestSelectItemThrowsWhenItemNotFound()
-    {
+    public void TestSelectItemThrowsWhenItemNotFound() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.SelectItem(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "NonExistent", null))
@@ -587,8 +551,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestSelectItemThrowsWhenIndexOutOfRange()
-    {
+    public void TestSelectItemThrowsWhenIndexOutOfRange() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.SelectItem(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), null, 99))
@@ -604,8 +567,7 @@ public class AutomationHelperHeadlessTests
     // ===== CLICK MENU ITEM TESTS =====
 
     [Test]
-    public void TestClickMenuItemSingleLevel()
-    {
+    public void TestClickMenuItemSingleLevel() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.ClickMenuItem(new[] { "File" }, null))
@@ -619,8 +581,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestClickMenuItemMultiLevel()
-    {
+    public void TestClickMenuItemMultiLevel() {
         // Arrange
         var menuPath = new[] { "File", "Save As" };
         _mockAutomation!
@@ -635,8 +596,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestClickMenuItemWithPid()
-    {
+    public void TestClickMenuItemWithPid() {
         // Arrange
         var menuPath = new[] { "Edit", "Copy" };
         _mockAutomation!
@@ -651,8 +611,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestClickMenuItemThrowsOnEmptyPath()
-    {
+    public void TestClickMenuItemThrowsOnEmptyPath() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.ClickMenuItem(Array.Empty<string>(), null))
@@ -666,8 +625,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestClickMenuItemThrowsOnNullPath()
-    {
+    public void TestClickMenuItemThrowsOnNullPath() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.ClickMenuItem(null!, null))
@@ -681,8 +639,7 @@ public class AutomationHelperHeadlessTests
     }
 
     [Test]
-    public void TestClickMenuItemThrowsWhenMenuNotFound()
-    {
+    public void TestClickMenuItemThrowsWhenMenuNotFound() {
         // Arrange
         var menuPath = new[] { "NonExistentMenu" };
         _mockAutomation!
@@ -700,24 +657,21 @@ public class AutomationHelperHeadlessTests
     // ===== DIRECT (NON-MOCK) TESTS FOR ARGUMENT VALIDATION =====
 
     [Test]
-    public void TestSelectItemDirectValidation_NullArguments()
-    {
+    public void TestSelectItemDirectValidation_NullArguments() {
         // Test the real AutomationHelper argument validation
         using var helper = new AutomationHelper(headless: true);
         Assert.Throws<ArgumentException>(() => helper.SelectItem(null!, null, null));
     }
 
     [Test]
-    public void TestClickMenuItemDirectValidation_EmptyPath()
-    {
+    public void TestClickMenuItemDirectValidation_EmptyPath() {
         // Test the real AutomationHelper argument validation
         using var helper = new AutomationHelper(headless: true);
         Assert.Throws<ArgumentException>(() => helper.ClickMenuItem(Array.Empty<string>()));
     }
 
     [Test]
-    public void TestClickMenuItemDirectValidation_NullPath()
-    {
+    public void TestClickMenuItemDirectValidation_NullPath() {
         // Test the real AutomationHelper argument validation
         using var helper = new AutomationHelper(headless: true);
         Assert.Throws<ArgumentException>(() => helper.ClickMenuItem(null!));
