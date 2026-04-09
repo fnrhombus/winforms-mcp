@@ -1,25 +1,51 @@
-# Rhombus.WinFormsMcp
+<p align="center">
+  <h1 align="center">Rhombus.WinFormsMcp</h1>
+  <p align="center"><strong>Give AI agents eyes and hands for Windows Forms apps</strong></p>
+</p>
 
-### The ultimate WinForms toolkit for AI agents
+<p align="center">
+  <a href="https://github.com/rhom6us/winforms-mcp/actions/workflows/ci.yml"><img src="https://github.com/rhom6us/winforms-mcp/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
+  <a href="https://www.nuget.org/packages/Rhombus.WinFormsMcp"><img src="https://img.shields.io/nuget/v/Rhombus.WinFormsMcp" alt="NuGet Version"></a>
+  <a href="https://www.npmjs.com/package/@rhom6us/winforms-mcp"><img src="https://img.shields.io/npm/v/@rhom6us/winforms-mcp" alt="NPM Version"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+</p>
 
-[![CI Status](https://github.com/rhom6us/winforms-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/rhom6us/winforms-mcp/actions/workflows/ci.yml)
-[![NuGet Version](https://img.shields.io/nuget/v/Rhombus.WinFormsMcp)](https://www.nuget.org/packages/Rhombus.WinFormsMcp)
-[![NPM Version](https://img.shields.io/npm/v/@rhom6us/winforms-mcp)](https://www.npmjs.com/package/@rhom6us/winforms-mcp)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<p align="center">
+  An <a href="https://modelcontextprotocol.io">MCP server</a> that lets Claude (and any MCP-compatible agent) launch, automate, screenshot, and preview WinForms applications — without touching a mouse.
+</p>
 
-An [MCP server](https://modelcontextprotocol.io) that gives Claude (and any MCP-compatible agent) full control over Windows Forms applications — from launching and clicking buttons to previewing form layouts in real time.
+---
 
-- **See and operate running apps** — launch processes, find elements, click, type, drag-drop, and take screenshots, all through FlaUI/UIA2 automation
-- **Design-time form preview** — renders `.Designer.cs` files to pixel-accurate PNGs *without building the project*, the same way Visual Studio's WYSIWYG designer works
-- **Every framework, every version** — .NET Framework 4.x, .NET Core 3.x, .NET 5–9+. Out-of-process rendering automatically matches your project's target framework
-- **Headless mode** — launch apps on a hidden desktop with zero focus stealing. Built for CI/CD, remote machines, and background agents
-- **Zero configuration** — one line in your MCP config and you're running. No per-project setup, no framework selection, no build step required
+## The problem
 
-## Getting Started
+You're building a WinForms app with an AI coding agent. The agent can read and write your code, but it's **blind** — it can't see what the form looks like, can't click a button to test a workflow, and can't tell if the UI it just generated actually renders correctly.
 
-Add to your Claude Code MCP config (`~/.claude/mcp.json` on Windows):
+## The fix
 
-**npx (recommended — nothing to install):**
+One line in your MCP config. Now the agent can:
+
+| | |
+|---|---|
+| **See forms without building** | `render_form` turns any `.Designer.cs` into a pixel-accurate PNG — the same rendering pipeline Visual Studio uses |
+| **Drive running apps** | Launch processes, find elements by name/type/ID, click, type, drag-drop, take screenshots |
+| **Work in the background** | Headless mode runs apps on a hidden desktop — zero focus stealing, zero disruption |
+| **Target any framework** | .NET Framework 4.x, .NET Core 3.x, .NET 5–9+. Auto-detected from your `.csproj` |
+
+### `render_form` in action
+
+The agent reads your `.Designer.cs`, calls `render_form`, and gets back this — no build, no running app:
+
+<p align="center">
+  <img src="docs/images/render-form-demo.png" alt="render_form output — Address Entry Form" width="400">
+</p>
+
+It can then edit the layout, re-render, and iterate — a full visual feedback loop with no IDE, no build, and no human in the loop.
+
+## Quick start
+
+Add to your MCP config and restart. Nothing else to install.
+
+**npx (recommended):**
 
 ```json
 {
@@ -32,7 +58,8 @@ Add to your Claude Code MCP config (`~/.claude/mcp.json` on Windows):
 }
 ```
 
-**dotnet tool:**
+<details>
+<summary><strong>From source</strong> (alternative — requires .NET 8+ SDK)</summary>
 
 ```json
 {
@@ -45,71 +72,38 @@ Add to your Claude Code MCP config (`~/.claude/mcp.json` on Windows):
 }
 ```
 
-That's it. Claude can now see and interact with any WinForms application on your machine.
+</details>
 
-## What Can It Do?
+That's it. The agent can now see and interact with any WinForms application on your machine.
 
-### Automate running applications
+## Tools
 
-Launch an app, find UI elements, interact with them, and verify results — all without touching a mouse.
+| Category | Tools | Description |
+|----------|-------|-------------|
+| **Process** | `launch_app` `attach_to_process` `close_app` `get_process_status` | Start, attach to, and manage Windows processes |
+| **Discovery** | `find_element` `element_exists` `wait_for_element` `get_element_tree` | Locate UI elements by AutomationId, name, class, or control type |
+| **Interaction** | `click_element` `type_text` `set_value` `select_item` `click_menu_item` `drag_drop` `send_keys` | Click buttons, fill text boxes, select combo items, navigate menus |
+| **Visual** | `take_screenshot` `render_form` | Capture running apps or render `.Designer.cs` to PNG |
 
-```
-launch_app  →  find_element  →  click_element  →  take_screenshot
-```
+## Cross-framework rendering
 
-Claude sees screenshots as inline images, so it can visually verify what it's doing and course-correct in real time.
+`render_form` detects your project's target framework and dispatches to a matching out-of-process host:
 
-### Preview form designs instantly
-
-The `render_form` tool turns any `.Designer.cs` file into a PNG preview. No build required — Claude can iterate on form layouts the same way you'd use the Visual Studio designer, but entirely through code.
-
-This works by running your designer code on a real `DesignSurface` (the same infrastructure Visual Studio uses), in an out-of-process host that matches your project's target framework. The result is a pixel-accurate rendering of exactly what Visual Studio would show.
-
-### Full tool list
-
-| Category | Tools |
-|----------|-------|
-| **Process** | `launch_app`, `attach_to_process`, `close_app`, `get_process_status` |
-| **Discovery** | `find_element`, `element_exists`, `wait_for_element`, `get_element_tree` |
-| **Interaction** | `click_element`, `type_text`, `set_value`, `select_item`, `click_menu_item`, `drag_drop`, `send_keys` |
-| **Visual** | `take_screenshot`, `render_form` |
-
-## Cross-Framework Rendering
-
-`render_form` automatically detects your project's target framework from its `.csproj` and dispatches rendering to a matching out-of-process host:
-
-| Your project targets | Renderer host used |
+| Your project targets | Renderer host |
 |---|---|
 | .NET Framework 4.0–4.8.x | `net48` |
 | .NET Core 3.x | `netcoreapp3.1` |
 | .NET 5, 6, 7, 8, 9+ | `net8.0-windows` |
 
-This means custom controls, third-party components, and framework-specific APIs all resolve correctly — no manual configuration needed.
+Custom controls, third-party components, and framework-specific APIs all resolve correctly. Override with the `TFM` environment variable if needed.
 
-Override the auto-detection with the `TFM` environment variable if needed:
+## Headless mode
 
-```json
-{
-  "mcpServers": {
-    "winforms-mcp": {
-      "command": "npx",
-      "args": ["-y", "@rhom6us/winforms-mcp"],
-      "env": { "TFM": "net48" }
-    }
-  }
-}
-```
+Set `HEADLESS=true` to launch apps on a hidden Windows desktop (`CreateDesktop` API):
 
-## Headless Mode
-
-When `HEADLESS=true`, launched applications run on a hidden Windows desktop (`CreateDesktop` API) with complete UI isolation:
-
-- **Zero focus stealing** — the app cannot steal focus, show TopMost windows, or flash in the taskbar, even if it calls `this.Activate()` or `SetForegroundWindow`
-- **Invisible to the user** — the hidden desktop is entirely separate from the user's visible desktop
-- **Full automation support** — element discovery, clicking, typing, and screenshots all work through UIA patterns and PrintWindow
-- **Mixed mode** — attach to visible apps and launch headless apps in the same session. Each process is automatically routed to its correct desktop.
-
-Enable it in your MCP config:
+- **Zero focus stealing** — apps can't steal focus, show TopMost windows, or flash in the taskbar
+- **Full automation** — element discovery, clicking, typing, and screenshots all work through UIA patterns and PrintWindow
+- **Mixed mode** — headless and visible apps in the same session, each automatically routed to its correct desktop
 
 ```json
 {
@@ -123,18 +117,16 @@ Enable it in your MCP config:
 }
 ```
 
-**Limitations:** `send_keys` and `drag_drop` require input simulation and only work on the visible desktop (i.e., with `attach_to_process`). For headless processes, use `type_text`/`set_value` (which use UIA ValuePattern) and `click_element` (which uses UIA InvokePattern) instead.
+> **Note:** `send_keys` and `drag_drop` require input simulation and only work on the visible desktop. Use `type_text`/`set_value` and `click_element` for headless processes.
 
-## Environment Variables
+## Environment variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `HEADLESS` | `false` | Launch applications on a hidden desktop for zero-disruption automation. Set to `true` to enable. |
-| `TFM` | `auto` | Lock rendering to a specific framework (`net48`, `netcoreapp3.1`, `net8.0-windows`), or `auto` to detect from the project. |
+| `HEADLESS` | `false` | Run launched apps on a hidden desktop |
+| `TFM` | `auto` | Lock rendering to a specific framework (`net48`, `netcoreapp3.1`, `net8.0-windows`) |
 
 ## Documentation
-
-For detailed setup instructions, tool reference, examples, and troubleshooting, see the [docs](docs/) folder:
 
 - [Claude Code Setup Guide](docs/CLAUDE_CODE_SETUP.md) — step-by-step MCP configuration
 - [Quick Start](docs/QUICKSTART.md) — first automation in 5 minutes
