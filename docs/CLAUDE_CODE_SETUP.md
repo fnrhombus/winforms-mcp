@@ -319,8 +319,8 @@ You can pass environment variables to the MCP server:
       "args": ["path/to/server.dll"],
       "env": {
         "HEADLESS": "true",
-        "FNWINDOWSMCP_TIMEOUT": "5000",
-        "FNWINDOWSMCP_SCREENSHOT_DIR": "C:\\temp\\screenshots"
+        "WINFORMSMCP_TIMEOUT": "5000",
+        "WINFORMSMCP_SCREENSHOT_DIR": "C:\\temp\\screenshots"
       }
     }
   }

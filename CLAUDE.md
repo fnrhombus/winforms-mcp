@@ -175,6 +175,18 @@ Version stored in three places (auto-synced by CI):
 
 ## Code Coverage
 
+### Expectations
+
+Target meaningful coverage of critical paths, not a percentage. What "covered" means:
+
+- **Core business logic** (renderer, process pool, TFM mapping) — must have tests
+- **Protocol/integration tests** (MCP handshake, tool discovery, render_form E2E) — must exist
+- **Shared utilities** (FormRenderingHelpers, etc.) — must have basic tests
+- **Edge cases for user-facing features** (unknown control types, malformed input) — should be covered
+- **Tests run in CI and block merges on failure** — required
+
+When writing tests: keep them lean and fast. ~10 cases per utility class is plenty. Don't chase edge cases that can't happen in practice.
+
 ### Running Coverage Locally
 
 ```bash
