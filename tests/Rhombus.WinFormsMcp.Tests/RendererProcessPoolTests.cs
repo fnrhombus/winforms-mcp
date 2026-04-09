@@ -132,7 +132,8 @@ public class RendererProcessPoolTests {
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 </Project>");
-            Assert.Throws<InvalidOperationException>(() => RendererProcessPool.DetectTfmFromCsproj(csproj));
+            var ex = Assert.Throws<InvalidOperationException>(() => RendererProcessPool.DetectTfmFromCsproj(csproj));
+            Assert.That(ex!.Message, Does.Contain("TFM environment variable"));
         }
         finally {
             File.Delete(csproj);
@@ -203,6 +204,7 @@ public class RendererProcessPoolTests {
         var ex = Assert.ThrowsAsync<ArgumentException>(async () =>
             await pool.RenderAsync("content", null, null, "auto"));
         Assert.That(ex!.Message, Does.Contain("csprojPath is required"));
+        Assert.That(ex.Message, Does.Contain("TFM environment variable"));
     }
 
     #endregion

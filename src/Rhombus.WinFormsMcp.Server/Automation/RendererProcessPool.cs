@@ -99,7 +99,10 @@ public sealed class RendererProcessPool : IDisposable {
             return $"net{ver}";
         }
 
-        throw new InvalidOperationException($"No TargetFramework or TargetFrameworkVersion found in {csprojPath}");
+        throw new InvalidOperationException(
+            $"No TargetFramework or TargetFrameworkVersion found in {csprojPath}. " +
+            "You can bypass auto-detection by setting the TFM environment variable " +
+            "(e.g. TFM=net48 or TFM=net8.0-windows).");
     }
 
     /// <summary>
@@ -156,7 +159,10 @@ public sealed class RendererProcessPool : IDisposable {
 
         // Auto-detect from csproj
         if (string.IsNullOrEmpty(csprojPath))
-            throw new ArgumentException("csprojPath is required when targetTfm is 'auto'");
+            throw new ArgumentException(
+                "csprojPath is required when targetTfm is 'auto'. " +
+                "No .csproj file could be found. You can bypass auto-detection by setting " +
+                "the TFM environment variable (e.g. TFM=net48 or TFM=net8.0-windows).");
 
         var projectTfm = DetectTfmFromCsproj(csprojPath);
         return MapToHostTfm(projectTfm);
