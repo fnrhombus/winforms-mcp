@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Rhombus.WinFormsMcp.Server;
 
 namespace Rhombus.WinFormsMcp.Tests;
@@ -18,6 +19,7 @@ public class McpServerOptionsTests {
         Assert.That(opts.Headless, Is.False);
         Assert.That(opts.TelemetryOptOut, Is.False);
         Assert.That(opts.Tfm, Is.EqualTo("auto"));
+        Assert.That(opts.MinimumLogLevel, Is.EqualTo(LogLevel.Information));
     }
 
     [Test]
@@ -78,5 +80,16 @@ public class McpServerOptionsTests {
         Assert.That(opts.Headless, Is.True);
         Assert.That(opts.TelemetryOptOut, Is.True);
         Assert.That(opts.Tfm, Is.EqualTo("net8.0-windows"));
+    }
+
+    [TestCase("Debug", LogLevel.Debug)]
+    [TestCase("debug", LogLevel.Debug)]
+    [TestCase("Warning", LogLevel.Warning)]
+    [TestCase("", LogLevel.Information)]
+    [TestCase(null, LogLevel.Information)]
+    [TestCase("invalid", LogLevel.Information)]
+    public void BindOptions_LogLevel(string? value, LogLevel expected) {
+        var opts = Bind(new Dictionary<string, string?> { ["LOG_LEVEL"] = value });
+        Assert.That(opts.MinimumLogLevel, Is.EqualTo(expected));
     }
 }

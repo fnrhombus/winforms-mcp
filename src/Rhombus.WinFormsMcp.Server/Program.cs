@@ -27,8 +27,17 @@ namespace Rhombus.WinFormsMcp.Server;
 class Program {
     static async Task Main(string[] args) {
         var host = Host.CreateDefaultBuilder(args)
-            // Stdio transport — suppress all console logging to avoid corrupting JSON-RPC.
-            .ConfigureLogging(logging => logging.ClearProviders())
+            .ConfigureLogging((context, logging) => {
+                logging.ClearProviders();
+
+                var logOptions = new McpServerOptions();
+                BindOptions(logOptions, context.Configuration);
+
+                logging.SetMinimumLevel(logOptions.MinimumLogLevel);
+                logging.AddConsole(consoleOptions => {
+                    consoleOptions.LogToStandardErrorThreshold = LogLevel.Trace;
+                });
+            })
             .ConfigureServices((context, services) => {
                 var options = new McpServerOptions();
                 BindOptions(options, context.Configuration);
@@ -41,7 +50,8 @@ class Program {
                     services.AddSingleton<ITelemetry, Telemetry>();
 
                 services.AddMemoryCache();
-                services.AddSingleton<IAutomationHelper>(new AutomationHelper(options.Headless));
+                services.AddSingleton<IAutomationHelper>(sp =>
+                    new AutomationHelper(options.Headless, sp.GetRequiredService<ILogger<AutomationHelper>>()));
                 services.AddSingleton<ISessionManager, SessionManager>();
                 services.AddSingleton<RendererProcessPool>();
                 services.AddHostedService<AutomationServer>();
@@ -56,11 +66,17 @@ class Program {
         options.TelemetryOptOut = ParseBool(configuration["TELEMETRY_OPTOUT"]);
         var tfm = configuration["TFM"];
         options.Tfm = string.IsNullOrWhiteSpace(tfm) ? "auto" : tfm.Trim();
+        options.MinimumLogLevel = ParseLogLevel(configuration["LOG_LEVEL"]);
         return options;
     }
 
     private static bool ParseBool(string? value) =>
         string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) || value == "1";
+
+    internal static LogLevel ParseLogLevel(string? value) {
+        if (string.IsNullOrWhiteSpace(value)) return LogLevel.Information;
+        return Enum.TryParse<LogLevel>(value, ignoreCase: true, out var level) ? level : LogLevel.Information;
+    }
 }
 
 /// <summary>
@@ -125,12 +141,14 @@ class AutomationServer : BackgroundService {
     private readonly RendererProcessPool _rendererPool;
     private readonly ITelemetry _telemetry;
     private readonly IHostApplicationLifetime _lifetime;
+    private readonly ILogger<AutomationServer> _logger;
 
-    public AutomationServer(ISessionManager session, RendererProcessPool rendererPool, ITelemetry telemetry, IHostApplicationLifetime lifetime) {
+    public AutomationServer(ISessionManager session, RendererProcessPool rendererPool, ITelemetry telemetry, IHostApplicationLifetime lifetime, ILogger<AutomationServer> logger) {
         _session = session;
         _rendererPool = rendererPool;
         _telemetry = telemetry;
         _lifetime = lifetime;
+        _logger = logger;
         _tools = new Dictionary<string, Func<JsonElement, Task<JsonElement>>>
         {
             // Element Tools
@@ -191,6 +209,7 @@ class AutomationServer : BackgroundService {
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+        _logger.LogInformation("MCP server started, waiting for client connection");
         var reader = Console.In;
         // Use raw stdout stream with explicit LF to avoid Windows CRLF (\r\n),
         // which breaks Node.js JSON parsing when it splits on \n and sees trailing \r.
@@ -227,6 +246,7 @@ class AutomationServer : BackgroundService {
                 break;
             }
             catch (Exception ex) {
+                _logger.LogError(ex, "Error processing request");
                 _telemetry.TrackException(ex);
                 var error = new {
                     jsonrpc = "2.0",
@@ -244,6 +264,7 @@ class AutomationServer : BackgroundService {
 
         // Stdin closed or cancellation requested — tell the host to shut down
         // so all hosted services stop and DI containers are disposed.
+        _logger.LogInformation("MCP server shutting down");
         _rendererPool.Dispose();
         _telemetry.Flush();
         _lifetime.StopApplication();
@@ -267,6 +288,7 @@ class AutomationServer : BackgroundService {
 
         var method = methodElement.GetString();
         if (method == "initialize") {
+            _logger.LogInformation("Client initialized");
             return new {
                 jsonrpc = "2.0",
                 id = requestId,
@@ -308,6 +330,7 @@ class AutomationServer : BackgroundService {
             if (!_tools.ContainsKey(toolName))
                 throw new InvalidOperationException($"Unknown tool: {toolName}");
 
+            _logger.LogDebug("Executing tool: {ToolName}", toolName);
             var sw = System.Diagnostics.Stopwatch.StartNew();
             JsonElement result;
             try {
@@ -315,11 +338,13 @@ class AutomationServer : BackgroundService {
             }
             catch (Exception ex) {
                 sw.Stop();
+                _logger.LogError(ex, "Tool {ToolName} failed after {ElapsedMs}ms", toolName, sw.ElapsedMilliseconds);
                 _telemetry.TrackToolCall(toolName, sw.Elapsed);
                 _telemetry.TrackException(ex);
                 throw;
             }
             sw.Stop();
+            _logger.LogDebug("Tool {ToolName} completed in {ElapsedMs}ms", toolName, sw.ElapsedMilliseconds);
             _telemetry.TrackToolCall(toolName, sw.Elapsed);
 
             // If the tool returned image data, respond with an MCP image content block
