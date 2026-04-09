@@ -466,3 +466,119 @@ var bmp = new Bitmap(container.Width, container.Height);
 container.DrawToBitmap(bmp, new Rectangle(0, 0, container.Width, container.Height));
 wrapperForm.Close();
 ```
+
+---
+
+## E. Code Generation: Roslyn SyntaxFactory vs StringBuilder
+
+### Current State
+
+Both `InProcessFormRenderer.GenerateCodeBehind` and `CompiledFormRenderer.GenerateCodeBehind` use `StringBuilder` to emit a partial class with a constructor and event handler stubs. `CompiledFormRenderer.GenerateProgram` uses a raw string literal (`$$"""..."""`). The generated code is simple: ~15-20 lines, a partial class inheriting Form (soon Form or UserControl), a constructor calling `InitializeComponent()`, and zero-body event handlers.
+
+### Side-by-Side Comparison
+
+**Current StringBuilder (InProcessFormRenderer, ~15 lines of generator code):**
+
+```csharp
+private static string GenerateCodeBehind(string? ns, string className,
+    List<string> eventHandlers)
+{
+    var sb = new StringBuilder();
+    sb.AppendLine("using System;");
+    sb.AppendLine("using System.Windows.Forms;");
+    sb.AppendLine();
+    if (ns != null) { sb.AppendLine($"namespace {ns}"); sb.AppendLine("{"); }
+    sb.AppendLine($"public partial class {className} : Form");
+    sb.AppendLine("{");
+    sb.AppendLine($"    public {className}()");
+    sb.AppendLine("    {");
+    sb.AppendLine("        InitializeComponent();");
+    sb.AppendLine("    }");
+    foreach (var handler in eventHandlers)
+        sb.AppendLine($"    private void {handler}(object sender, EventArgs e) {{ }}");
+    sb.AppendLine("}");
+    if (ns != null) sb.AppendLine("}");
+    return sb.ToString();
+}
+```
+
+**Equivalent Roslyn SyntaxFactory (~50 lines of generator code):**
+
+```csharp
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+
+private static string GenerateCodeBehind(string? ns, string className,
+    List<string> eventHandlers)
+{
+    // Constructor: public ClassName() { InitializeComponent(); }
+    var ctor = ConstructorDeclaration(className)
+        .AddModifiers(Token(SyntaxKind.PublicKeyword))
+        .WithBody(Block(
+            ExpressionStatement(InvocationExpression(IdentifierName("InitializeComponent")))
+        ));
+
+    // Event handler stubs: private void Handler(object sender, EventArgs e) { }
+    var handlerMethods = eventHandlers.Select(handler =>
+        MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), handler)
+            .AddModifiers(Token(SyntaxKind.PrivateKeyword))
+            .AddParameterListParameters(
+                Parameter(Identifier("sender")).WithType(PredefinedType(Token(SyntaxKind.ObjectKeyword))),
+                Parameter(Identifier("e")).WithType(IdentifierName("EventArgs"))
+            )
+            .WithBody(Block())
+    );
+
+    // Class: public partial class ClassName : Form { ... }
+    var classDecl = ClassDeclaration(className)
+        .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.PartialKeyword))
+        .AddBaseListTypes(SimpleBaseType(IdentifierName("Form")))
+        .AddMembers(ctor)
+        .AddMembers(handlerMethods.ToArray<MemberDeclarationSyntax>());
+
+    // Usings
+    var usings = new[]
+    {
+        UsingDirective(IdentifierName("System")),
+        UsingDirective(QualifiedName(IdentifierName("System"), IdentifierName("Windows.Forms"))),
+    };
+
+    // Wrap in namespace if present
+    MemberDeclarationSyntax member = ns != null
+        ? FileScopedNamespaceDeclaration(ParseName(ns)).AddMembers(classDecl)
+        : classDecl;
+
+    var compilationUnit = CompilationUnit()
+        .AddUsings(usings)
+        .AddMembers(member);
+
+    return compilationUnit.NormalizeWhitespace().ToFullString();
+}
+```
+
+### Analysis
+
+**Code volume**: The SyntaxFactory version is ~3x longer (50 lines vs 15) for identical output. The SyntaxFactory API is notoriously verbose -- every token, modifier, and syntactic element requires an explicit factory call. For a simple code-behind file with 1 constructor and a few stub methods, this is a poor trade-off.
+
+**Type safety**: SyntaxFactory catches structural errors at compile time (e.g., you cannot accidentally omit a closing brace). However, the code being generated is trivially simple -- there are no nested control structures, no complex expressions, no conditional emission of different syntax constructs. The risk of a StringBuilder bug (missing semicolon, unmatched brace) is near zero for this template.
+
+**Readability**: The StringBuilder version is immediately readable -- you can see exactly what the generated output looks like by scanning the AppendLine calls. The SyntaxFactory version requires mentally reconstructing the output from factory calls, which is harder. This matters for maintenance: when adding the `isUserControl` parameter (Phase 1), a developer needs to quickly see "change `Form` to `UserControl` in the base type" -- in StringBuilder that is a single string substitution; in SyntaxFactory it means finding the `SimpleBaseType(IdentifierName("Form"))` call.
+
+**Extensibility**: The planned changes (Phase 1: adding `isUserControl` base type switching) require changing one string interpolation in StringBuilder (`$"partial class {className} : {baseClass}"`) versus changing one `IdentifierName` argument in SyntaxFactory. Both are trivial. Neither approach has a meaningful extensibility advantage for the scope of changes planned.
+
+**Direct SyntaxTree compilation (skip string round-trip)**: InProcessFormRenderer currently generates a string with `GenerateCodeBehind`, then immediately parses it with `CSharpSyntaxTree.ParseText(codeBehind)`. In principle, SyntaxFactory could produce a `SyntaxTree` directly, eliminating the generate-string-then-parse-string round-trip. However:
+- The parse step takes microseconds for 15 lines of code -- there is no meaningful performance benefit.
+- The code would become harder to debug: with the string approach, you can log the generated code-behind and inspect it. With a direct SyntaxTree, debugging compilation failures requires calling `.ToFullString()` anyway.
+- The compiler does not care whether the SyntaxTree came from `ParseText` or `SyntaxFactory` -- the compilation behavior is identical.
+
+**Where SyntaxFactory shines**: SyntaxFactory is the right tool when generating large, complex, or highly dynamic code -- think code generators that emit hundreds of members, source generators that transform one AST into another, or refactoring tools that need to preserve trivia. None of these apply here.
+
+### Recommendation: Keep StringBuilder
+
+**Do not switch to SyntaxFactory.** The generated code-behind is a fixed template with 2-3 variable substitutions (namespace, class name, base class, event handler names). StringBuilder (or raw string literals) is the right tool for this job. The cost of SyntaxFactory (3x code volume, harder to read, no material benefit) is not justified.
+
+For `CompiledFormRenderer.GenerateProgram`, the existing raw string literal approach (`$$"""..."""`) is even cleaner than StringBuilder and should be kept as-is.
+
+If the code generation grows substantially in the future (e.g., generating designer-like code with dozens of property assignments, or emitting different code shapes based on control type hierarchies), SyntaxFactory could be reconsidered. But for the planned Phase 1-3 changes, string-based generation is simpler and sufficient.

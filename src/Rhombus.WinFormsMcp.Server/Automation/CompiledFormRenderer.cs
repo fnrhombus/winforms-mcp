@@ -11,8 +11,7 @@ namespace Rhombus.WinFormsMcp.Server.Automation;
 /// the same packages as the source project, then running it to capture a PNG.
 /// Handles custom controls, third-party references, and modern designer syntax.
 /// </summary>
-public class CompiledFormRenderer
-{
+public class CompiledFormRenderer {
     private readonly Dictionary<string, byte[]> _cache = new();
 
     /// <summary>
@@ -20,8 +19,7 @@ public class CompiledFormRenderer
     /// </summary>
     /// <param name="sourceFilePath">Path to .cs or .Designer.cs file.</param>
     /// <returns>PNG image bytes.</returns>
-    public byte[] RenderForm(string sourceFilePath)
-    {
+    public byte[] RenderForm(string sourceFilePath) {
         var designerFile = ResolveDesignerFile(sourceFilePath);
         var designerContent = File.ReadAllText(designerFile);
         var csprojPath = FindCsproj(Path.GetDirectoryName(designerFile)!);
@@ -32,8 +30,7 @@ public class CompiledFormRenderer
             return cached;
 
         var tempDir = Path.Combine(Path.GetTempPath(), $"WinFormsMcp_render_{Guid.NewGuid():N}");
-        try
-        {
+        try {
             Directory.CreateDirectory(tempDir);
 
             var (ns, className, eventHandlers) = ParseDesignerFile(designerContent);
@@ -55,8 +52,7 @@ public class CompiledFormRenderer
             _cache[cacheKey] = pngBytes;
             return pngBytes;
         }
-        finally
-        {
+        finally {
             try { Directory.Delete(tempDir, recursive: true); }
             catch { /* best-effort cleanup */ }
         }
@@ -67,10 +63,8 @@ public class CompiledFormRenderer
     /// If given a .cs file, looks for the sibling .Designer.cs.
     /// Throws if no separate designer file exists.
     /// </summary>
-    internal static string ResolveDesignerFile(string sourceFilePath)
-    {
-        if (sourceFilePath.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase))
-        {
+    internal static string ResolveDesignerFile(string sourceFilePath) {
+        if (sourceFilePath.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase)) {
             if (!File.Exists(sourceFilePath))
                 throw new FileNotFoundException($"Designer file not found: {sourceFilePath}");
             return sourceFilePath;
@@ -92,11 +86,9 @@ public class CompiledFormRenderer
     /// <summary>
     /// Walk up from a directory to find the nearest .csproj file.
     /// </summary>
-    internal static string FindCsproj(string directory)
-    {
+    internal static string FindCsproj(string directory) {
         var dir = directory;
-        while (dir != null)
-        {
+        while (dir != null) {
             var csprojFiles = Directory.GetFiles(dir, "*.csproj");
             if (csprojFiles.Length > 0)
                 return csprojFiles[0];
@@ -108,8 +100,7 @@ public class CompiledFormRenderer
     /// <summary>
     /// Parse the designer file to extract namespace, class name, and event handler names.
     /// </summary>
-    internal static (string? Namespace, string ClassName, List<string> EventHandlers) ParseDesignerFile(string content)
-    {
+    internal static (string? Namespace, string ClassName, List<string> EventHandlers) ParseDesignerFile(string content) {
         var nsMatch = Regex.Match(content, @"namespace\s+([\w.]+)");
         var ns = nsMatch.Success ? nsMatch.Groups[1].Value : null;
 
@@ -121,8 +112,7 @@ public class CompiledFormRenderer
         var eventHandlers = new List<string>();
         // Match both: += this.Handler; and += new EventHandler(this.Handler);
         var eventMatches = Regex.Matches(content, @"\+=\s*(?:new\s+[\w.]+\s*\(\s*)?(?:this\.)?(\w+)\s*\)?\s*;");
-        foreach (Match m in eventMatches)
-        {
+        foreach (Match m in eventMatches) {
             var handlerName = m.Groups[1].Value;
             if (!eventHandlers.Contains(handlerName))
                 eventHandlers.Add(handlerName);
@@ -134,8 +124,7 @@ public class CompiledFormRenderer
     /// <summary>
     /// Generate a minimal .csproj that mirrors the source project's references.
     /// </summary>
-    internal static void GenerateCsproj(string tempDir, string sourceCsprojPath)
-    {
+    internal static void GenerateCsproj(string tempDir, string sourceCsprojPath) {
         var sourceDoc = XDocument.Load(sourceCsprojPath);
         var sourceRoot = sourceDoc.Root!;
         XNamespace msbuild = sourceRoot.GetDefaultNamespace();
@@ -157,11 +146,9 @@ public class CompiledFormRenderer
 
         // Copy PackageReferences
         var packageRefs = sourceRoot.Descendants(msbuild + "PackageReference").ToList();
-        if (packageRefs.Count > 0)
-        {
+        if (packageRefs.Count > 0) {
             var itemGroup = new XElement("ItemGroup");
-            foreach (var pr in packageRefs)
-            {
+            foreach (var pr in packageRefs) {
                 var elem = new XElement("PackageReference");
                 foreach (var attr in pr.Attributes())
                     elem.Add(new XAttribute(attr.Name, attr.Value));
@@ -172,8 +159,7 @@ public class CompiledFormRenderer
 
         // Reference the source project's built assembly for custom controls
         var projectDll = FindProjectOutputDll(sourceCsprojPath);
-        if (projectDll != null)
-        {
+        if (projectDll != null) {
             var refGroup = new XElement("ItemGroup",
                 new XElement("Reference",
                     new XAttribute("Include", Path.GetFileNameWithoutExtension(projectDll)),
@@ -187,8 +173,7 @@ public class CompiledFormRenderer
     /// <summary>
     /// Find the built DLL for a project by scanning its bin directory.
     /// </summary>
-    internal static string? FindProjectOutputDll(string csprojPath)
-    {
+    internal static string? FindProjectOutputDll(string csprojPath) {
         var csprojDir = Path.GetDirectoryName(csprojPath)!;
         var projectName = Path.GetFileNameWithoutExtension(csprojPath);
 
@@ -198,15 +183,14 @@ public class CompiledFormRenderer
             Path.Combine(csprojDir, "bin", "Release"),
         };
 
-        foreach (var searchDir in searchDirs)
-        {
-            if (!Directory.Exists(searchDir)) continue;
+        foreach (var searchDir in searchDirs) {
+            if (!Directory.Exists(searchDir))
+                continue;
 
             var tfmDirs = Directory.GetDirectories(searchDir)
                 .OrderByDescending(Directory.GetLastWriteTime);
 
-            foreach (var tfmDir in tfmDirs)
-            {
+            foreach (var tfmDir in tfmDirs) {
                 var dll = Path.Combine(tfmDir, $"{projectName}.dll");
                 if (File.Exists(dll))
                     return dll;
@@ -219,15 +203,13 @@ public class CompiledFormRenderer
     /// <summary>
     /// Generate the code-behind partial class that inherits Form and stubs event handlers.
     /// </summary>
-    internal static void GenerateCodeBehind(string tempDir, string? ns, string className, List<string> eventHandlers)
-    {
+    internal static void GenerateCodeBehind(string tempDir, string? ns, string className, List<string> eventHandlers) {
         var sb = new StringBuilder();
         sb.AppendLine("using System;");
         sb.AppendLine("using System.Windows.Forms;");
         sb.AppendLine();
 
-        if (ns != null)
-        {
+        if (ns != null) {
             sb.AppendLine($"namespace {ns};");
             sb.AppendLine();
         }
@@ -240,8 +222,7 @@ public class CompiledFormRenderer
         sb.AppendLine("    }");
         sb.AppendLine();
 
-        foreach (var handler in eventHandlers)
-        {
+        foreach (var handler in eventHandlers) {
             sb.AppendLine($"    private void {handler}(object? sender, EventArgs e) {{ }}");
         }
 
@@ -253,8 +234,7 @@ public class CompiledFormRenderer
     /// <summary>
     /// Generate Program.cs that instantiates the form, renders to bitmap, and outputs base64 PNG to stdout.
     /// </summary>
-    internal static void GenerateProgram(string tempDir, string? ns, string className)
-    {
+    internal static void GenerateProgram(string tempDir, string? ns, string className) {
         var fullClassName = ns != null ? $"{ns}.{className}" : className;
 
         var program = $$"""
@@ -295,12 +275,10 @@ public class CompiledFormRenderer
         File.WriteAllText(Path.Combine(tempDir, "Program.cs"), program);
     }
 
-    private static byte[] BuildAndCapture(string tempDir)
-    {
+    private static byte[] BuildAndCapture(string tempDir) {
         var csprojPath = Path.Combine(tempDir, "TempFormRender.csproj");
 
-        var psi = new ProcessStartInfo
-        {
+        var psi = new ProcessStartInfo {
             FileName = "dotnet",
             Arguments = $"run --project \"{csprojPath}\" -c Release",
             WorkingDirectory = tempDir,
@@ -328,8 +306,7 @@ public class CompiledFormRenderer
         return Convert.FromBase64String(stdout.Trim());
     }
 
-    private static string ComputeHash(string content)
-    {
+    private static string ComputeHash(string content) {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(content));
         return Convert.ToHexString(bytes);
     }

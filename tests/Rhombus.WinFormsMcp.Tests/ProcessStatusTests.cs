@@ -1,39 +1,36 @@
 namespace Rhombus.WinFormsMcp.Tests;
 
-using Rhombus.WinFormsMcp.Server.Automation;
-using Moq;
 using System.Collections.Generic;
 using System.Diagnostics;
+
+using Moq;
+
+using Rhombus.WinFormsMcp.Server.Automation;
 
 /// <summary>
 /// Tests for the get_process_status tool and stderr capture in launch_app.
 /// Uses a mix of mock-based tests (for interface compliance) and real process tests
 /// (for verifying actual stderr capture and process status).
 /// </summary>
-public class ProcessStatusTests
-{
+public class ProcessStatusTests {
     private Mock<IAutomationHelper>? _mockAutomation;
 
     [SetUp]
-    public void Setup()
-    {
+    public void Setup() {
         _mockAutomation = new Mock<IAutomationHelper>();
     }
 
     [TearDown]
-    public void TearDown()
-    {
+    public void TearDown() {
         _mockAutomation?.VerifyAll();
     }
 
     // ===== Interface / Mock Tests =====
 
     [Test]
-    public void TestGetProcessStatusViaInterface()
-    {
+    public void TestGetProcessStatusViaInterface() {
         // Arrange
-        var expectedStatus = new Dictionary<string, object?>
-        {
+        var expectedStatus = new Dictionary<string, object?> {
             ["isRunning"] = true,
             ["hasExited"] = false,
             ["exitCode"] = null,
@@ -60,11 +57,9 @@ public class ProcessStatusTests
     }
 
     [Test]
-    public void TestGetProcessStatusForExitedProcess()
-    {
+    public void TestGetProcessStatusForExitedProcess() {
         // Arrange
-        var expectedStatus = new Dictionary<string, object?>
-        {
+        var expectedStatus = new Dictionary<string, object?> {
             ["isRunning"] = false,
             ["hasExited"] = true,
             ["exitCode"] = 1,
@@ -92,14 +87,12 @@ public class ProcessStatusTests
     // ===== Real Process Tests =====
 
     [Test]
-    public void TestGetProcessStatusOfRunningProcess()
-    {
+    public void TestGetProcessStatusOfRunningProcess() {
         // Arrange - launch a real process that stays alive briefly
         using var automation = new AutomationHelper(headless: true);
         var process = automation.LaunchApp("cmd.exe", "/c ping 127.0.0.1 -n 5 >nul");
 
-        try
-        {
+        try {
             // Act
             var status = automation.GetProcessStatus(process.Id);
 
@@ -110,16 +103,15 @@ public class ProcessStatusTests
             Assert.That(status["mainWindowTitle"], Is.Not.Null);
             Assert.That(status["stderr"], Is.Not.Null);
         }
-        finally
-        {
-            try { process.Kill(); } catch { }
+        finally {
+            try { process.Kill(); }
+            catch { }
             process.WaitForExit(5000);
         }
     }
 
     [Test]
-    public void TestGetProcessStatusAfterExit()
-    {
+    public void TestGetProcessStatusAfterExit() {
         // Arrange - launch a process that exits immediately with code 0
         using var automation = new AutomationHelper(headless: true);
         var process = automation.LaunchApp("cmd.exe", "/c exit 0");
@@ -136,8 +128,7 @@ public class ProcessStatusTests
     }
 
     [Test]
-    public void TestGetProcessStatusAfterExitWithNonZeroCode()
-    {
+    public void TestGetProcessStatusAfterExitWithNonZeroCode() {
         // Arrange - launch a process that exits with error code
         using var automation = new AutomationHelper(headless: true);
         var process = automation.LaunchApp("cmd.exe", "/c exit 42");
@@ -153,8 +144,7 @@ public class ProcessStatusTests
     }
 
     [Test]
-    public void TestStderrCapture()
-    {
+    public void TestStderrCapture() {
         // Arrange - launch a process that writes to stderr
         using var automation = new AutomationHelper(headless: true);
         var process = automation.LaunchApp("cmd.exe", "/c echo error message 1>&2");
@@ -172,8 +162,7 @@ public class ProcessStatusTests
     }
 
     [Test]
-    public void TestGetProcessStatusForUnknownPid()
-    {
+    public void TestGetProcessStatusForUnknownPid() {
         // Arrange - use a PID that definitely does not exist
         using var automation = new AutomationHelper(headless: true);
 
@@ -190,8 +179,7 @@ public class ProcessStatusTests
     }
 
     [Test]
-    public void TestGetStderrReturnsEmptyForUnknownPid()
-    {
+    public void TestGetStderrReturnsEmptyForUnknownPid() {
         // Arrange
         using var automation = new AutomationHelper(headless: true);
 
@@ -203,8 +191,7 @@ public class ProcessStatusTests
     }
 
     [Test]
-    public void TestStderrBufferCleanedOnCloseApp()
-    {
+    public void TestStderrBufferCleanedOnCloseApp() {
         // Arrange - launch a process, then close it
         using var automation = new AutomationHelper(headless: true);
         var process = automation.LaunchApp("cmd.exe", "/c echo err 1>&2");

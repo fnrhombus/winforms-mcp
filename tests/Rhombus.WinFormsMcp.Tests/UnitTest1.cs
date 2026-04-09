@@ -1,30 +1,26 @@
 namespace Rhombus.WinFormsMcp.Tests;
 
-using Rhombus.WinFormsMcp.Server.Automation;
 using System.Diagnostics;
+
+using Rhombus.WinFormsMcp.Server.Automation;
 
 /// <summary>
 /// Tests for AutomationHelper and WinForms automation functionality
 /// </summary>
-public class AutomationHelperTests
-{
+public class AutomationHelperTests {
     private AutomationHelper? _automation;
     private Process? _testProcess;
 
     [SetUp]
-    public void Setup()
-    {
+    public void Setup() {
         _automation = new AutomationHelper();
     }
 
     [TearDown]
-    public void TearDown()
-    {
+    public void TearDown() {
         // Close any launched processes
-        if (_testProcess != null && !_testProcess.HasExited)
-        {
-            try
-            {
+        if (_testProcess is { HasExited: false }) {
+            try {
                 _testProcess.Kill();
             }
             catch { }
@@ -34,16 +30,14 @@ public class AutomationHelperTests
     }
 
     [Test]
-    public void TestAutomationHelperInitialization()
-    {
+    public void TestAutomationHelperInitialization() {
         Assert.That(_automation, Is.Not.Null);
         Assert.Pass("AutomationHelper initialized successfully");
     }
 
     [Test]
     [Ignore("Requires GUI - use AutomationHelperHeadlessTests for CI/CD")]
-    public void TestLaunchApp()
-    {
+    public void TestLaunchApp() {
         var notepadPath = "notepad.exe";
         var process = _automation?.LaunchApp(notepadPath);
 
@@ -56,8 +50,7 @@ public class AutomationHelperTests
 
     [Test]
     [Ignore("Requires GUI - use IntegrationTestsHeadless for CI/CD")]
-    public void TestGetMainWindow()
-    {
+    public void TestGetMainWindow() {
         var notepadPath = "notepad.exe";
         var process = _automation?.LaunchApp(notepadPath);
         Assert.That(process, Is.Not.Null);
@@ -71,8 +64,7 @@ public class AutomationHelperTests
 
     [Test]
     [Ignore("Requires GUI - use IntegrationTestsHeadless for CI/CD")]
-    public void TestAttachToProcessByName()
-    {
+    public void TestAttachToProcessByName() {
         // Launch a process first
         var notepadPath = "notepad.exe";
         var process = _automation?.LaunchApp(notepadPath);
@@ -87,8 +79,7 @@ public class AutomationHelperTests
     }
 
     [Test]
-    public void TestElementExists()
-    {
+    public void TestElementExists() {
         // This test checks if element exists without throwing
         var result = _automation?.ElementExists("nonexistent");
         Assert.That(result, Is.EqualTo(false));
@@ -97,8 +88,7 @@ public class AutomationHelperTests
     [Test]
     [TestCase("notepad.exe")]
     [Ignore("Requires GUI - use IntegrationTestsHeadless for CI/CD")]
-    public void TestCloseApp(string appPath)
-    {
+    public void TestCloseApp(string appPath) {
         var process = _automation?.LaunchApp(appPath);
         Assert.That(process, Is.Not.Null);
         _testProcess = process;
@@ -114,8 +104,7 @@ public class AutomationHelperTests
     }
 
     [Test]
-    public void TestElementCaching()
-    {
+    public void TestElementCaching() {
         // This is tested indirectly through find operations
         // Verify that the automation helper can find elements (which are cached)
         Assert.That(_automation, Is.Not.Null);
@@ -123,8 +112,7 @@ public class AutomationHelperTests
 
     [Test]
     [Ignore("Requires GUI - use AutomationHelperHeadlessTests for CI/CD")]
-    public void TestProcessTracking()
-    {
+    public void TestProcessTracking() {
         var app1 = _automation?.LaunchApp("notepad.exe");
         _testProcess = app1;
 
@@ -134,8 +122,7 @@ public class AutomationHelperTests
 
     [Test]
     [Ignore("Requires GUI - use IntegrationTestsHeadless for CI/CD")]
-    public void TestTakeScreenshot()
-    {
+    public void TestTakeScreenshot() {
         var notepadPath = "notepad.exe";
         var process = _automation?.LaunchApp(notepadPath);
         _testProcess = process;
@@ -144,16 +131,14 @@ public class AutomationHelperTests
 
         var screenshotPath = Path.Combine(Path.GetTempPath(), "test_screenshot.png");
 
-        try
-        {
+        try {
             _automation?.TakeScreenshot(screenshotPath);
 
             // Verify file was created
             Assert.That(File.Exists(screenshotPath), Is.True);
             Assert.That(new FileInfo(screenshotPath).Length, Is.GreaterThan(0));
         }
-        finally
-        {
+        finally {
             if (File.Exists(screenshotPath))
                 File.Delete(screenshotPath);
         }
@@ -161,8 +146,7 @@ public class AutomationHelperTests
 
     [Test]
     [Ignore("Requires GUI - use IntegrationTestsHeadless for CI/CD")]
-    public async Task TestWaitForElementAsync()
-    {
+    public async Task TestWaitForElementAsync() {
         // Test the async wait functionality
         var result = await _automation!.WaitForElementAsync("nonexistent_element", null, 500);
         Assert.That(result, Is.False); // Should timeout and return false
@@ -170,8 +154,7 @@ public class AutomationHelperTests
 
     [Test]
     [Ignore("Requires GUI - use IntegrationTestsHeadless for CI/CD")]
-    public void TestSendKeys()
-    {
+    public void TestSendKeys() {
         var notepadPath = "notepad.exe";
         var process = _automation?.LaunchApp(notepadPath);
         _testProcess = process;
@@ -187,8 +170,7 @@ public class AutomationHelperTests
 
     [Test]
     [Ignore("Requires GUI - use IntegrationTestsHeadless for CI/CD")]
-    public void TestTypeTextAndGetValue()
-    {
+    public void TestTypeTextAndGetValue() {
         var notepadPath = "notepad.exe";
         var process = _automation?.LaunchApp(notepadPath);
         _testProcess = process;
@@ -201,8 +183,7 @@ public class AutomationHelperTests
 
     [Test]
     [Ignore("Requires GUI - use IntegrationTestsHeadless for CI/CD")]
-    public void TestGetAllChildren()
-    {
+    public void TestGetAllChildren() {
         var notepadPath = "notepad.exe";
         var process = _automation?.LaunchApp(notepadPath);
         _testProcess = process;
@@ -210,14 +191,12 @@ public class AutomationHelperTests
         System.Threading.Thread.Sleep(1000);
 
         var mainWindow = _automation?.GetMainWindow(process!.Id);
-        if (mainWindow != null)
-        {
+        if (mainWindow != null) {
             var children = _automation?.GetAllChildren(mainWindow);
             // Children might be null or contain items, both are valid
             Assert.Pass();
         }
-        else
-        {
+        else {
             Assert.Pass("Main window not found, but method executed");
         }
     }

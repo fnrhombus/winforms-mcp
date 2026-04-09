@@ -7,6 +7,7 @@
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>Rhombus.WinFormsMcp.Tests</RootNamespace>
     <AssemblyName>Rhombus.WinFormsMcp.Tests</AssemblyName>
   </PropertyGroup>

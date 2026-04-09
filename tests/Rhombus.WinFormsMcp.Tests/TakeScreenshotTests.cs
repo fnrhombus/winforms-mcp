@@ -3,6 +3,7 @@ namespace Rhombus.WinFormsMcp.Tests;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Text.Json;
+
 using Rhombus.WinFormsMcp.Server;
 
 /// <summary>
@@ -11,22 +12,18 @@ using Rhombus.WinFormsMcp.Server;
 /// these tests verify the base64 conversion logic and MCP response format
 /// that the handler uses, plus tool definition correctness.
 /// </summary>
-public class TakeScreenshotTests
-{
+public class TakeScreenshotTests {
     private string _tempDir = null!;
 
     [SetUp]
-    public void Setup()
-    {
+    public void Setup() {
         _tempDir = Path.Combine(Path.GetTempPath(), $"screenshot_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
     }
 
     [TearDown]
-    public void TearDown()
-    {
-        if (Directory.Exists(_tempDir))
-        {
+    public void TearDown() {
+        if (Directory.Exists(_tempDir)) {
             try { Directory.Delete(_tempDir, true); }
             catch { /* best-effort cleanup */ }
         }
@@ -37,8 +34,7 @@ public class TakeScreenshotTests
     /// This mirrors what TakeScreenshot does after calling automation.TakeScreenshot().
     /// </summary>
     [Test]
-    public void Base64Conversion_ValidPng_ProducesValidBase64()
-    {
+    public void Base64Conversion_ValidPng_ProducesValidBase64() {
         // Arrange: create a small PNG file
         var pngPath = Path.Combine(_tempDir, "test.png");
         CreateTestPng(pngPath, 10, 10);
@@ -59,8 +55,7 @@ public class TakeScreenshotTests
     /// so the MCP image content handler will pick it up.
     /// </summary>
     [Test]
-    public void ResponseFormat_ContainsImageBase64_WhenSuccessful()
-    {
+    public void ResponseFormat_ContainsImageBase64_WhenSuccessful() {
         // Arrange
         var pngPath = Path.Combine(_tempDir, "test.png");
         CreateTestPng(pngPath, 10, 10);
@@ -85,8 +80,7 @@ public class TakeScreenshotTests
     /// This tests the same logic as ProcessRequest lines 269-288.
     /// </summary>
     [Test]
-    public void McpImageContentBlock_BuiltCorrectly_FromBase64Response()
-    {
+    public void McpImageContentBlock_BuiltCorrectly_FromBase64Response() {
         // Arrange
         var pngPath = Path.Combine(_tempDir, "test.png");
         CreateTestPng(pngPath, 20, 20);
@@ -101,8 +95,7 @@ public class TakeScreenshotTests
         Assert.That(result.TryGetProperty("imageBase64", out var imgData), Is.True);
         Assert.That(imgData.ValueKind, Is.EqualTo(JsonValueKind.String));
 
-        var contentBlock = new Dictionary<string, string>
-        {
+        var contentBlock = new Dictionary<string, string> {
             ["type"] = "image",
             ["data"] = imgData.GetString()!,
             ["mimeType"] = "image/png"
@@ -122,8 +115,7 @@ public class TakeScreenshotTests
     /// Verify that base64 from a PNG starts with the PNG signature bytes.
     /// </summary>
     [Test]
-    public void Base64Conversion_DecodedBytes_StartWithPngSignature()
-    {
+    public void Base64Conversion_DecodedBytes_StartWithPngSignature() {
         // Arrange
         var pngPath = Path.Combine(_tempDir, "test.png");
         CreateTestPng(pngPath, 5, 5);
@@ -145,8 +137,7 @@ public class TakeScreenshotTests
     /// Verify that temp file cleanup works (outputPath omitted scenario).
     /// </summary>
     [Test]
-    public void TempFileCleanup_FileDeletedAfterBase64Conversion()
-    {
+    public void TempFileCleanup_FileDeletedAfterBase64Conversion() {
         // Arrange: simulate the temp file path scenario
         var tempPath = Path.Combine(_tempDir, $"screenshot_{Guid.NewGuid():N}.png");
         CreateTestPng(tempPath, 10, 10);
@@ -166,8 +157,7 @@ public class TakeScreenshotTests
     /// Verify that when outputPath IS provided, the file remains on disk.
     /// </summary>
     [Test]
-    public void WithOutputPath_FileRemainsOnDisk_AndBase64Returned()
-    {
+    public void WithOutputPath_FileRemainsOnDisk_AndBase64Returned() {
         // Arrange
         var outputPath = Path.Combine(_tempDir, "saved_screenshot.png");
         CreateTestPng(outputPath, 10, 10);
@@ -187,8 +177,7 @@ public class TakeScreenshotTests
     /// We instantiate AutomationServer and inspect the tools/list response.
     /// </summary>
     [Test]
-    public async Task ToolDefinition_OutputPathIsOptional()
-    {
+    public async Task ToolDefinition_OutputPathIsOptional() {
         // Arrange: create server and capture its output via JSON-RPC
         var inputWriter = new StringWriter();
         var outputReader = new StringReader("");
@@ -220,10 +209,8 @@ public class TakeScreenshotTests
 
         // Find the take_screenshot tool
         JsonElement? screenshotTool = null;
-        foreach (var tool in tools.EnumerateArray())
-        {
-            if (tool.GetProperty("name").GetString() == "take_screenshot")
-            {
+        foreach (var tool in tools.EnumerateArray()) {
+            if (tool.GetProperty("name").GetString() == "take_screenshot") {
                 screenshotTool = tool;
                 break;
             }
@@ -234,11 +221,9 @@ public class TakeScreenshotTests
         var schema = screenshotTool!.Value.GetProperty("inputSchema");
 
         // Verify outputPath is NOT in the required array (or required doesn't exist)
-        if (schema.TryGetProperty("required", out var required))
-        {
+        if (schema.TryGetProperty("required", out var required)) {
             var requiredFields = new List<string>();
-            foreach (var field in required.EnumerateArray())
-            {
+            foreach (var field in required.EnumerateArray()) {
                 requiredFields.Add(field.GetString()!);
             }
             Assert.That(requiredFields, Does.Not.Contain("outputPath"),
@@ -255,8 +240,7 @@ public class TakeScreenshotTests
     /// <summary>
     /// Helper to create a small test PNG file using System.Drawing.
     /// </summary>
-    private static void CreateTestPng(string path, int width, int height)
-    {
+    private static void CreateTestPng(string path, int width, int height) {
         using var bitmap = new Bitmap(width, height);
         using var graphics = Graphics.FromImage(bitmap);
         graphics.Clear(Color.Blue);

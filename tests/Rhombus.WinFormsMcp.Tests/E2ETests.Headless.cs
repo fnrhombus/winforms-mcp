@@ -1,25 +1,23 @@
 namespace Rhombus.WinFormsMcp.Tests;
 
-using Rhombus.WinFormsMcp.Server.Automation;
 using Moq;
+
+using Rhombus.WinFormsMcp.Server.Automation;
 
 /// <summary>
 /// Headless end-to-end tests using mocks
 /// These tests verify complex multi-step workflows without requiring a GUI
 /// </summary>
-public class E2ETestsHeadless
-{
+public class E2ETestsHeadless {
     private Mock<IAutomationHelper>? _mockAutomation;
 
     [SetUp]
-    public void Setup()
-    {
+    public void Setup() {
         _mockAutomation = new Mock<IAutomationHelper>();
     }
 
     [Test]
-    public void E2E_TextEditingWorkflow()
-    {
+    public void E2E_TextEditingWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.LaunchApp("notepad.exe", null, null))
@@ -57,8 +55,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_MultipleApplicationInteraction()
-    {
+    public void E2E_MultipleApplicationInteraction() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.LaunchApp("notepad.exe", null, null))
@@ -92,8 +89,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_WindowNavigationWorkflow()
-    {
+    public void E2E_WindowNavigationWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetMainWindow(5000))
@@ -126,8 +122,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_FormFillingWorkflow()
-    {
+    public void E2E_FormFillingWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetMainWindow(5000))
@@ -163,8 +158,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public async Task E2E_AsynchronousElementWaitingWorkflow()
-    {
+    public async Task E2E_AsynchronousElementWaitingWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.WaitForElementAsync("LoadingSpinner", It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), 10000))
@@ -186,8 +180,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_ScreenshotValidationWorkflow()
-    {
+    public void E2E_ScreenshotValidationWorkflow() {
         // Arrange
         var screenshotPath1 = Path.Combine(Path.GetTempPath(), $"before_{Guid.NewGuid()}.png");
         var screenshotPath2 = Path.Combine(Path.GetTempPath(), $"after_{Guid.NewGuid()}.png");
@@ -229,8 +222,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_ComplexMultiStepWorkflow()
-    {
+    public void E2E_ComplexMultiStepWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.LaunchApp("app.exe", null, null))
@@ -289,8 +281,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_DragDropWorkflow()
-    {
+    public void E2E_DragDropWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetMainWindow(5000))
@@ -317,8 +308,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_ErrorHandlingWorkflow()
-    {
+    public void E2E_ErrorHandlingWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.AttachToProcessByName("nonexistent"))
@@ -341,8 +331,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_MultipleClicksWorkflow()
-    {
+    public void E2E_MultipleClicksWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.Click(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), false))
@@ -362,8 +351,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_PropertyRetrievalWorkflow()
-    {
+    public void E2E_PropertyRetrievalWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetProperty(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "name"))
@@ -385,8 +373,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_SequentialTypingWorkflow()
-    {
+    public void E2E_SequentialTypingWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.TypeText(It.IsAny<FlaUI.Core.AutomationElements.AutomationElement>(), "Username", true))
@@ -414,8 +401,7 @@ public class E2ETestsHeadless
     // ===== NEGATIVE TESTS =====
 
     [Test]
-    public void E2E_LaunchFailureWithFallback()
-    {
+    public void E2E_LaunchFailureWithFallback() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.LaunchApp("badapp.exe", null, null))
@@ -438,8 +424,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_FormSubmissionWithMissingRequiredFields()
-    {
+    public void E2E_FormSubmissionWithMissingRequiredFields() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetMainWindow(5000))
@@ -486,8 +471,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public async Task E2E_TimeoutDuringWorkflow()
-    {
+    public async Task E2E_TimeoutDuringWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.LaunchApp("slowapp.exe", null, null))
@@ -516,8 +500,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_PartialFormFillFailure()
-    {
+    public void E2E_PartialFormFillFailure() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetMainWindow(5000))
@@ -557,8 +540,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_InvalidScreenshotPathHandling()
-    {
+    public void E2E_InvalidScreenshotPathHandling() {
         // Arrange
         var invalidPath = "/invalid/path/screenshot.png";
 
@@ -591,8 +573,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_ElementNotFoundDuringNavigation()
-    {
+    public void E2E_ElementNotFoundDuringNavigation() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.GetMainWindow(5000))
@@ -622,8 +603,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_ConcurrentOperationFailure()
-    {
+    public void E2E_ConcurrentOperationFailure() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.LaunchApp("app1.exe", null, null))
@@ -654,8 +634,7 @@ public class E2ETestsHeadless
     }
 
     [Test]
-    public void E2E_ProcessTerminatedMidWorkflow()
-    {
+    public void E2E_ProcessTerminatedMidWorkflow() {
         // Arrange
         _mockAutomation!
             .Setup(a => a.LaunchApp("app.exe", null, null))

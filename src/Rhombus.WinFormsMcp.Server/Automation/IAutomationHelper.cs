@@ -1,17 +1,17 @@
-using FlaUI.Core.AutomationElements;
-using FlaUI.Core.Conditions;
-using FlaUI.Core.Definitions;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+
+using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Conditions;
+using FlaUI.Core.Definitions;
 
 namespace Rhombus.WinFormsMcp.Server.Automation;
 
 /// <summary>
 /// Interface for WinForms UI automation
 /// </summary>
-public interface IAutomationHelper : IDisposable
-{
+public interface IAutomationHelper : IDisposable {
     /// <summary>
     /// Whether launched applications should run headless (hidden window)
     /// </summary>

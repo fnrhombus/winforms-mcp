@@ -3,70 +3,59 @@ using Rhombus.WinFormsMcp.Server.Automation;
 namespace Rhombus.WinFormsMcp.Tests;
 
 [TestFixture]
-public class CompiledFormRendererTests
-{
+public class CompiledFormRendererTests {
     #region ResolveDesignerFile
 
     [Test]
-    public void ResolveDesignerFile_GivenDesignerPath_ReturnsSamePath()
-    {
+    public void ResolveDesignerFile_GivenDesignerPath_ReturnsSamePath() {
         // Create a temp .Designer.cs file
         var tempDir = Path.Combine(Path.GetTempPath(), $"cfr_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         var designerPath = Path.Combine(tempDir, "MyForm.Designer.cs");
         File.WriteAllText(designerPath, "// designer");
-        try
-        {
+        try {
             var result = CompiledFormRenderer.ResolveDesignerFile(designerPath);
             Assert.That(result, Is.EqualTo(designerPath));
         }
-        finally
-        {
+        finally {
             Directory.Delete(tempDir, true);
         }
     }
 
     [Test]
-    public void ResolveDesignerFile_GivenCsFile_FindsSiblingDesigner()
-    {
+    public void ResolveDesignerFile_GivenCsFile_FindsSiblingDesigner() {
         var tempDir = Path.Combine(Path.GetTempPath(), $"cfr_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         var csPath = Path.Combine(tempDir, "MyForm.cs");
         var designerPath = Path.Combine(tempDir, "MyForm.Designer.cs");
         File.WriteAllText(csPath, "// code-behind");
         File.WriteAllText(designerPath, "// designer");
-        try
-        {
+        try {
             var result = CompiledFormRenderer.ResolveDesignerFile(csPath);
             Assert.That(result, Is.EqualTo(designerPath));
         }
-        finally
-        {
+        finally {
             Directory.Delete(tempDir, true);
         }
     }
 
     [Test]
-    public void ResolveDesignerFile_NoDesignerExists_Throws()
-    {
+    public void ResolveDesignerFile_NoDesignerExists_Throws() {
         var tempDir = Path.Combine(Path.GetTempPath(), $"cfr_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         var csPath = Path.Combine(tempDir, "MyForm.cs");
         File.WriteAllText(csPath, "// code-behind only");
-        try
-        {
+        try {
             Assert.Throws<FileNotFoundException>(() =>
                 CompiledFormRenderer.ResolveDesignerFile(csPath));
         }
-        finally
-        {
+        finally {
             Directory.Delete(tempDir, true);
         }
     }
 
     [Test]
-    public void ResolveDesignerFile_DesignerPathDoesNotExist_Throws()
-    {
+    public void ResolveDesignerFile_DesignerPathDoesNotExist_Throws() {
         Assert.Throws<FileNotFoundException>(() =>
             CompiledFormRenderer.ResolveDesignerFile(@"C:\nonexistent\Foo.Designer.cs"));
     }
@@ -76,66 +65,55 @@ public class CompiledFormRendererTests
     #region FindCsproj
 
     [Test]
-    public void FindCsproj_CsprojInSameDir_ReturnsIt()
-    {
+    public void FindCsproj_CsprojInSameDir_ReturnsIt() {
         var tempDir = Path.Combine(Path.GetTempPath(), $"cfr_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         var csprojPath = Path.Combine(tempDir, "Test.csproj");
         File.WriteAllText(csprojPath, "<Project />");
-        try
-        {
+        try {
             var result = CompiledFormRenderer.FindCsproj(tempDir);
             Assert.That(result, Is.EqualTo(csprojPath));
         }
-        finally
-        {
+        finally {
             Directory.Delete(tempDir, true);
         }
     }
 
     [Test]
-    public void FindCsproj_CsprojInParentDir_ReturnsIt()
-    {
+    public void FindCsproj_CsprojInParentDir_ReturnsIt() {
         var parentDir = Path.Combine(Path.GetTempPath(), $"cfr_test_{Guid.NewGuid():N}");
         var childDir = Path.Combine(parentDir, "subfolder");
         Directory.CreateDirectory(childDir);
         var csprojPath = Path.Combine(parentDir, "Test.csproj");
         File.WriteAllText(csprojPath, "<Project />");
-        try
-        {
+        try {
             var result = CompiledFormRenderer.FindCsproj(childDir);
             Assert.That(result, Is.EqualTo(csprojPath));
         }
-        finally
-        {
+        finally {
             Directory.Delete(parentDir, true);
         }
     }
 
     [Test]
-    public void FindCsproj_NoCsproj_Throws()
-    {
+    public void FindCsproj_NoCsproj_Throws() {
         // FindCsproj walks up the directory tree. On a real system it may find
         // a .csproj in an ancestor. We verify it either returns a valid path
         // or throws FileNotFoundException.
         var tempDir = Path.Combine(Path.GetTempPath(), $"cfr_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
-        try
-        {
-            try
-            {
+        try {
+            try {
                 var result = CompiledFormRenderer.FindCsproj(tempDir);
                 // If it found one, it must be a real .csproj file
                 Assert.That(File.Exists(result), Is.True);
                 Assert.That(result, Does.EndWith(".csproj"));
             }
-            catch (FileNotFoundException)
-            {
+            catch (FileNotFoundException) {
                 Assert.Pass("Correctly threw when no .csproj found.");
             }
         }
-        finally
-        {
+        finally {
             Directory.Delete(tempDir, true);
         }
     }
@@ -145,8 +123,7 @@ public class CompiledFormRendererTests
     #region ParseDesignerFile
 
     [Test]
-    public void ParseDesignerFile_ExtractsNamespaceAndClassName()
-    {
+    public void ParseDesignerFile_ExtractsNamespaceAndClassName() {
         var content = @"
 namespace MyApp.Forms;
 
@@ -159,8 +136,7 @@ partial class AddressEntryForm {
     }
 
     [Test]
-    public void ParseDesignerFile_NoNamespace_ReturnsNull()
-    {
+    public void ParseDesignerFile_NoNamespace_ReturnsNull() {
         var content = @"
 partial class MyForm {
     private void InitializeComponent() { }
@@ -171,8 +147,7 @@ partial class MyForm {
     }
 
     [Test]
-    public void ParseDesignerFile_ExtractsEventHandlers_ModernSyntax()
-    {
+    public void ParseDesignerFile_ExtractsEventHandlers_ModernSyntax() {
         var content = @"
 namespace Test;
 partial class MyForm {
@@ -187,8 +162,7 @@ partial class MyForm {
     }
 
     [Test]
-    public void ParseDesignerFile_ExtractsEventHandlers_OldSyntax()
-    {
+    public void ParseDesignerFile_ExtractsEventHandlers_OldSyntax() {
         var content = @"
 namespace Test;
 partial class MyForm {
@@ -201,8 +175,7 @@ partial class MyForm {
     }
 
     [Test]
-    public void ParseDesignerFile_NoDuplicateHandlers()
-    {
+    public void ParseDesignerFile_NoDuplicateHandlers() {
         var content = @"
 namespace Test;
 partial class MyForm {
@@ -216,8 +189,7 @@ partial class MyForm {
     }
 
     [Test]
-    public void ParseDesignerFile_NoPartialClass_Throws()
-    {
+    public void ParseDesignerFile_NoPartialClass_Throws() {
         var content = "class NotPartial { }";
         Assert.Throws<InvalidOperationException>(() =>
             CompiledFormRenderer.ParseDesignerFile(content));
@@ -228,8 +200,7 @@ partial class MyForm {
     #region GenerateCsproj
 
     [Test]
-    public void GenerateCsproj_CopiesPackageReferences()
-    {
+    public void GenerateCsproj_CopiesPackageReferences() {
         var tempDir = Path.Combine(Path.GetTempPath(), $"cfr_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         var sourceCsproj = Path.Combine(tempDir, "Source.csproj");
@@ -246,8 +217,7 @@ partial class MyForm {
 
         var outputDir = Path.Combine(tempDir, "output");
         Directory.CreateDirectory(outputDir);
-        try
-        {
+        try {
             CompiledFormRenderer.GenerateCsproj(outputDir, sourceCsproj);
             var generated = File.ReadAllText(Path.Combine(outputDir, "TempFormRender.csproj"));
 
@@ -258,15 +228,13 @@ partial class MyForm {
             Assert.That(generated, Does.Contain("UseWindowsForms"));
             Assert.That(generated, Does.Contain("net8.0-windows"));
         }
-        finally
-        {
+        finally {
             Directory.Delete(tempDir, true);
         }
     }
 
     [Test]
-    public void GenerateCsproj_NoPackageRefs_StillWorks()
-    {
+    public void GenerateCsproj_NoPackageRefs_StillWorks() {
         var tempDir = Path.Combine(Path.GetTempPath(), $"cfr_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
         var sourceCsproj = Path.Combine(tempDir, "Source.csproj");
@@ -279,13 +247,11 @@ partial class MyForm {
 
         var outputDir = Path.Combine(tempDir, "output");
         Directory.CreateDirectory(outputDir);
-        try
-        {
+        try {
             CompiledFormRenderer.GenerateCsproj(outputDir, sourceCsproj);
             Assert.That(File.Exists(Path.Combine(outputDir, "TempFormRender.csproj")), Is.True);
         }
-        finally
-        {
+        finally {
             Directory.Delete(tempDir, true);
         }
     }
@@ -295,12 +261,10 @@ partial class MyForm {
     #region GenerateCodeBehind
 
     [Test]
-    public void GenerateCodeBehind_GeneratesPartialClassWithFormBase()
-    {
+    public void GenerateCodeBehind_GeneratesPartialClassWithFormBase() {
         var tempDir = Path.Combine(Path.GetTempPath(), $"cfr_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
-        try
-        {
+        try {
             CompiledFormRenderer.GenerateCodeBehind(tempDir, "MyApp", "MyForm",
                 new List<string> { "btnOk_Click", "Form_Load" });
             var content = File.ReadAllText(Path.Combine(tempDir, "MyForm.cs"));
@@ -312,27 +276,23 @@ partial class MyForm {
             Assert.That(content, Does.Contain("btnOk_Click"));
             Assert.That(content, Does.Contain("Form_Load"));
         }
-        finally
-        {
+        finally {
             Directory.Delete(tempDir, true);
         }
     }
 
     [Test]
-    public void GenerateCodeBehind_NoNamespace_OmitsNamespaceLine()
-    {
+    public void GenerateCodeBehind_NoNamespace_OmitsNamespaceLine() {
         var tempDir = Path.Combine(Path.GetTempPath(), $"cfr_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
-        try
-        {
+        try {
             CompiledFormRenderer.GenerateCodeBehind(tempDir, null, "MyForm", new List<string>());
             var content = File.ReadAllText(Path.Combine(tempDir, "MyForm.cs"));
 
             Assert.That(content, Does.Not.Contain("namespace"));
             Assert.That(content, Does.Contain("partial class MyForm : Form"));
         }
-        finally
-        {
+        finally {
             Directory.Delete(tempDir, true);
         }
     }
@@ -342,12 +302,10 @@ partial class MyForm {
     #region GenerateProgram
 
     [Test]
-    public void GenerateProgram_ContainsFormInstantiation()
-    {
+    public void GenerateProgram_ContainsFormInstantiation() {
         var tempDir = Path.Combine(Path.GetTempPath(), $"cfr_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
-        try
-        {
+        try {
             CompiledFormRenderer.GenerateProgram(tempDir, "MyApp", "MyForm");
             var content = File.ReadAllText(Path.Combine(tempDir, "Program.cs"));
 
@@ -356,26 +314,22 @@ partial class MyForm {
             Assert.That(content, Does.Contain("ToBase64String"));
             Assert.That(content, Does.Contain("[STAThread]"));
         }
-        finally
-        {
+        finally {
             Directory.Delete(tempDir, true);
         }
     }
 
     [Test]
-    public void GenerateProgram_NoNamespace_UsesClassNameDirectly()
-    {
+    public void GenerateProgram_NoNamespace_UsesClassNameDirectly() {
         var tempDir = Path.Combine(Path.GetTempPath(), $"cfr_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
-        try
-        {
+        try {
             CompiledFormRenderer.GenerateProgram(tempDir, null, "MyForm");
             var content = File.ReadAllText(Path.Combine(tempDir, "Program.cs"));
 
             Assert.That(content, Does.Contain("new MyForm()"));
         }
-        finally
-        {
+        finally {
             Directory.Delete(tempDir, true);
         }
     }
@@ -386,8 +340,7 @@ partial class MyForm {
 
     [Test]
     [Category("E2E")]
-    public void RenderForm_AddressEntryForm_ProducesValidPng()
-    {
+    public void RenderForm_AddressEntryForm_ProducesValidPng() {
         var sourceFile = @"C:\Users\thoma\source\repos\WinformMCPDemos\WinFormsApp1\AddressEntryForm.cs";
         if (!File.Exists(sourceFile))
             Assert.Ignore("AddressEntryForm source not found on this machine.");
@@ -407,8 +360,7 @@ partial class MyForm {
 
     [Test]
     [Category("E2E")]
-    public void RenderForm_CachesResult_SecondCallIsFast()
-    {
+    public void RenderForm_CachesResult_SecondCallIsFast() {
         var sourceFile = @"C:\Users\thoma\source\repos\WinformMCPDemos\WinFormsApp1\AddressEntryForm.cs";
         if (!File.Exists(sourceFile))
             Assert.Ignore("AddressEntryForm source not found on this machine.");
@@ -429,8 +381,7 @@ partial class MyForm {
 
     [Test]
     [Category("E2E")]
-    public void RenderForm_KitchenSink_ProducesValidPng()
-    {
+    public void RenderForm_KitchenSink_ProducesValidPng() {
         var designerFile = Path.Combine(TestContext.CurrentContext.TestDirectory,
             "TestData", "KitchenSink", "KitchenSinkForm.Designer.cs");
         if (!File.Exists(designerFile))
@@ -452,8 +403,7 @@ partial class MyForm {
 
     [Test]
     [Category("E2E")]
-    public void GroundTruth_KitchenSink_FlaUI_Screenshot()
-    {
+    public void GroundTruth_KitchenSink_FlaUI_Screenshot() {
         var kitchenSinkExe = Path.Combine(TestContext.CurrentContext.TestDirectory,
             "TestData", "KitchenSink", "bin", "publish", "KitchenSink.exe");
         if (!File.Exists(kitchenSinkExe))
@@ -461,8 +411,7 @@ partial class MyForm {
 
         using var automation = new Rhombus.WinFormsMcp.Server.Automation.AutomationHelper(headless: false);
         var process = automation.LaunchApp(kitchenSinkExe);
-        try
-        {
+        try {
             // Wait for the window to fully render
             System.Threading.Thread.Sleep(2000);
 
@@ -476,8 +425,7 @@ partial class MyForm {
             Assert.That(new FileInfo(outputPath).Length, Is.GreaterThan(1000));
             TestContext.WriteLine($"FlaUI ground truth: {outputPath}");
         }
-        finally
-        {
+        finally {
             automation.CloseApp(process.Id, force: true);
         }
     }
@@ -485,8 +433,7 @@ partial class MyForm {
     [Test]
     [Category("E2E")]
     [Explicit("Manual test to save rendered PNG for visual verification")]
-    public void RenderForm_AddressEntryForm_SavePngForReview()
-    {
+    public void RenderForm_AddressEntryForm_SavePngForReview() {
         var sourceFile = @"C:\Users\thoma\source\repos\WinformMCPDemos\WinFormsApp1\AddressEntryForm.cs";
         if (!File.Exists(sourceFile))
             Assert.Ignore("AddressEntryForm source not found on this machine.");
@@ -505,8 +452,7 @@ partial class MyForm {
 
     [Test]
     [Category("E2E")]
-    public void Benchmark_AllThreeRenderers_KitchenSink()
-    {
+    public void Benchmark_AllThreeRenderers_KitchenSink() {
         var designerFile = Path.Combine(TestContext.CurrentContext.TestDirectory,
             "TestData", "KitchenSink", "KitchenSinkForm.Designer.cs");
         if (!File.Exists(designerFile))
@@ -560,15 +506,15 @@ partial class MyForm {
         //    launch it, wait for window, take FlaUI screenshot.
         var flauiTimes = new List<double>();
         var flauiOut = Path.Combine(Path.GetTempPath(), "bench_flaui.png");
-        for (int i = 0; i < runs; i++)
-        {
+        for (int i = 0; i < runs; i++) {
             sw.Restart();
             var pubDir = Path.Combine(Path.GetTempPath(), $"bench_flaui_{i}");
             BuildAndPublish(kitchenSinkCsproj, pubDir);
             RunFlaUI(Path.Combine(pubDir, "KitchenSink.exe"), false, flauiOut);
             sw.Stop();
             flauiTimes.Add(sw.ElapsedMilliseconds);
-            try { Directory.Delete(pubDir, true); } catch { }
+            try { Directory.Delete(pubDir, true); }
+            catch { }
         }
         var flauiMs = flauiTimes.Average();
         var flauiSize = new FileInfo(flauiOut).Length;
@@ -597,10 +543,8 @@ partial class MyForm {
         Assert.That(flauiMs, Is.GreaterThan(0));
     }
 
-    private static void BuildAndPublish(string csprojPath, string outputDir)
-    {
-        var psi = new System.Diagnostics.ProcessStartInfo
-        {
+    private static void BuildAndPublish(string csprojPath, string outputDir) {
+        var psi = new System.Diagnostics.ProcessStartInfo {
             FileName = "dotnet",
             Arguments = $"publish \"{csprojPath}\" -c Release -o \"{outputDir}\" --nologo -v q",
             RedirectStandardOutput = true,
@@ -615,27 +559,22 @@ partial class MyForm {
                 $"dotnet publish failed: {process.StandardError.ReadToEnd()}");
     }
 
-    private static void RunFlaUI(string exePath, bool headless, string outputPath)
-    {
+    private static void RunFlaUI(string exePath, bool headless, string outputPath) {
         using var automation = new AutomationHelper(headless: headless);
         var process = automation.LaunchApp(exePath);
-        try
-        {
+        try {
             var window = WaitForMainWindow(automation, process.Id);
             automation.TakeScreenshot(outputPath, window);
         }
-        finally
-        {
+        finally {
             automation.CloseApp(process.Id, force: true);
         }
     }
 
     private static FlaUI.Core.AutomationElements.AutomationElement WaitForMainWindow(
-        AutomationHelper automation, int pid, int timeoutMs = 5000)
-    {
+        AutomationHelper automation, int pid, int timeoutMs = 5000) {
         var deadline = Environment.TickCount64 + timeoutMs;
-        while (Environment.TickCount64 < deadline)
-        {
+        while (Environment.TickCount64 < deadline) {
             var window = automation.GetMainWindow(pid);
             if (window != null)
                 return window;
@@ -646,8 +585,7 @@ partial class MyForm {
 
     [Test]
     [Category("E2E")]
-    public void InProcess_KitchenSink_ProducesValidPng()
-    {
+    public void InProcess_KitchenSink_ProducesValidPng() {
         var designerFile = Path.Combine(TestContext.CurrentContext.TestDirectory,
             "TestData", "KitchenSink", "KitchenSinkForm.Designer.cs");
         if (!File.Exists(designerFile))
