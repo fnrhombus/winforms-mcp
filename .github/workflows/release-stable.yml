@@ -78,6 +78,54 @@ jobs:
     - name: Create NuGet package
       run: dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c Release -p:Version=${{ steps.version.outputs.version }}
 
+    - name: Generate changelog
+      id: changelog
+      shell: pwsh
+      run: |
+        # Find the previous release tag
+        $prevTag = git describe --tags --abbrev=0 HEAD~ 2>$null
+        if (-not $prevTag) { $prevTag = (git rev-list --max-parents=0 HEAD) }
+        Write-Host "Generating changelog from $prevTag to HEAD"
+
+        # Get commits grouped by conventional commit type
+        $commits = git log "$prevTag..HEAD" --pretty=format:"%s" --no-merges | Where-Object { $_ }
+
+        $features = @(); $fixes = @(); $docs = @(); $other = @()
+        foreach ($msg in $commits) {
+          if ($msg -match '^feat:') { $features += $msg -replace '^feat:\s*', '' }
+          elseif ($msg -match '^fix:') { $fixes += $msg -replace '^fix:\s*', '' }
+          elseif ($msg -match '^docs:') { $docs += $msg -replace '^docs:\s*', '' }
+          elseif ($msg -notmatch '^chore: release version') { $other += $msg }
+        }
+
+        $body = ""
+        if ($features.Count -gt 0) {
+          $body += "### Features`n"
+          foreach ($f in $features) { $body += "- $f`n" }
+          $body += "`n"
+        }
+        if ($fixes.Count -gt 0) {
+          $body += "### Fixes`n"
+          foreach ($f in $fixes) { $body += "- $f`n" }
+          $body += "`n"
+        }
+        if ($docs.Count -gt 0) {
+          $body += "### Docs`n"
+          foreach ($f in $docs) { $body += "- $f`n" }
+          $body += "`n"
+        }
+        if ($other.Count -gt 0) {
+          $body += "### Other`n"
+          foreach ($f in $other) { $body += "- $f`n" }
+          $body += "`n"
+        }
+
+        if (-not $body) { $body = "Maintenance release.`n" }
+
+        # Write to file for multi-line output
+        $body | Out-File -FilePath changelog.md -Encoding utf8 -NoNewline
+        Write-Host "Changelog:`n$body"
+
     - name: Create GitHub Release
       uses: actions/create-release@v1
       env:
@@ -85,28 +133,7 @@ jobs:
       with:
         tag_name: v${{ steps.version.outputs.version }}
         release_name: Release ${{ steps.version.outputs.version }}
-        body: |
-          ## Rhombus.WinFormsMcp ${{ steps.version.outputs.version }}
-
-          ### Releases
-          - **NuGet**: `Rhombus.WinFormsMcp` v${{ steps.version.outputs.version }}
-          - **NPM**: `@fnrhombus/winforms-mcp` v${{ steps.version.outputs.version }}
-
-          ### Installation
-
-          #### NuGet
-          ```
-          Install-Package Rhombus.WinFormsMcp -Version ${{ steps.version.outputs.version }}
-          ```
-
-          #### NPM
-          ```
-          npm install @fnrhombus/winforms-mcp@${{ steps.version.outputs.version }}
-          npx @fnrhombus/winforms-mcp
-          ```
-
-          ### Changes
-          See [CHANGELOG.md](https://github.com/fnrhombus/winforms-mcp/blob/master/CHANGELOG.md) for details.
+        body_path: changelog.md
         draft: false
         prerelease: false
 

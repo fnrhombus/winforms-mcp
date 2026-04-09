@@ -37,41 +37,21 @@ jobs:
       run: dotnet test Rhombus.WinFormsMcp.sln --configuration Release --no-build --logger "console;verbosity=detailed"
 
     - name: Analyze commits for version bump
-      id: version-analysis
-      uses: anthropics/claude-code-action@v1
-      with:
-        claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-        prompt: |
-          Analyze the following git commits and code changes to determine the appropriate semantic version bump type (major, minor, or patch) according to semver.org rules:
-
-          MAJOR: Incompatible API changes, breaking changes
-          MINOR: New functionality added in a backwards compatible manner
-          PATCH: Backwards compatible bug fixes
-
-          Git log since last version:
-          ```
-          $(git log --oneline --no-merges origin/master..HEAD)
-          ```
-
-          Code changes:
-          ```
-          $(git diff origin/master..HEAD --stat)
-          ```
-
-          Respond with ONLY one word: "major", "minor", or "patch"
-        claude_args: "--model claude-haiku-4-5-20251001"
-
-    - name: Determine version bump type
       id: bump-type
       shell: pwsh
       run: |
-        $analysis = "${{ steps.version-analysis.outputs.result }}"
-        $bumpType = $analysis.Trim().ToLower()
+        $commits = git log --oneline --no-merges origin/master..HEAD 2>$null
+        Write-Host "Commits since master:`n$commits"
 
-        if ($bumpType -notmatch '^(major|minor|patch)$') {
-          Write-Host "Claude analysis result: $analysis"
-          Write-Host "Defaulting to patch version bump"
-          $bumpType = "patch"
+        $bumpType = "patch"
+        foreach ($line in ($commits -split "`n")) {
+          if ($line -match 'BREAKING CHANGE:') {
+            $bumpType = "major"
+            break
+          }
+          if ($line -match '^\w+ feat:') {
+            $bumpType = "minor"
+          }
         }
 
         Write-Host "Version bump type: $bumpType"

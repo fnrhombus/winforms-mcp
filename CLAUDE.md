@@ -221,22 +221,22 @@ open ./coverage/report/index.html   # Mac/Linux
 
 ## CI/CD
 
-### Dev Branch CI (.github/workflows/ci-dev.yml)
+### Dev Branch CI (.github/workflows/release-beta.yml)
 Triggers on push to `dev` branch:
 1. Build and test
-2. Run tests
-3. Analyze commits with Claude Haiku to determine version bump type
-4. Increment version with `-beta` suffix
-5. Publish beta to NuGet and NPM
-6. Commit version bump back to dev
+2. Analyze commits using conventional commit prefixes to determine version bump type (`BREAKING CHANGE:` → major, `feat:` → minor, else → patch)
+3. Increment version with `-beta` suffix
+4. Publish beta to NuGet and NPM
+5. Commit version bump back to dev
 
-### Master Branch CI (.github/workflows/ci-master.yml)
+### Master Branch CI (.github/workflows/release-stable.yml)
 Triggers on push to `master` branch (merge from dev):
 1. Remove `-beta` suffix from version
 2. Build and test
-3. Create GitHub release with release notes
-4. Publish stable version to NuGet and NPM
-5. Tag with version number
+3. Generate changelog from git log (grouped by conventional commit type)
+4. Create GitHub release with auto-generated changelog
+5. Publish stable version to NuGet and NPM
+6. Tag with version number
 
 ### Merge Script Usage
 
@@ -262,7 +262,7 @@ The merge script:
 
 ## Commit Guidelines
 
-While not strictly enforced, following conventional commits helps the AI version analyzer:
+While not strictly enforced, following conventional commits helps the version bump analyzer:
 
 - `feat:` - New features (likely MINOR bump)
 - `fix:` - Bug fixes (likely PATCH bump)
@@ -270,6 +270,24 @@ While not strictly enforced, following conventional commits helps the AI version
 - `chore:` - Maintenance tasks
 - `docs:` - Documentation changes
 - `test:` - Test additions/changes
+
+### Issue References
+
+**Always reference relevant GitHub issues in commit messages.** If a commit relates to an open issue, include `#N` in the message body. Use closing keywords when the commit fully resolves the issue:
+- `fixes #N` or `closes #N` — auto-closes the issue when merged to the default branch
+- `refs #N` or just `#N` — links without closing
+
+This enables automated changelog generation and traceability.
+
+## Release Changelog
+
+**Every release must include a changelog.** This is automated in `release-stable.yml`:
+- Scans all commits since the last release tag
+- Groups by conventional commit type (features, fixes, docs, other)
+- Writes the changelog as the GitHub Release body (not a separate file)
+- Issue references (`#N`) in commit messages become clickable links automatically
+
+This is why issue references in commits matter — they flow into the release notes for free.
 
 ## Important Notes
 
