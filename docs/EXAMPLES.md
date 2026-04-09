@@ -159,75 +159,16 @@ You point Claude at an existing form and ask for a preview. Claude picks the rig
 > User: Show me what Forms/SettingsForm.Designer.cs looks like.
 ```
 
-Claude reads the designer file and sees it only uses standard controls (`Label`, `TextBox`, `CheckBox`, `Button`). Since there are no custom or third-party controls, Claude picks the fastest renderer:
+Claude reads the designer file and renders a preview:
 
 ```
 Claude calls render_form:
   designerFilePath: "C:\project\Forms\SettingsForm.Designer.cs"
-  outputPath: "C:\temp\settings-preview.png"
 
-Completed in ~150ms
+Completed in ~150ms (warm) / ~1s (cold start), returns base64 PNG
 ```
 
-### Custom or third-party controls -- use `render_form_inprocess`
-
-```
-> User: Preview Forms/DashboardForm.Designer.cs for me.
-```
-
-Claude reads the file and notices it uses `Telerik.WinControls.UI.RadGridView` and a custom `MyApp.Controls.StatusIndicator`. Standard `render_form` would silently skip these controls (they'd show as blank space), so Claude uses the in-process renderer instead:
-
-```
-Claude calls render_form_inprocess:
-  sourceFilePath: "C:\project\Forms\DashboardForm.Designer.cs"
-
-Completed in ~450ms, returns base64 PNG
-```
-
-Claude responds:
-
-```
-Here's the dashboard. The RadGridView and your custom StatusIndicator control
-both rendered correctly. The grid takes up most of the form with the status
-indicator in the bottom-right corner.
-
-Note: I used render_form_inprocess because your form uses third-party Telerik
-controls and a custom UserControl. The standard render_form would have shown
-blank space where those controls are.
-```
-
-### Fallback -- use `render_form_compiled`
-
-```
-> User: I can't get a preview of MainForm -- it keeps failing.
-```
-
-Claude tries `render_form_inprocess` first but it fails because the project has never been built (no DLLs in `bin/`). Claude falls back:
-
-```
-Claude calls render_form_compiled:
-  sourceFilePath: "C:\project\Forms\MainForm.Designer.cs"
-
-Completed in ~2800ms
-```
-
-```
-The in-process renderer failed because there's no build output yet. I used
-render_form_compiled instead, which generates a temporary project and builds
-it from scratch. It's slower (~3 seconds) but doesn't need pre-existing
-build output.
-
-Here's the preview. Once you've done an initial build, I can switch to the
-faster render_form_inprocess for subsequent previews.
-```
-
-### Decision summary
-
-| Renderer | Speed | When to use |
-|---|---|---|
-| `render_form` | ~150ms | Form only uses `System.Windows.Forms` controls |
-| `render_form_inprocess` | ~450ms | Form has custom/third-party controls; project has been built |
-| `render_form_compiled` | ~2800ms | Fallback when in-process fails (no build output, exotic config) |
+The `render_form` tool automatically detects the project's target framework from its `.csproj` and renders in a matching out-of-process host — no configuration needed. It handles standard controls, custom UserControls, and third-party controls alike.
 
 ---
 
@@ -572,7 +513,7 @@ Claude calls close_app:
 - **Use `clearFirst: true` when typing into fields** -- avoids appending to existing text.
 - **Take screenshots to verify state** -- Claude can see the screenshots and tell you what's on screen.
 - **Close apps when done** -- call `close_app` to clean up resources and avoid orphan processes.
-- **Start with `render_form`, escalate if needed** -- if controls are missing in the preview, move to `render_form_inprocess`, then `render_form_compiled` as a last resort.
+- **Use `render_form` for instant previews** -- it works on any framework version and doesn't require the project to build.
 
 ---
 

@@ -116,8 +116,6 @@ public class McpIntegrationTests {
             "get_process_status",
             "take_screenshot",
             "render_form",
-            "render_form_inprocess",
-            "render_form_compiled",
             "select_item",
             "click_menu_item",
             "get_element_tree",
@@ -200,9 +198,11 @@ public class McpIntegrationTests {
         });
         await SendNotification("notifications/initialized");
 
-        // Write a temp designer file
+        // Write a temp designer file with a csproj (needed for TFM auto-detection)
         var tempDir = Path.Combine(Path.GetTempPath(), $"mcp_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
+        File.WriteAllText(Path.Combine(tempDir, "Test.csproj"),
+            "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net8.0-windows</TargetFramework></PropertyGroup></Project>");
         var designerPath = Path.Combine(tempDir, "TestForm.Designer.cs");
         File.WriteAllText(designerPath, @"
 namespace Test {
