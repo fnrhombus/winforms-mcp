@@ -1,0 +1,11 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /src/Rhombus.WinFormsMcp.Server
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /npm
+    schedule:
+      interval: weekly
