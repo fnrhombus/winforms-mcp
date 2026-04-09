@@ -6,6 +6,7 @@ using System.Text.Json;
 
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Moq;
 using Rhombus.WinFormsMcp.Rendering;
 using Rhombus.WinFormsMcp.Server;
@@ -190,7 +191,7 @@ public class TakeScreenshotTests {
         // Use reflection or instantiate AutomationServer to check tool definitions
         var automation = new AutomationHelper(headless: true);
         var session = new SessionManager(automation);
-        var rendererPool = new RendererProcessPool(new MemoryCache(new MemoryCacheOptions()));
+        var rendererPool = new RendererProcessPool(new MemoryCache(new MemoryCacheOptions()), Options.Create(new McpServerOptions()));
         var telemetry = new NullTelemetry();
         var lifetime = new Mock<IHostApplicationLifetime>().Object;
         var server = new AutomationServer(session, rendererPool, telemetry, lifetime);

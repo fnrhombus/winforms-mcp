@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 
 namespace Rhombus.WinFormsMcp.Server.Automation;
 
@@ -27,15 +28,18 @@ public sealed class RendererProcessPool : IDisposable {
     private readonly ConcurrentBag<string> _activeKeys = new();
     private readonly object _createLock = new();
     private readonly Lazy<string> _hostBasePath;
+    private readonly string _configuredTfm;
     private bool _disposed;
 
     /// <param name="cache">Memory cache instance for managing host entries.</param>
+    /// <param name="serverOptions">Strongly-typed server options (provides TFM configuration).</param>
     /// <param name="hostBasePath">
     /// Directory containing the RendererHost build output (with subdirs per TFM).
     /// If null, auto-detected relative to this assembly on first use.
     /// </param>
-    public RendererProcessPool(IMemoryCache cache, string? hostBasePath = null) {
+    public RendererProcessPool(IMemoryCache cache, IOptions<McpServerOptions> serverOptions, string? hostBasePath = null) {
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _configuredTfm = serverOptions?.Value?.Tfm ?? "auto";
         _hostBasePath = hostBasePath != null
             ? new Lazy<string>(hostBasePath)
             : new Lazy<string>(DetectHostBasePath);
@@ -68,12 +72,9 @@ public sealed class RendererProcessPool : IDisposable {
     }
 
     /// <summary>
-    /// Read the TFM env var. Returns the value, or "auto" if absent/empty.
+    /// Returns the configured TFM from server options, or "auto" if not set.
     /// </summary>
-    public static string GetConfiguredTfm() {
-        var val = Environment.GetEnvironmentVariable("TFM");
-        return string.IsNullOrWhiteSpace(val) ? "auto" : val.Trim();
-    }
+    public string GetConfiguredTfm() => _configuredTfm;
 
     /// <summary>
     /// Detect the target framework from a .csproj file's TargetFramework(s) element.
