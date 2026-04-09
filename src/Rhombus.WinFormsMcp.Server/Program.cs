@@ -120,6 +120,10 @@ class AutomationServer {
             // Discovery Tools
             { "get_element_tree", GetElementTree },
 
+            // Condition & Toggle Tools
+            { "wait_for_condition", WaitForCondition },
+            { "toggle_element", ToggleElement },
+
             // Event Tools
             { "raise_event", RaiseEvent },
             { "listen_for_event", ListenForEvent },
@@ -601,6 +605,45 @@ class AutomationServer {
                     },
                     required = new[] { "keys" }
                 }
+            },
+            // ── Phase 1: Reliability & Async ──
+            new
+            {
+                name = "wait_for_condition",
+                description = "Wait for a UI element's property to match a condition. Polls at 100ms intervals. " +
+                    "Use this after actions that trigger async changes — e.g., wait until a label shows 'Done', " +
+                    "a button becomes enabled, or a progress bar reaches a value. " +
+                    "Property names are the same as get_property (value, isEnabled, isChecked, name, etc.).",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        elementId = new { type = "string", description = "Cached element ID to poll" },
+                        propertyName = new { type = "string", description = "Property name to check (same names as get_property)" },
+                        expectedValue = new { type = "string", description = "The value to wait for" },
+                        comparison = new { type = "string", description = "Comparison type: equals (default), contains, not_equals, greater_than, less_than" },
+                        timeoutMs = new { type = "integer", description = "Maximum wait time in milliseconds (default 10000)" }
+                    },
+                    required = new[] { "elementId", "propertyName", "expectedValue" }
+                }
+            },
+            new
+            {
+                name = "toggle_element",
+                description = "Toggle a checkbox, radio button, or toggle button using UIA TogglePattern. " +
+                    "Optionally specify a desired state (on/off/indeterminate) to toggle until that state is reached. " +
+                    "Works on hidden desktops. Returns the previous and current toggle states.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        elementId = new { type = "string", description = "Cached element ID of the toggle control" },
+                        desiredState = new { type = "string", description = "Target state: 'on', 'off', or 'indeterminate'. Omit to just toggle once." }
+                    },
+                    required = new[] { "elementId" }
+                }
             }
         };
     }
@@ -995,6 +1038,51 @@ class AutomationServer {
             automation.ClickMenuItem(menuPath, pid);
 
             return Task.FromResult(JsonDocument.Parse("{\"success\": true}").RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
+    }
+
+    private async Task<JsonElement> WaitForCondition(JsonElement args) {
+        try {
+            var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
+            var propertyName = GetStringArg(args, "propertyName") ?? throw new ArgumentException("propertyName is required");
+            var expectedValue = GetStringArg(args, "expectedValue") ?? throw new ArgumentException("expectedValue is required");
+            var comparison = GetStringArg(args, "comparison") ?? "equals";
+            var timeoutMs = GetIntArg(args, "timeoutMs", 10000);
+
+            var element = _session.GetElement(elementId);
+            if (element == null)
+                return JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement;
+
+            var automation = _session.GetAutomation();
+            var (matched, actualValue, elapsedMs) = await automation.WaitForConditionAsync(
+                element, propertyName, expectedValue, comparison, timeoutMs);
+
+            var actualJson = actualValue == null ? "null" : $"\"{EscapeJson(actualValue)}\"";
+            return JsonDocument.Parse(
+                $"{{\"success\": true, \"matched\": {(matched ? "true" : "false")}, \"actualValue\": {actualJson}, \"elapsedMs\": {elapsedMs}}}").RootElement;
+        }
+        catch (Exception ex) {
+            return JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement;
+        }
+    }
+
+    private Task<JsonElement> ToggleElement(JsonElement args) {
+        try {
+            var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
+            var desiredState = GetStringArg(args, "desiredState");
+
+            var element = _session.GetElement(elementId);
+            if (element == null)
+                return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement);
+
+            var automation = _session.GetAutomation();
+            var (previousState, currentState) = automation.Toggle(element, desiredState);
+
+            return Task.FromResult(JsonDocument.Parse(
+                $"{{\"success\": true, \"previousState\": \"{EscapeJson(previousState)}\", \"currentState\": \"{EscapeJson(currentState)}\"}}").RootElement);
         }
         catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);

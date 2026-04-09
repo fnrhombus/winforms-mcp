@@ -123,6 +123,8 @@ public class McpIntegrationTests {
             "wait_for_element",
             "drag_drop",
             "send_keys",
+            "wait_for_condition",
+            "toggle_element",
         };
 
         var expectedSet = new HashSet<string>(expectedTools);
