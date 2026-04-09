@@ -164,4 +164,25 @@ public interface IAutomationHelper : IDisposable {
     /// <param name="maxElements">Maximum total elements to include (default 50)</param>
     /// <param name="cacheElement">Optional callback to cache each discovered element; returns the assigned elementId</param>
     List<Dictionary<string, object?>> GetElementTree(AutomationElement root, int depth = 3, int maxElements = 50, Func<AutomationElement, string>? cacheElement = null);
+
+    /// <summary>
+    /// Wait for an element's property to match a condition.
+    /// </summary>
+    /// <param name="element">The element to poll</param>
+    /// <param name="propertyName">Property name (same names as GetProperty)</param>
+    /// <param name="expectedValue">The value to compare against</param>
+    /// <param name="comparison">Comparison type: equals, contains, not_equals, greater_than, less_than</param>
+    /// <param name="timeoutMs">Maximum wait time in milliseconds</param>
+    /// <returns>Tuple of (matched, actualValue, elapsedMs)</returns>
+    Task<(bool matched, string? actualValue, long elapsedMs)> WaitForConditionAsync(
+        AutomationElement element, string propertyName, string expectedValue,
+        string comparison = "equals", int timeoutMs = 10000);
+
+    /// <summary>
+    /// Toggle a checkbox, radio button, or toggle button using TogglePattern.
+    /// </summary>
+    /// <param name="element">The element to toggle</param>
+    /// <param name="desiredState">Optional desired state: "on", "off", "indeterminate", or null to just toggle</param>
+    /// <returns>Tuple of (previousState, currentState)</returns>
+    (string previousState, string currentState) Toggle(AutomationElement element, string? desiredState = null);
 }

@@ -1118,4 +1118,65 @@ public class AutomationHelper : IAutomationHelper {
             _hiddenDesktop = IntPtr.Zero;
         }
     }
+
+    // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
+    public async Task<(bool matched, string? actualValue, long elapsedMs)> WaitForConditionAsync(
+        AutomationElement element, string propertyName, string expectedValue,
+        string comparison = "equals", int timeoutMs = 10000) {
+        var stopwatch = Stopwatch.StartNew();
+        while (stopwatch.ElapsedMilliseconds < timeoutMs) {
+            var value = GetProperty(element, propertyName);
+            var actual = value?.ToString();
+
+            if (CompareValues(actual, expectedValue, comparison))
+                return (true, actual, stopwatch.ElapsedMilliseconds);
+
+            await Task.Delay(100);
+        }
+
+        // Final check
+        var finalValue = GetProperty(element, propertyName)?.ToString();
+        return (CompareValues(finalValue, expectedValue, comparison), finalValue, stopwatch.ElapsedMilliseconds);
+    }
+
+    private static bool CompareValues(string? actual, string expected, string comparison) {
+        return comparison.ToLower() switch {
+            "equals" => string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase),
+            "contains" => actual != null && actual.Contains(expected, StringComparison.OrdinalIgnoreCase),
+            "not_equals" => !string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase),
+            "greater_than" => double.TryParse(actual, out var a) && double.TryParse(expected, out var b) && a > b,
+            "less_than" => double.TryParse(actual, out var c) && double.TryParse(expected, out var d) && c < d,
+            _ => string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase)
+        };
+    }
+
+    // COVERAGE_EXCEPTION: Pattern-based methods require live UIA elements which cannot be created in unit tests
+    public (string previousState, string currentState) Toggle(AutomationElement element, string? desiredState = null) {
+        var togglePattern = element.Patterns.Toggle.PatternOrDefault
+            ?? throw new InvalidOperationException("Element does not support TogglePattern (not a checkbox, radio button, or toggle button)");
+
+        var previousState = togglePattern.ToggleState.ValueOrDefault.ToString();
+
+        if (desiredState == null) {
+            // Just toggle once
+            togglePattern.Toggle();
+        } else {
+            var target = desiredState.ToLower() switch {
+                "on" => ToggleState.On,
+                "off" => ToggleState.Off,
+                "indeterminate" => ToggleState.Indeterminate,
+                _ => throw new ArgumentException($"Invalid desiredState '{desiredState}'. Use 'on', 'off', or 'indeterminate'.")
+            };
+
+            // Toggle until we reach the desired state (max 3 cycles to handle tri-state)
+            for (int i = 0; i < 3; i++) {
+                if (togglePattern.ToggleState.ValueOrDefault == target)
+                    break;
+                togglePattern.Toggle();
+            }
+        }
+
+        var currentState = togglePattern.ToggleState.ValueOrDefault.ToString();
+        return (previousState, currentState);
+    }
 }
