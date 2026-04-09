@@ -134,6 +134,10 @@ public class McpIntegrationTests {
             "raise_event",
             "listen_for_event",
             "open_context_menu",
+            "get_clipboard",
+            "set_clipboard",
+            "read_tooltip",
+            "find_elements",
         };
 
         var expectedSet = new HashSet<string>(expectedTools);
