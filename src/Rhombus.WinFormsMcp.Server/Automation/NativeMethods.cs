@@ -65,6 +65,21 @@ internal static class NativeMethods {
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint lpdwProcessId);
 
+    // ── Window messaging ──
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+    private const uint WM_CONTEXTMENU = 0x007B;
+
+    /// <summary>
+    /// Send WM_CONTEXTMENU to a window. Works on hidden desktops because it uses
+    /// the message queue, not input simulation. lParam=-1 indicates keyboard trigger.
+    /// </summary>
+    public static void SendContextMenuMessage(IntPtr hWnd) {
+        SendMessage(hWnd, WM_CONTEXTMENU, hWnd, new IntPtr(-1));
+    }
+
     // ── Window capture ──
 
     [DllImport("user32.dll", SetLastError = true)]

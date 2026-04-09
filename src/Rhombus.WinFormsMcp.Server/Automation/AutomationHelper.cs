@@ -1585,35 +1585,49 @@ public class AutomationHelper : IAutomationHelper {
         if (_automation == null)
             throw new ObjectDisposedException(nameof(AutomationHelper));
 
-        // Try LegacyIAccessible DoDefaultAction first (some controls expose context menu this way)
-        var legacyPattern = element.Patterns.LegacyIAccessible.PatternOrDefault;
-        if (legacyPattern != null) {
-            try {
-                legacyPattern.DoDefaultAction();
-                Thread.Sleep(200);
+        var pid = element.Properties.ProcessId.ValueOrDefault;
+
+        if (IsOnHiddenDesktop(pid)) {
+            // Hidden desktop: use WM_CONTEXTMENU message (works across desktops)
+            var hwnd = (IntPtr)element.Properties.NativeWindowHandle.ValueOrDefault;
+            if (hwnd == IntPtr.Zero) {
+                // Element doesn't have its own HWND — try the parent window
+                hwnd = GetOrFindWindowHandle(pid, GetDesktopForProcess(pid));
             }
-            catch { /* fall through to right-click */ }
+            if (hwnd != IntPtr.Zero) {
+                NativeMethods.SendContextMenuMessage(hwnd);
+                Thread.Sleep(300);
+            }
+        } else {
+            // Default desktop: try mouse right-click (most reliable for visible windows)
+            element.RightClick();
+            Thread.Sleep(300);
         }
 
-        // Right-click via mouse to open context menu
-        element.RightClick();
-        Thread.Sleep(300);
-
-        // Try to find the context menu that appeared
-        // Context menus are typically top-level windows with ControlType.Menu
-        var desktop = _automation.GetDesktop();
+        // Find the context menu that appeared
         var menuCondition = new PropertyCondition(
             _automation.PropertyLibrary.Element.ControlType,
             FlaUI.Core.Definitions.ControlType.Menu);
 
-        var stopwatch = Stopwatch.StartNew();
-        while (stopwatch.ElapsedMilliseconds < 2000) {
-            var menus = desktop.FindAllChildren(menuCondition);
-            if (menus.Length > 0)
-                return menus[^1]; // Return the most recently opened menu
-
-            Thread.Sleep(100);
+        // Search on the correct desktop
+        AutomationElement[]? menus = null;
+        if (IsOnHiddenDesktop(pid)) {
+            menus = OnProcessDesktop(pid, () => {
+                var desktop = _automation!.GetDesktop();
+                return desktop.FindAllChildren(menuCondition);
+            });
+        } else {
+            var desktop = _automation.GetDesktop();
+            var stopwatch = Stopwatch.StartNew();
+            while (stopwatch.ElapsedMilliseconds < 2000) {
+                menus = desktop.FindAllChildren(menuCondition);
+                if (menus.Length > 0) break;
+                Thread.Sleep(100);
+            }
         }
+
+        if (menus != null && menus.Length > 0)
+            return menus[^1]; // Return the most recently opened menu
 
         return null;
     }

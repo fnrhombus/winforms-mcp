@@ -797,9 +797,10 @@ class AutomationServer {
             new
             {
                 name = "open_context_menu",
-                description = "Open a context menu on an element by right-clicking it. " +
-                    "Returns the context menu element cached for use with click_menu_item or find_element. " +
-                    "Note: Uses mouse simulation — only works on the default (visible) desktop.",
+                description = "Open a context menu on an element. " +
+                    "On hidden desktops, uses WM_CONTEXTMENU message (works across desktops). " +
+                    "On visible desktops, uses mouse right-click. " +
+                    "Returns the context menu element cached for use with click_menu_item or find_element.",
                 inputSchema = new
                 {
                     type = "object",
