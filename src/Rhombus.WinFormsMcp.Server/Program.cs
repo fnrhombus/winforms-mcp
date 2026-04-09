@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using FlaUI.Core.AutomationElements;
 
+using Rhombus.WinFormsMcp.Rendering;
 using Rhombus.WinFormsMcp.Server.Automation;
 
 namespace Rhombus.WinFormsMcp.Server;

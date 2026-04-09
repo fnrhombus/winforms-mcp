@@ -87,6 +87,43 @@ public class RendererProcessPoolTests {
     }
 
     [Test]
+    public void DetectTfmFromCsproj_OldStyleTargetFrameworkVersion() {
+        var csproj = Path.GetTempFileName();
+        try {
+            File.WriteAllText(csproj, @"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project ToolsVersion=""15.0"" xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+  <PropertyGroup>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <OutputType>WinExe</OutputType>
+  </PropertyGroup>
+</Project>");
+            var tfm = RendererProcessPool.DetectTfmFromCsproj(csproj);
+            Assert.That(tfm, Is.EqualTo("net472"));
+        }
+        finally {
+            File.Delete(csproj);
+        }
+    }
+
+    [Test]
+    public void DetectTfmFromCsproj_OldStyleTargetFrameworkVersion_v461() {
+        var csproj = Path.GetTempFileName();
+        try {
+            File.WriteAllText(csproj, @"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project ToolsVersion=""15.0"" xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+  <PropertyGroup>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+  </PropertyGroup>
+</Project>");
+            var tfm = RendererProcessPool.DetectTfmFromCsproj(csproj);
+            Assert.That(tfm, Is.EqualTo("net461"));
+        }
+        finally {
+            File.Delete(csproj);
+        }
+    }
+
+    [Test]
     public void DetectTfmFromCsproj_NoTargetFramework_Throws() {
         var csproj = Path.GetTempFileName();
         try {
@@ -95,7 +132,8 @@ public class RendererProcessPoolTests {
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 </Project>");
-            Assert.Throws<InvalidOperationException>(() => RendererProcessPool.DetectTfmFromCsproj(csproj));
+            var ex = Assert.Throws<InvalidOperationException>(() => RendererProcessPool.DetectTfmFromCsproj(csproj));
+            Assert.That(ex!.Message, Does.Contain("TFM environment variable"));
         }
         finally {
             File.Delete(csproj);
@@ -166,6 +204,7 @@ public class RendererProcessPoolTests {
         var ex = Assert.ThrowsAsync<ArgumentException>(async () =>
             await pool.RenderAsync("content", null, null, "auto"));
         Assert.That(ex!.Message, Does.Contain("csprojPath is required"));
+        Assert.That(ex.Message, Does.Contain("TFM environment variable"));
     }
 
     #endregion

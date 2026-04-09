@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 
-using Rhombus.WinFormsMcp.Server.Automation;
+using Rhombus.WinFormsMcp.Rendering;
 
 namespace Rhombus.WinFormsMcp.RendererHost;
 

@@ -76,15 +76,33 @@ public sealed class RendererProcessPool : IDisposable {
     /// </summary>
     public static string DetectTfmFromCsproj(string csprojPath) {
         var doc = XDocument.Load(csprojPath);
-        // Try <TargetFramework> first (single target), then <TargetFrameworks> (multi-target, take first)
-        var tfElem = doc.Root?.Descendants("TargetFramework").FirstOrDefault()
-            ?? doc.Root?.Descendants("TargetFrameworks").FirstOrDefault();
 
-        if (tfElem == null || string.IsNullOrWhiteSpace(tfElem.Value))
-            throw new InvalidOperationException($"No TargetFramework found in {csprojPath}");
+        // Helper: search for an element by local name, ignoring XML namespace.
+        // SDK-style csproj has no namespace; old-style has xmlns="http://schemas.microsoft.com/developer/msbuild/2003".
+        XElement? FindByLocalName(string localName) =>
+            doc.Root?.Descendants().FirstOrDefault(e =>
+                string.Equals(e.Name.LocalName, localName, StringComparison.OrdinalIgnoreCase));
 
-        var raw = tfElem.Value.Split(';')[0].Trim();
-        return raw;
+        // SDK-style: <TargetFramework> or <TargetFrameworks>
+        var tfElem = FindByLocalName("TargetFramework") ?? FindByLocalName("TargetFrameworks");
+
+        if (tfElem != null && !string.IsNullOrWhiteSpace(tfElem.Value)) {
+            var raw = tfElem.Value.Split(';')[0].Trim();
+            return raw;
+        }
+
+        // Old-style csproj: <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+        var tfvElem = FindByLocalName("TargetFrameworkVersion");
+        if (tfvElem != null && !string.IsNullOrWhiteSpace(tfvElem.Value)) {
+            // Convert "v4.7.2" → "net472" (strip 'v', remove dots)
+            var ver = tfvElem.Value.Trim().TrimStart('v', 'V').Replace(".", "");
+            return $"net{ver}";
+        }
+
+        throw new InvalidOperationException(
+            $"No TargetFramework or TargetFrameworkVersion found in {csprojPath}. " +
+            "You can bypass auto-detection by setting the TFM environment variable " +
+            "(e.g. TFM=net48 or TFM=net8.0-windows).");
     }
 
     /// <summary>
@@ -141,7 +159,10 @@ public sealed class RendererProcessPool : IDisposable {
 
         // Auto-detect from csproj
         if (string.IsNullOrEmpty(csprojPath))
-            throw new ArgumentException("csprojPath is required when targetTfm is 'auto'");
+            throw new ArgumentException(
+                "csprojPath is required when targetTfm is 'auto'. " +
+                "No .csproj file could be found. You can bypass auto-detection by setting " +
+                "the TFM environment variable (e.g. TFM=net48 or TFM=net8.0-windows).");
 
         var projectTfm = DetectTfmFromCsproj(csprojPath);
         return MapToHostTfm(projectTfm);
