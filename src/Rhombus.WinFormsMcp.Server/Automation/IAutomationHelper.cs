@@ -220,4 +220,20 @@ public interface IAutomationHelper : IDisposable {
     /// Get the currently focused element.
     /// </summary>
     AutomationElement? GetFocusedElement();
+
+    /// <summary>
+    /// Raise a UIA event on an element (invoke, toggle, expand, collapse, select).
+    /// </summary>
+    string RaiseEvent(AutomationElement element, string eventName);
+
+    /// <summary>
+    /// Listen for a UIA event on an element or process, with timeout.
+    /// </summary>
+    Task<(bool fired, string? eventDetails, long elapsedMs)> ListenForEventAsync(
+        AutomationElement? element, string eventType, int timeoutMs = 10000);
+
+    /// <summary>
+    /// Open a context menu on an element.
+    /// </summary>
+    AutomationElement? OpenContextMenu(AutomationElement element);
 }

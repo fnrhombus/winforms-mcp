@@ -131,6 +131,9 @@ public class McpIntegrationTests {
             "manage_window",
             "list_windows",
             "get_focused_element",
+            "raise_event",
+            "listen_for_event",
+            "open_context_menu",
         };
 
         var expectedSet = new HashSet<string>(expectedTools);

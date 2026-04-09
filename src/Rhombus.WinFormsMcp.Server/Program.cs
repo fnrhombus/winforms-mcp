@@ -137,6 +137,7 @@ class AutomationServer {
             // Event Tools
             { "raise_event", RaiseEvent },
             { "listen_for_event", ListenForEvent },
+            { "open_context_menu", OpenContextMenu },
         };
     }
 
@@ -748,6 +749,59 @@ class AutomationServer {
                         pid = new { type = "integer", description = "Process ID to enumerate windows for" }
                     },
                     required = new[] { "pid" }
+                }
+            },
+            // ── Phase 4: Event System & Context Menus ──
+            new
+            {
+                name = "raise_event",
+                description = "Raise a UIA event on an element. Supported events: " +
+                    "invoke (click/activate), toggle (checkbox/toggle button), expand, collapse, " +
+                    "select (selection item), scroll_into_view. " +
+                    "Note: This triggers UIA patterns directly — it cannot raise arbitrary .NET events.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        elementId = new { type = "string", description = "Cached element ID to raise the event on" },
+                        eventName = new { type = "string", description = "Event to raise: invoke, toggle, expand, collapse, select, scroll_into_view" }
+                    },
+                    required = new[] { "elementId", "eventName" }
+                }
+            },
+            new
+            {
+                name = "listen_for_event",
+                description = "Listen for a UIA event with a timeout. Registers an event handler and waits for it to fire. " +
+                    "Supported event types: focus_changed, structure_changed, property_changed. " +
+                    "Returns whether the event fired within the timeout period.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        elementId = new { type = "string", description = "Optional cached element ID to scope the listener to (omit for desktop-wide)" },
+                        eventType = new { type = "string", description = "Event type: focus_changed, structure_changed, property_changed" },
+                        timeoutMs = new { type = "integer", description = "Maximum wait time in milliseconds (default 10000)" }
+                    },
+                    required = new[] { "eventType" }
+                }
+            },
+            new
+            {
+                name = "open_context_menu",
+                description = "Open a context menu on an element by right-clicking it. " +
+                    "Returns the context menu element cached for use with click_menu_item or find_element. " +
+                    "Note: Uses mouse simulation — only works on the default (visible) desktop.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        elementId = new { type = "string", description = "Cached element ID to right-click" }
+                    },
+                    required = new[] { "elementId" }
                 }
             },
             new
@@ -1377,13 +1431,71 @@ class AutomationServer {
     }
 
     private Task<JsonElement> RaiseEvent(JsonElement args) {
-        // Event raising is handled by FlaUI patterns in future enhancement
-        return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Event raising not yet implemented\"}").RootElement);
+        try {
+            var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
+            var eventName = GetStringArg(args, "eventName") ?? throw new ArgumentException("eventName is required");
+
+            var element = _session.GetElement(elementId);
+            if (element == null)
+                return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement);
+
+            var automation = _session.GetAutomation();
+            var result = automation.RaiseEvent(element, eventName);
+
+            return Task.FromResult(JsonDocument.Parse(
+                $"{{\"success\": true, \"result\": \"{EscapeJson(result)}\"}}").RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
     }
 
-    private Task<JsonElement> ListenForEvent(JsonElement args) {
-        // Event listening is handled by FlaUI event handlers in future enhancement
-        return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Event listening not yet implemented\"}").RootElement);
+    private async Task<JsonElement> ListenForEvent(JsonElement args) {
+        try {
+            var elementId = GetStringArg(args, "elementId");
+            var eventType = GetStringArg(args, "eventType") ?? throw new ArgumentException("eventType is required");
+            var timeoutMs = GetIntArg(args, "timeoutMs", 10000);
+
+            AutomationElement? element = null;
+            if (elementId != null) {
+                element = _session.GetElement(elementId);
+                if (element == null)
+                    return JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement;
+            }
+
+            var automation = _session.GetAutomation();
+            var (fired, eventDetails, elapsedMs) = await automation.ListenForEventAsync(element, eventType, timeoutMs);
+
+            var detailsJson = eventDetails == null ? "null" : $"\"{EscapeJson(eventDetails)}\"";
+            return JsonDocument.Parse(
+                $"{{\"success\": true, \"fired\": {(fired ? "true" : "false")}, \"eventDetails\": {detailsJson}, \"elapsedMs\": {elapsedMs}}}").RootElement;
+        }
+        catch (Exception ex) {
+            return JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement;
+        }
+    }
+
+    private Task<JsonElement> OpenContextMenu(JsonElement args) {
+        try {
+            var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
+
+            var element = _session.GetElement(elementId);
+            if (element == null)
+                return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement);
+
+            var automation = _session.GetAutomation();
+            var menu = automation.OpenContextMenu(element);
+
+            if (menu == null)
+                return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Context menu did not appear\"}").RootElement);
+
+            var menuId = _session.CacheElement(menu);
+            return Task.FromResult(JsonDocument.Parse(
+                $"{{\"success\": true, \"menuElementId\": \"{menuId}\", \"message\": \"Context menu opened. Use click_menu_item or find_element with the menuElementId as parent.\"}}").RootElement);
+        }
+        catch (Exception ex) {
+            return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
+        }
     }
 
     // Helper methods
