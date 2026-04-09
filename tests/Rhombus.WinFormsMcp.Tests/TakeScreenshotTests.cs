@@ -5,6 +5,8 @@ using System.Drawing.Imaging;
 using System.Text.Json;
 
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Hosting;
+using Moq;
 using Rhombus.WinFormsMcp.Rendering;
 using Rhombus.WinFormsMcp.Server;
 using Rhombus.WinFormsMcp.Server.Automation;
@@ -190,7 +192,8 @@ public class TakeScreenshotTests {
         var session = new SessionManager(automation);
         var rendererPool = new RendererProcessPool(new MemoryCache(new MemoryCacheOptions()));
         var telemetry = new NullTelemetry();
-        var server = new AutomationServer(session, rendererPool, telemetry);
+        var lifetime = new Mock<IHostApplicationLifetime>().Object;
+        var server = new AutomationServer(session, rendererPool, telemetry, lifetime);
 
         // We test by sending an initialize + tools/list request through the server
         // But since RunAsync reads from Console.In, we'll test by checking the

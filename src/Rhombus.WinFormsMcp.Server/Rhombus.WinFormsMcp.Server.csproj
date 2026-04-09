@@ -44,8 +44,8 @@
     <!-- System.Drawing for screenshots -->
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
 
-    <!-- Dependency injection -->
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <!-- Hosting (includes DI, Configuration, Logging abstractions) -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
 
     <!-- Caching for RendererProcessPool -->
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
