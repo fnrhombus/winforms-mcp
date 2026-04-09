@@ -63,8 +63,8 @@ dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c 
 ### Core Components
 
 1. **Rhombus.WinFormsMcp.Server** (src/Rhombus.WinFormsMcp.Server/)
-   - `Program.cs`: MCP server implementation with JSON-RPC 2.0 over stdio transport. Contains 14 tool implementations and SessionManager for element caching.
-   - `Automation/AutomationHelper.cs`: Core FlaUI wrapper with 25+ automation methods. Provides process management, element discovery, UI interaction, and validation capabilities.
+   - `Program.cs`: MCP server implementation with JSON-RPC 2.0 over stdio transport. Contains 33 tool implementations and SessionManager for element caching.
+   - `Automation/AutomationHelper.cs`: Core FlaUI wrapper with 40+ automation methods. Provides process management, element discovery, UI interaction, validation, window management, clipboard, and event capabilities.
 
 2. **Rhombus.WinFormsMcp.TestApp** (src/Rhombus.WinFormsMcp.TestApp/)
    - Sample WinForms application with various controls for testing automation capabilities.
@@ -82,14 +82,16 @@ dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c 
 
 ### MCP Tools Available
 
-The server implements 15 tools via JSON-RPC:
-- Process Management: `launch_app`, `attach_to_process`, `close_app`
-- Element Discovery: `find_element`, `element_exists`, `wait_for_element`
-- UI Interaction: `click_element`, `type_text`, `set_value`, `drag_drop`, `send_keys`
-- Property Access: `get_property`
-- Validation: `take_screenshot`
-- Form Preview: `render_form` (renders .Designer.cs files to PNG via Roslyn parsing + reflection)
-- Future/Placeholder: `raise_event`, `listen_for_event` (not yet implemented)
+The server implements 33 tools via JSON-RPC:
+- Process Management: `launch_app`, `attach_to_process`, `close_app`, `get_process_status`
+- Element Discovery: `find_element`, `find_elements`, `element_exists`, `wait_for_element`, `get_element_tree`
+- UI Interaction: `click_element`, `type_text`, `set_value`, `drag_drop`, `send_keys`, `select_item`, `click_menu_item`, `toggle_element`
+- Property & State: `get_property`, `wait_for_condition`, `get_focused_element`
+- Data Controls: `scroll_element`, `get_table_data`, `set_table_cell`
+- Window Management: `manage_window`, `list_windows`
+- Events: `raise_event`, `listen_for_event`, `open_context_menu`
+- Visual: `take_screenshot`, `render_form`
+- Clipboard & Misc: `get_clipboard`, `set_clipboard`, `read_tooltip`
 
 ### Session Management
 
