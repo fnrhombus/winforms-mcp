@@ -100,7 +100,7 @@ public class AutomationHelperTests {
 
         // Wait for process to exit
         System.Threading.Thread.Sleep(1000);
-        Assert.That(process.HasExited, Is.True);
+        Assert.That(process!.HasExited, Is.True);
     }
 
     [Test]

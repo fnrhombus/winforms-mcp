@@ -69,11 +69,11 @@ public class E2ETests {
         }
 
         // Step 5: Close without saving
-        _automation?.CloseApp(notepad.Id, force: true);
+        _automation?.CloseApp(notepad!.Id, force: true);
         Thread.Sleep(1000);
 
         // Step 6: Verify process closed
-        Assert.That(notepad.HasExited, Is.True);
+        Assert.That(notepad!.HasExited, Is.True);
     }
 
     /// <summary>
@@ -134,9 +134,9 @@ public class E2ETests {
         Assert.That(notepad2, Is.Not.Null);
 
         // Step 3: Verify both are running
-        Assert.That(!notepad1.HasExited, "First notepad should be running");
-        Assert.That(!notepad2.HasExited, "Second notepad should be running");
-        Assert.That(notepad1.Id, Is.Not.EqualTo(notepad2.Id), "Should be different processes");
+        Assert.That(!notepad1!.HasExited, "First notepad should be running");
+        Assert.That(!notepad2!.HasExited, "Second notepad should be running");
+        Assert.That(notepad1!.Id, Is.Not.EqualTo(notepad2!.Id), "Should be different processes");
 
         // Step 4: Close both
         _automation?.CloseApp(notepad1.Id, force: true);
