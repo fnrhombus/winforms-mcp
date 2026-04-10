@@ -134,6 +134,15 @@ Set `HEADLESS=true` to launch apps on a hidden Windows desktop (`CreateDesktop` 
 
 Contributions welcome! See [issues](https://github.com/fnrhombus/winforms-mcp/issues) for open items.
 
+## Support
+
+If you find this project useful, consider supporting its development:
+
+- **[GitHub Sponsors](https://github.com/sponsors/fnrhombus)** — Monthly sponsorship with public recognition
+- **[Buy Me a Coffee](https://buymeacoffee.com/fnrhombus)** — One-time or recurring donations
+
+Your support helps maintain and improve this project!
+
 ## License
 
 [MIT](LICENSE)
