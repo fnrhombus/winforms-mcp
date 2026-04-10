@@ -27,55 +27,45 @@ namespace Rhombus.WinFormsMcp.Server;
 class Program {
     static async Task Main(string[] args) {
         var host = Host.CreateDefaultBuilder(args)
+            .ConfigureServices((context, services) => {
+                services.AddSingleton<IPostConfigureOptions<McpServerOptions>>(
+                    new McpServerOptionsConfiguration(context.Configuration));
+                services.Configure<McpServerOptions>(context.Configuration);
+
+                services.AddMemoryCache();
+                services.AddSingleton<IAutomationHelper>(sp => {
+                    var opts = sp.GetRequiredService<IOptions<McpServerOptions>>();
+                    return new AutomationHelper(opts.Value.Headless, sp.GetRequiredService<ILogger<AutomationHelper>>());
+                });
+                services.AddSingleton<ISessionManager, SessionManager>();
+                services.AddSingleton<RendererProcessPool>();
+
+                services.AddSingleton(sp => {
+                    var opts = sp.GetRequiredService<IOptions<McpServerOptions>>();
+                    return opts.Value.TelemetryOptOut
+                        ? (ITelemetry)sp.GetRequiredService<NullTelemetry>()
+                        : sp.GetRequiredService<Telemetry>();
+                });
+                services.AddSingleton<NullTelemetry>();
+                services.AddSingleton<Telemetry>();
+
+                services.AddHostedService<AutomationServer>();
+            })
             .ConfigureLogging((context, logging) => {
                 logging.ClearProviders();
 
-                var logOptions = new McpServerOptions();
-                BindOptions(logOptions, context.Configuration);
+                var options = new McpServerOptions();
+                var optionsConfig = new McpServerOptionsConfiguration(context.Configuration);
+                optionsConfig.PostConfigure(Options.DefaultName, options);
 
-                logging.SetMinimumLevel(logOptions.MinimumLogLevel);
+                logging.SetMinimumLevel(options.MinimumLogLevel);
                 logging.AddConsole(consoleOptions => {
                     consoleOptions.LogToStandardErrorThreshold = LogLevel.Trace;
                 });
             })
-            .ConfigureServices((context, services) => {
-                var options = new McpServerOptions();
-                BindOptions(options, context.Configuration);
-                services.AddSingleton(Options.Create(options));
-
-                // Telemetry
-                if (options.TelemetryOptOut)
-                    services.AddSingleton<ITelemetry, NullTelemetry>();
-                else
-                    services.AddSingleton<ITelemetry, Telemetry>();
-
-                services.AddMemoryCache();
-                services.AddSingleton<IAutomationHelper>(sp =>
-                    new AutomationHelper(options.Headless, sp.GetRequiredService<ILogger<AutomationHelper>>()));
-                services.AddSingleton<ISessionManager, SessionManager>();
-                services.AddSingleton<RendererProcessPool>();
-                services.AddHostedService<AutomationServer>();
-            })
             .Build();
 
         await host.RunAsync();
-    }
-
-    internal static McpServerOptions BindOptions(McpServerOptions options, IConfiguration configuration) {
-        options.Headless = ParseBool(configuration["HEADLESS"]);
-        options.TelemetryOptOut = ParseBool(configuration["TELEMETRY_OPTOUT"]);
-        var tfm = configuration["TFM"];
-        options.Tfm = string.IsNullOrWhiteSpace(tfm) ? "auto" : tfm.Trim();
-        options.MinimumLogLevel = ParseLogLevel(configuration["LOG_LEVEL"]);
-        return options;
-    }
-
-    private static bool ParseBool(string? value) =>
-        string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) || value == "1";
-
-    internal static LogLevel ParseLogLevel(string? value) {
-        if (string.IsNullOrWhiteSpace(value)) return LogLevel.Information;
-        return Enum.TryParse<LogLevel>(value, ignoreCase: true, out var level) ? level : LogLevel.Information;
     }
 }
 
