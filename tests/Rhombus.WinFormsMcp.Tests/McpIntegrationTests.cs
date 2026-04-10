@@ -95,7 +95,7 @@ public class McpIntegrationTests {
             "Tools should be an array");
 
         var toolNames = tools.EnumerateArray()
-            .Select(t => t.GetProperty("name").GetString())
+            .Select(t => t.GetProperty("name").GetString()!)
             .ToHashSet();
 
         // Verify all tools that have definitions in GetToolDefinitions() are present.
