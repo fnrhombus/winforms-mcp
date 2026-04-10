@@ -126,12 +126,15 @@ See `docs/HEADLESS_MODE.md` for the full technical reference aimed at AI agent c
 
 This project follows a **dev/master branching strategy** with **Semantic Versioning (SemVer)** according to https://semver.org/.
 
+### Root Checkout
+
+**NEVER switch the branch of the root working directory.** The root checkout must stay on `dev` at all times. All feature/fix branch work must be done in git worktrees (`git worktree add` or `isolation: "worktree"` for agents). Switching the root checkout disrupts the working environment and risks losing uncommitted state.
+
 ### Branch Strategy
 
-- **dev** - Development branch for active work
-  - All feature development happens here
-  - Commit after each completed task
-  - Push after each completed feature
+- **dev** - Integration branch
+  - Receives merges from feature branches via PR
+  - **No meaningful work directly on dev** — only trivial changes that don't have a GitHub issue
   - Triggers beta releases on push
 
 - **master** - Stable release branch
@@ -140,27 +143,46 @@ This project follows a **dev/master branching strategy** with **Semantic Version
   - Triggers stable releases on push
   - Requires passing CI from dev before merge
 
-- **feature/** - Optional feature branches
-  - Use when work spans multiple pushes
-  - Create from dev, merge back to dev
-  - Prevents premature beta releases
+- **feature/** - Feature branches (required for all issues)
+  - **All bugs and features must have a GitHub issue first**
+  - Create from dev, work in a worktree, merge back to dev via PR
+  - Branch naming: `feature/<issue-number>-short-description` or `fix/<issue-number>-short-description`
+  - Use `isolation: "worktree"` when spawning agents for implementation work
 
-### Workflow Commands
+### Issue Selection
+
+When asked to pick an issue to work on, **skip** any issue with these labels:
+- `blocked` — waiting on an external dependency
+- `in progress` — already being worked on
+- `wontfix` — intentionally declined
+- `duplicate` — already covered by another issue
+- `invalid` — not a real issue
+- `question` — needs discussion, not implementation
+
+Only pick issues that are open, unlabelled or labelled `enhancement`/`bug`/`good first issue`/`help wanted`.
+
+### Development Workflow
+
+1. **Write up the issue** in GitHub (bug or feature), with appropriate labels
+2. **Label the issue `in progress`** when starting work (`gh issue edit N --add-label "in progress"`)
+3. **Create a feature branch** from dev (e.g., `feature/42-add-widget`)
+4. **Do all work in a worktree** on that branch
+5. **Open a PR** against dev, referencing the issue
+6. **Merge the PR** into dev
+7. **Clean up** after merge — remote branch is auto-deleted by GitHub; locally delete the branch and remove the worktree
 
 ```bash
-# Daily development on dev branch
+# Feature development (always via worktree + PR)
 git checkout dev
-# ... make changes ...
-git add .
-git commit -m "feat: add new feature"  # Commit after task completion
-git push  # Push after feature completion - triggers beta release
+git checkout -b feature/42-add-widget
+# ... make changes in worktree ...
+git push -u origin feature/42-add-widget
+gh pr create --base dev --title "feat: add widget" --body "Closes #42"
 
-# For multi-push work, use feature branches
-git checkout -b feature/my-feature
-# ... make multiple commits and pushes ...
-git checkout dev
-git merge feature/my-feature
-git push  # Single beta release when feature is done
+# After PR is merged — clean up local branch and worktree
+git checkout dev && git pull
+git branch -d feature/42-add-widget
+git worktree prune
 
 # Release to production (when ready)
 ./scripts/merge-to-master.ps1  # PowerShell

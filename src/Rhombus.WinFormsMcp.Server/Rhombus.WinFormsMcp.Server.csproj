@@ -1,5 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -8,10 +7,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>Rhombus.WinFormsMcp.Server</RootNamespace>
     <AssemblyName>winformsmcp</AssemblyName>
-
     <!-- NuGet Package Configuration -->
     <PackageId>Rhombus.WinFormsMcp</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.1.0-beta</Version>
     <Authors>butler.software</Authors>
     <Company>butler.software</Company>
     <Product>Rhombus.WinFormsMcp</Product>
@@ -24,24 +22,30 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
-
   <ItemGroup>
     <InternalsVisibleTo Include="Rhombus.WinFormsMcp.Tests" />
   </ItemGroup>
-
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\"/>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
-
   <ItemGroup>
+    <!-- Telemetry (opt-out via TELEMETRY_OPTOUT=true) -->
+    <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
     <!-- FlaUI for WinForms automation (UIA2 for maximum compatibility) -->
     <PackageReference Include="FlaUI.UIA2" Version="4.0.0" />
     <PackageReference Include="FlaUI.Core" Version="4.0.0" />
-
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
     <!-- System.Drawing for screenshots -->
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
-
+    <!-- Hosting (includes DI, Configuration, Logging abstractions) -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <!-- Configuration -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+    <!-- Caching for RendererProcessPool -->
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
     <ProjectReference Include="..\Rhombus.WinFormsMcp.Rendering\Rhombus.WinFormsMcp.Rendering.csproj" />
   </ItemGroup>
-
 </Project>

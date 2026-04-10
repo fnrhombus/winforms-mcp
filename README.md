@@ -58,17 +58,19 @@ Add to your MCP config and restart. Nothing else to install.
 }
 ```
 
-**Standalone exe** (no Node required) — [download from Releases](https://github.com/fnrhombus/winforms-mcp/releases):
+**Standalone** (no Node required) — [download the zip from Releases](https://github.com/fnrhombus/winforms-mcp/releases), extract it, and point to the exe:
 
 ```json
 {
   "mcpServers": {
     "winforms-mcp": {
-      "command": "C:/path/to/winformsmcp.exe"
+      "command": "C:/path/to/winformsmcp/winformsmcp.exe"
     }
   }
 }
 ```
+
+> **Note:** Keep the extracted folder structure intact — `render_form` needs the `rendererhost/` subdirectory alongside the exe.
 
 That's it. The agent can now see and interact with any WinForms application on your machine.
 
@@ -121,11 +123,10 @@ Set `HEADLESS=true` to launch apps on a hidden Windows desktop (`CreateDesktop` 
 |----------|---------|-------------|
 | `HEADLESS` | `false` | Run launched apps on a hidden desktop |
 | `TFM` | `auto` | Lock rendering to a specific framework (`net48`, `netcoreapp3.1`, `net8.0-windows`) |
+| `TELEMETRY_OPTOUT` | `false` | Disable all Application Insights telemetry (matches .NET CLI conventions) |
 
 ## Documentation
 
-- [Claude Code Setup Guide](docs/CLAUDE_CODE_SETUP.md) — step-by-step MCP configuration
-- [Quick Start](docs/QUICKSTART.md) — first automation in 5 minutes
 - [Examples](docs/EXAMPLES.md) — common workflows and patterns
 - [Headless Mode](docs/HEADLESS_MODE.md) — hidden desktop architecture and tool compatibility
 

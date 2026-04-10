@@ -2,9 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 using FlaUI.Core.AutomationElements;
+
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using Rhombus.WinFormsMcp.Rendering;
 using Rhombus.WinFormsMcp.Server.Automation;
@@ -12,47 +19,92 @@ using Rhombus.WinFormsMcp.Server.Automation;
 namespace Rhombus.WinFormsMcp.Server;
 
 /// <summary>
-/// fnWindowsMCP - MCP Server for WinForms Automation
+/// WinFormsMcp - MCP Server for WinForms Automation
 ///
 /// This server provides tools for automating WinForms applications in a headless manner.
 /// It communicates via JSON-RPC over stdio (compatible with Claude Code).
 /// </summary>
 class Program {
-    private static AutomationServer? _server;
-
     static async Task Main(string[] args) {
-        try {
-            var headlessEnv = Environment.GetEnvironmentVariable("HEADLESS");
-            var headless = string.Equals(headlessEnv, "true", StringComparison.OrdinalIgnoreCase)
-                        || headlessEnv == "1";
+        var host = Host.CreateDefaultBuilder(args)
+            .ConfigureLogging((context, logging) => {
+                logging.ClearProviders();
 
-            _server = new AutomationServer(headless);
-            await _server.RunAsync();
-        }
-        catch (Exception ex) {
-            Console.Error.WriteLine($"Fatal error: {ex.Message}");
-            Console.Error.WriteLine(ex.StackTrace);
-            Environment.Exit(1);
-        }
+                var logOptions = new McpServerOptions();
+                BindOptions(logOptions, context.Configuration);
+
+                logging.SetMinimumLevel(logOptions.MinimumLogLevel);
+                logging.AddConsole(consoleOptions => {
+                    consoleOptions.LogToStandardErrorThreshold = LogLevel.Trace;
+                });
+            })
+            .ConfigureServices((context, services) => {
+                var options = new McpServerOptions();
+                BindOptions(options, context.Configuration);
+                services.AddSingleton(Options.Create(options));
+
+                // Telemetry
+                if (options.TelemetryOptOut)
+                    services.AddSingleton<ITelemetry, NullTelemetry>();
+                else
+                    services.AddSingleton<ITelemetry, Telemetry>();
+
+                services.AddMemoryCache();
+                services.AddSingleton<IAutomationHelper>(sp =>
+                    new AutomationHelper(options.Headless, sp.GetRequiredService<ILogger<AutomationHelper>>()));
+                services.AddSingleton<ISessionManager, SessionManager>();
+                services.AddSingleton<RendererProcessPool>();
+                services.AddHostedService<AutomationServer>();
+            })
+            .Build();
+
+        await host.RunAsync();
     }
+
+    internal static McpServerOptions BindOptions(McpServerOptions options, IConfiguration configuration) {
+        options.Headless = ParseBool(configuration["HEADLESS"]);
+        options.TelemetryOptOut = ParseBool(configuration["TELEMETRY_OPTOUT"]);
+        var tfm = configuration["TFM"];
+        options.Tfm = string.IsNullOrWhiteSpace(tfm) ? "auto" : tfm.Trim();
+        options.MinimumLogLevel = ParseLogLevel(configuration["LOG_LEVEL"]);
+        return options;
+    }
+
+    private static bool ParseBool(string? value) =>
+        string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) || value == "1";
+
+    internal static LogLevel ParseLogLevel(string? value) {
+        if (string.IsNullOrWhiteSpace(value)) return LogLevel.Information;
+        return Enum.TryParse<LogLevel>(value, ignoreCase: true, out var level) ? level : LogLevel.Information;
+    }
+}
+
+/// <summary>
+/// Interface for session management — tracking automation contexts and element references.
+/// </summary>
+interface ISessionManager : IDisposable {
+    IAutomationHelper GetAutomation();
+    string CacheElement(AutomationElement element);
+    AutomationElement? GetElement(string elementId);
+    void ClearElement(string elementId);
+    void CacheProcess(int pid, object context);
 }
 
 /// <summary>
 /// Session manager for tracking automation contexts and element references
 /// </summary>
-class SessionManager {
+class SessionManager : ISessionManager {
     private readonly Dictionary<string, AutomationElement> _elementCache = new();
     private readonly Dictionary<int, object> _processContext = new();
     private int _nextElementId = 1;
-    private AutomationHelper? _automation;
-    private readonly bool _headless;
+    private readonly IAutomationHelper _automation;
 
-    public SessionManager(bool headless = false) {
-        _headless = headless;
+    public SessionManager(IAutomationHelper automation) {
+        _automation = automation;
     }
 
-    public AutomationHelper GetAutomation() {
-        return _automation ??= new AutomationHelper(_headless);
+    public IAutomationHelper GetAutomation() {
+        return _automation;
     }
 
     public string CacheElement(AutomationElement element) {
@@ -79,16 +131,24 @@ class SessionManager {
 }
 
 /// <summary>
-/// Core MCP server implementation handling JSON-RPC communication
+/// Core MCP server implementation handling JSON-RPC communication.
+/// Runs as a hosted service — the host starts it and manages its lifetime.
 /// </summary>
-class AutomationServer {
+class AutomationServer : BackgroundService {
     private readonly Dictionary<string, Func<JsonElement, Task<JsonElement>>> _tools;
     private int _nextId = 1;
-    private readonly SessionManager _session;
-    private readonly RendererProcessPool _rendererPool = new();
+    private readonly ISessionManager _session;
+    private readonly RendererProcessPool _rendererPool;
+    private readonly ITelemetry _telemetry;
+    private readonly IHostApplicationLifetime _lifetime;
+    private readonly ILogger<AutomationServer> _logger;
 
-    public AutomationServer(bool headless = false) {
-        _session = new SessionManager(headless);
+    public AutomationServer(ISessionManager session, RendererProcessPool rendererPool, ITelemetry telemetry, IHostApplicationLifetime lifetime, ILogger<AutomationServer> logger) {
+        _session = session;
+        _rendererPool = rendererPool;
+        _telemetry = telemetry;
+        _lifetime = lifetime;
+        _logger = logger;
         _tools = new Dictionary<string, Func<JsonElement, Task<JsonElement>>>
         {
             // Element Tools
@@ -148,7 +208,8 @@ class AutomationServer {
         };
     }
 
-    public async Task RunAsync() {
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+        _logger.LogInformation("MCP server started, waiting for client connection");
         var reader = Console.In;
         // Use raw stdout stream with explicit LF to avoid Windows CRLF (\r\n),
         // which breaks Node.js JSON parsing when it splits on \n and sees trailing \r.
@@ -159,8 +220,8 @@ class AutomationServer {
         };
 
         // Process incoming messages — wait for client to send initialize first
-        while (true) {
-            var line = await reader.ReadLineAsync();
+        while (!stoppingToken.IsCancellationRequested) {
+            var line = await reader.ReadLineAsync(stoppingToken);
             if (line == null)
                 break;
             if (string.IsNullOrWhiteSpace(line))
@@ -181,7 +242,12 @@ class AutomationServer {
                 await writer.WriteLineAsync(JsonSerializer.Serialize(response));
                 await writer.FlushAsync();
             }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
+                break;
+            }
             catch (Exception ex) {
+                _logger.LogError(ex, "Error processing request");
+                _telemetry.TrackException(ex);
                 var error = new {
                     jsonrpc = "2.0",
                     id = (object?)null,
@@ -196,8 +262,12 @@ class AutomationServer {
             }
         }
 
-        // Clean up renderer host processes on exit
+        // Stdin closed or cancellation requested — tell the host to shut down
+        // so all hosted services stop and DI containers are disposed.
+        _logger.LogInformation("MCP server shutting down");
         _rendererPool.Dispose();
+        _telemetry.Flush();
+        _lifetime.StopApplication();
     }
 
     private static object GetRequestId(JsonElement request) {
@@ -218,6 +288,7 @@ class AutomationServer {
 
         var method = methodElement.GetString();
         if (method == "initialize") {
+            _logger.LogInformation("Client initialized");
             return new {
                 jsonrpc = "2.0",
                 id = requestId,
@@ -259,7 +330,22 @@ class AutomationServer {
             if (!_tools.ContainsKey(toolName))
                 throw new InvalidOperationException($"Unknown tool: {toolName}");
 
-            var result = await _tools[toolName](toolArgs);
+            _logger.LogDebug("Executing tool: {ToolName}", toolName);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            JsonElement result;
+            try {
+                result = await _tools[toolName](toolArgs);
+            }
+            catch (Exception ex) {
+                sw.Stop();
+                _logger.LogError(ex, "Tool {ToolName} failed after {ElapsedMs}ms", toolName, sw.ElapsedMilliseconds);
+                _telemetry.TrackToolCall(toolName, sw.Elapsed);
+                _telemetry.TrackException(ex);
+                throw;
+            }
+            sw.Stop();
+            _logger.LogDebug("Tool {ToolName} completed in {ElapsedMs}ms", toolName, sw.ElapsedMilliseconds);
+            _telemetry.TrackToolCall(toolName, sw.Elapsed);
 
             // If the tool returned image data, respond with an MCP image content block
             if (result.TryGetProperty("imageBase64", out var imgData) && imgData.ValueKind == JsonValueKind.String) {
@@ -1195,7 +1281,7 @@ class AutomationServer {
             var companionContent = System.IO.File.Exists(companionPath) ? System.IO.File.ReadAllText(companionPath) : null;
 
             // Determine TFM: env var override or auto-detect from csproj
-            var configuredTfm = RendererProcessPool.GetConfiguredTfm();
+            var configuredTfm = _rendererPool.GetConfiguredTfm();
             string? csprojPath = null;
             if (string.Equals(configuredTfm, "auto", StringComparison.OrdinalIgnoreCase)) {
                 var dir = Path.GetDirectoryName(designerFile)!;
