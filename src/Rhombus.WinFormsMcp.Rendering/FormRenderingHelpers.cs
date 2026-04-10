@@ -59,8 +59,8 @@ public static class FormRenderingHelpers {
 
         var eventHandlers = new List<string>();
         var eventMatches = Regex.Matches(content, @"\+=\s*(?:new\s+[\w.]+\s*\(\s*)?(?:this\.)?(\w+)\s*\)?\s*;");
-        foreach (Match m in eventMatches) {
-            var handlerName = m.Groups[1].Value;
+        foreach (Match? m in eventMatches) {
+            var handlerName = m!.Groups[1].Value;
             if (!eventHandlers.Contains(handlerName))
                 eventHandlers.Add(handlerName);
         }
