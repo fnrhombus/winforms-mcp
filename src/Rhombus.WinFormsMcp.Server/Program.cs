@@ -1517,8 +1517,10 @@ class AutomationServer : BackgroundService {
                 ["className"] = focused.ClassName,
                 ["controlType"] = focused.ControlType.ToString(),
                 ["boundingRectangle"] = new Dictionary<string, int> {
-                    ["x"] = (int)rect.X, ["y"] = (int)rect.Y,
-                    ["width"] = (int)rect.Width, ["height"] = (int)rect.Height
+                    ["x"] = (int)rect.X,
+                    ["y"] = (int)rect.Y,
+                    ["width"] = (int)rect.Width,
+                    ["height"] = (int)rect.Height
                 }
             };
 

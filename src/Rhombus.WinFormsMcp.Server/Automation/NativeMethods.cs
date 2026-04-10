@@ -137,8 +137,10 @@ internal static class NativeMethods {
     /// Returns null if the process is still running or the call fails.
     /// </summary>
     public static int? GetExitCode(IntPtr processHandle) {
-        if (processHandle == IntPtr.Zero) return null;
-        if (!GetExitCodeProcess(processHandle, out var exitCode)) return null;
+        if (processHandle == IntPtr.Zero)
+            return null;
+        if (!GetExitCodeProcess(processHandle, out var exitCode))
+            return null;
         return exitCode == STILL_ACTIVE ? null : (int)exitCode;
     }
 
@@ -304,12 +306,15 @@ internal static class NativeMethods {
     /// Works for off-screen windows, occluded windows, and windows on hidden desktops.
     /// </summary>
     public static Bitmap? CaptureWindow(IntPtr hWnd) {
-        if (hWnd == IntPtr.Zero) return null;
-        if (!GetWindowRect(hWnd, out var rect)) return null;
+        if (hWnd == IntPtr.Zero)
+            return null;
+        if (!GetWindowRect(hWnd, out var rect))
+            return null;
 
         var width = rect.Right - rect.Left;
         var height = rect.Bottom - rect.Top;
-        if (width <= 0 || height <= 0) return null;
+        if (width <= 0 || height <= 0)
+            return null;
 
         var bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
         using var gfx = Graphics.FromImage(bmp);

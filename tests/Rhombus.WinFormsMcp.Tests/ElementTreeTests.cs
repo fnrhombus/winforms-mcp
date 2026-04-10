@@ -86,8 +86,7 @@ public class ElementTreeTests {
         // Arrange
         var expectedTree = new List<Dictionary<string, object?>>
         {
-            new Dictionary<string, object?>
-            {
+            new() {
                 ["name"] = "Button1",
                 ["controlType"] = "Button",
                 ["automationId"] = "btn1",
@@ -103,8 +102,7 @@ public class ElementTreeTests {
                 ["elementId"] = "elem_1",
                 ["children"] = new List<Dictionary<string, object?>>()
             },
-            new Dictionary<string, object?>
-            {
+            new() {
                 ["name"] = "TextBox1",
                 ["controlType"] = "Edit",
                 ["automationId"] = "txt1",
@@ -153,8 +151,7 @@ public class ElementTreeTests {
                 3, 50, It.IsAny<Func<AutomationElement, string>>()))
             .Returns(new List<Dictionary<string, object?>>
             {
-                new Dictionary<string, object?>
-                {
+                new() {
                     ["name"] = "TestElement",
                     ["elementId"] = "elem_1",
                     ["children"] = new List<Dictionary<string, object?>>()
@@ -179,8 +176,7 @@ public class ElementTreeTests {
         // Arrange
         var innerChildren = new List<Dictionary<string, object?>>
         {
-            new Dictionary<string, object?>
-            {
+            new() {
                 ["name"] = "InnerButton",
                 ["controlType"] = "Button",
                 ["children"] = new List<Dictionary<string, object?>>()
@@ -189,8 +185,7 @@ public class ElementTreeTests {
 
         var expectedTree = new List<Dictionary<string, object?>>
         {
-            new Dictionary<string, object?>
-            {
+            new() {
                 ["name"] = "Panel1",
                 ["controlType"] = "Pane",
                 ["children"] = innerChildren
@@ -222,8 +217,7 @@ public class ElementTreeTests {
         // Arrange - depth 1 should only return immediate children, no grandchildren
         var expectedTree = new List<Dictionary<string, object?>>
         {
-            new Dictionary<string, object?>
-            {
+            new() {
                 ["name"] = "Panel1",
                 ["controlType"] = "Pane",
                 ["children"] = new List<Dictionary<string, object?>>() // Empty because depth=1
@@ -252,13 +246,11 @@ public class ElementTreeTests {
         // Arrange - maxElements=2 should cap the number of returned elements
         var expectedTree = new List<Dictionary<string, object?>>
         {
-            new Dictionary<string, object?>
-            {
+            new() {
                 ["name"] = "Element1",
                 ["children"] = new List<Dictionary<string, object?>>()
             },
-            new Dictionary<string, object?>
-            {
+            new() {
                 ["name"] = "Element2",
                 ["children"] = new List<Dictionary<string, object?>>()
             }
@@ -283,8 +275,7 @@ public class ElementTreeTests {
         // Arrange - elements may have null properties
         var expectedTree = new List<Dictionary<string, object?>>
         {
-            new Dictionary<string, object?>
-            {
+            new() {
                 ["name"] = null,
                 ["controlType"] = null,
                 ["automationId"] = null,

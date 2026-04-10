@@ -3,20 +3,17 @@ using Rhombus.WinFormsMcp.Rendering;
 namespace Rhombus.WinFormsMcp.Tests;
 
 [TestFixture]
-public class FormRenderingHelpersTests
-{
+public class FormRenderingHelpersTests {
     private string _tempDir = null!;
 
     [SetUp]
-    public void SetUp()
-    {
+    public void SetUp() {
         _tempDir = Path.Combine(Path.GetTempPath(), $"FormRenderingHelpersTests_{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
     }
 
     [TearDown]
-    public void TearDown()
-    {
+    public void TearDown() {
         if (Directory.Exists(_tempDir))
             Directory.Delete(_tempDir, recursive: true);
     }
@@ -24,8 +21,7 @@ public class FormRenderingHelpersTests
     // ── ResolveDesignerFile ──────────────────────────────────────────
 
     [Test]
-    public void ResolveDesignerFile_WhenGivenDesignerCs_ReturnsSamePath()
-    {
+    public void ResolveDesignerFile_WhenGivenDesignerCs_ReturnsSamePath() {
         var path = Path.Combine(_tempDir, "Form1.Designer.cs");
         File.WriteAllText(path, "// designer");
 
@@ -34,8 +30,7 @@ public class FormRenderingHelpersTests
     }
 
     [Test]
-    public void ResolveDesignerFile_WhenGivenCs_ResolvesToSiblingDesignerCs()
-    {
+    public void ResolveDesignerFile_WhenGivenCs_ResolvesToSiblingDesignerCs() {
         var csPath = Path.Combine(_tempDir, "Form1.cs");
         var designerPath = Path.Combine(_tempDir, "Form1.Designer.cs");
         File.WriteAllText(csPath, "// code");
@@ -46,8 +41,7 @@ public class FormRenderingHelpersTests
     }
 
     [Test]
-    public void ResolveDesignerFile_WhenDesignerMissing_ThrowsFileNotFound()
-    {
+    public void ResolveDesignerFile_WhenDesignerMissing_ThrowsFileNotFound() {
         var csPath = Path.Combine(_tempDir, "Form1.cs");
         File.WriteAllText(csPath, "// code");
 
@@ -56,8 +50,7 @@ public class FormRenderingHelpersTests
     }
 
     [Test]
-    public void ResolveDesignerFile_WhenDesignerPathDoesNotExist_ThrowsFileNotFound()
-    {
+    public void ResolveDesignerFile_WhenDesignerPathDoesNotExist_ThrowsFileNotFound() {
         var path = Path.Combine(_tempDir, "Missing.Designer.cs");
 
         Assert.Throws<FileNotFoundException>(() =>
@@ -67,8 +60,7 @@ public class FormRenderingHelpersTests
     // ── FindCsproj ───────────────────────────────────────────────────
 
     [Test]
-    public void FindCsproj_FindsProjectInSameDirectory()
-    {
+    public void FindCsproj_FindsProjectInSameDirectory() {
         var csproj = Path.Combine(_tempDir, "MyProject.csproj");
         File.WriteAllText(csproj, "<Project />");
 
@@ -77,8 +69,7 @@ public class FormRenderingHelpersTests
     }
 
     [Test]
-    public void FindCsproj_FindsProjectInParentDirectory()
-    {
+    public void FindCsproj_FindsProjectInParentDirectory() {
         var csproj = Path.Combine(_tempDir, "MyProject.csproj");
         File.WriteAllText(csproj, "<Project />");
 
@@ -90,8 +81,7 @@ public class FormRenderingHelpersTests
     }
 
     [Test]
-    public void FindCsproj_WhenNoCsproj_ThrowsFileNotFound()
-    {
+    public void FindCsproj_WhenNoCsproj_ThrowsFileNotFound() {
         // _tempDir has no .csproj -- but parent dirs might.
         // Use a deeply nested dir to minimize chance of accidental match.
         var isolated = Path.Combine(_tempDir, "a", "b", "c");
@@ -99,14 +89,12 @@ public class FormRenderingHelpersTests
 
         // This will walk up and eventually may or may not find one.
         // We can't fully isolate the filesystem, so just verify it returns a string or throws.
-        try
-        {
+        try {
             var result = FormRenderingHelpers.FindCsproj(isolated);
             // If it found one higher up, that's still valid behavior.
             Assert.That(File.Exists(result), Is.True);
         }
-        catch (FileNotFoundException)
-        {
+        catch (FileNotFoundException) {
             Assert.Pass("Correctly threw when no .csproj found");
         }
     }
@@ -114,8 +102,7 @@ public class FormRenderingHelpersTests
     // ── ParseDesignerFile ────────────────────────────────────────────
 
     [Test]
-    public void ParseDesignerFile_ExtractsNamespaceAndClassName()
-    {
+    public void ParseDesignerFile_ExtractsNamespaceAndClassName() {
         const string content = @"
 namespace MyApp.Forms
 {
@@ -132,8 +119,7 @@ namespace MyApp.Forms
     }
 
     [Test]
-    public void ParseDesignerFile_ExtractsEventHandlers()
-    {
+    public void ParseDesignerFile_ExtractsEventHandlers() {
         const string content = @"
 namespace MyApp
 {
@@ -154,8 +140,7 @@ namespace MyApp
     }
 
     [Test]
-    public void ParseDesignerFile_DeduplicatesEventHandlers()
-    {
+    public void ParseDesignerFile_DeduplicatesEventHandlers() {
         const string content = @"
 namespace MyApp
 {
@@ -175,8 +160,7 @@ namespace MyApp
     }
 
     [Test]
-    public void ParseDesignerFile_WithNoNamespace_ReturnsNull()
-    {
+    public void ParseDesignerFile_WithNoNamespace_ReturnsNull() {
         const string content = @"
 partial class Form1
 {
@@ -189,8 +173,7 @@ partial class Form1
     }
 
     [Test]
-    public void ParseDesignerFile_WithNoPartialClass_Throws()
-    {
+    public void ParseDesignerFile_WithNoPartialClass_Throws() {
         const string content = "namespace Foo { class Bar { } }";
 
         Assert.Throws<InvalidOperationException>(() =>

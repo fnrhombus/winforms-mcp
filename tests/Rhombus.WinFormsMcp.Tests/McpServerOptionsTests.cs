@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using Rhombus.WinFormsMcp.Server;
 
 namespace Rhombus.WinFormsMcp.Tests;

@@ -9,7 +9,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using Moq;
+
 using Rhombus.WinFormsMcp.Rendering;
 using Rhombus.WinFormsMcp.Server;
 using Rhombus.WinFormsMcp.Server.Automation;

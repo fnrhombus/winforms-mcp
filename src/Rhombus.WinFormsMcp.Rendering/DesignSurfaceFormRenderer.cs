@@ -215,7 +215,8 @@ public class DesignSurfaceFormRenderer {
             view.ClientSize = new Size(
                 chromeForm.Size.Width + SystemInformation.VerticalScrollBarWidth,
                 chromeForm.Size.Height + SystemInformation.HorizontalScrollBarHeight);
-        } else {
+        }
+        else {
             view.ClientSize = new Size(width, height);
         }
 

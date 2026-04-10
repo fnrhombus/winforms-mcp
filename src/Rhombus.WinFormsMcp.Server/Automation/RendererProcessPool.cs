@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
@@ -63,7 +64,8 @@ public sealed class RendererProcessPool : IDisposable {
         string[]? extraAssemblyPaths,
         string targetTfm,
         string? csprojPath = null) {
-        if (_disposed) throw new ObjectDisposedException(nameof(RendererProcessPool));
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(RendererProcessPool));
 
         var hostTfm = ResolveHostTfm(targetTfm, csprojPath);
         var entry = GetOrCreateEntry(hostTfm);
@@ -143,7 +145,8 @@ public sealed class RendererProcessPool : IDisposable {
     }
 
     public void Dispose() {
-        if (_disposed) return;
+        if (_disposed)
+            return;
         _disposed = true;
 
         // Removing from cache triggers eviction callbacks which dispose HostEntries
@@ -165,7 +168,8 @@ public sealed class RendererProcessPool : IDisposable {
             var options = new MemoryCacheEntryOptions()
                 .SetSlidingExpiration(IdleTimeout)
                 .RegisterPostEvictionCallback((k, v, reason, state) => {
-                    if (v is HostEntry he) he.Dispose();
+                    if (v is HostEntry he)
+                        he.Dispose();
                 });
             _cache.Set(key, entry, options);
             _activeKeys.Add(key);
@@ -286,7 +290,8 @@ public sealed class RendererProcessPool : IDisposable {
         }
 
         public void Dispose() {
-            if (_disposed) return;
+            if (_disposed)
+                return;
             _disposed = true;
             KillProcess();
             _lock.Dispose();

@@ -1002,7 +1002,8 @@ namespace TestApp {
             TestContext.WriteLine($"Recursive UserControl render: {pngBytes.Length:N0} bytes");
         }
         finally {
-            try { Directory.Delete(tempDir, true); } catch { /* cleanup */ }
+            try { Directory.Delete(tempDir, true); }
+            catch { /* cleanup */ }
         }
     }
 
@@ -1097,7 +1098,8 @@ public partial class WidgetB : UserControl {
             TestContext.WriteLine($"Circular reference test: {pngBytes.Length:N0} bytes (completed without infinite loop)");
         }
         finally {
-            try { Directory.Delete(tempDir, true); } catch { /* cleanup */ }
+            try { Directory.Delete(tempDir, true); }
+            catch { /* cleanup */ }
         }
     }
 
@@ -1114,7 +1116,8 @@ public partial class WidgetB : UserControl {
             Assert.That(result, Is.EqualTo(filePath));
         }
         finally {
-            try { Directory.Delete(tempDir, true); } catch { /* cleanup */ }
+            try { Directory.Delete(tempDir, true); }
+            catch { /* cleanup */ }
         }
     }
 
@@ -1127,7 +1130,8 @@ public partial class WidgetB : UserControl {
             Assert.That(result, Is.Null);
         }
         finally {
-            try { Directory.Delete(tempDir, true); } catch { /* cleanup */ }
+            try { Directory.Delete(tempDir, true); }
+            catch { /* cleanup */ }
         }
     }
 
@@ -1148,7 +1152,8 @@ public partial class WidgetB : UserControl {
             Assert.Pass("Search completed without error");
         }
         finally {
-            try { Directory.Delete(tempDir, true); } catch { /* cleanup */ }
+            try { Directory.Delete(tempDir, true); }
+            catch { /* cleanup */ }
         }
     }
 

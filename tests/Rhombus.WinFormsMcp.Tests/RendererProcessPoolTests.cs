@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+
 using Rhombus.WinFormsMcp.Server;
 using Rhombus.WinFormsMcp.Server.Automation;
 
@@ -7,11 +8,11 @@ namespace Rhombus.WinFormsMcp.Tests;
 
 [TestFixture]
 public class RendererProcessPoolTests {
-    private static MemoryCache CreateCache() => new MemoryCache(new MemoryCacheOptions());
+    private static MemoryCache CreateCache() => new(new MemoryCacheOptions());
     private static IOptions<McpServerOptions> CreateOptions(McpServerOptions? options = null) =>
         Options.Create(options ?? new McpServerOptions());
     private static RendererProcessPool CreatePool(McpServerOptions? options = null, string? hostBasePath = "/nonexistent") =>
-        new RendererProcessPool(CreateCache(), CreateOptions(options), hostBasePath);
+        new(CreateCache(), CreateOptions(options), hostBasePath);
     #region TFM Mapping
 
     [TestCase("net48", "net48")]

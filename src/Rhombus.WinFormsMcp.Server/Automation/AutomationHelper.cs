@@ -10,13 +10,13 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.Extensions.Logging;
-
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Conditions;
 using FlaUI.Core.Definitions;
 using FlaUI.UIA2;
+
+using Microsoft.Extensions.Logging;
 
 namespace Rhombus.WinFormsMcp.Server.Automation;
 
@@ -29,7 +29,7 @@ public class AutomationHelper : IAutomationHelper {
     private UIA2Automation? _automation;
     private readonly Dictionary<string, Process> _launchedProcesses = [];
     private readonly ConcurrentDictionary<int, StringBuilder> _stderrBuffers = new();
-    private readonly object _lock = new object();
+    private readonly object _lock = new();
 
     /// <summary>Desktop handle for the hidden desktop (IntPtr.Zero when not headless).</summary>
     private IntPtr _hiddenDesktop;
@@ -97,7 +97,8 @@ public class AutomationHelper : IAutomationHelper {
                     try {
                         while (true) {
                             var line = await reader.ReadLineAsync();
-                            if (line == null) break;
+                            if (line == null)
+                                break;
                             stderrBuffer.AppendLine(line);
                         }
                     }
@@ -189,14 +190,16 @@ public class AutomationHelper : IAutomationHelper {
             if (desktop != IntPtr.Zero) {
                 // Hidden desktop: find HWND via EnumDesktopWindows, access via SetThreadDesktop
                 var hwnd = GetOrFindWindowHandle(pid, desktop);
-                if (hwnd == IntPtr.Zero) return null;
+                if (hwnd == IntPtr.Zero)
+                    return null;
 
                 return NativeMethods.WithDesktop(desktop, () => _automation.FromHandle(hwnd));
             }
 
             // Default desktop: standard path
             var process = Process.GetProcessById(pid);
-            if (process.MainWindowHandle == IntPtr.Zero) return null;
+            if (process.MainWindowHandle == IntPtr.Zero)
+                return null;
             return _automation.FromHandle(process.MainWindowHandle);
         }
         catch {
@@ -249,7 +252,8 @@ public class AutomationHelper : IAutomationHelper {
     /// Throws if the element is on the hidden desktop and the operation requires input simulation.
     /// </summary>
     private void ThrowIfHeadless(AutomationElement element, string operation, string? alternative = null) {
-        if (!IsOnHiddenDesktop(element)) return;
+        if (!IsOnHiddenDesktop(element))
+            return;
         var msg = $"{operation} requires input simulation and is not available for headless processes (the target element belongs to a process on the hidden desktop).";
         if (alternative != null)
             msg += $" Use {alternative} instead.";
@@ -1169,7 +1173,8 @@ public class AutomationHelper : IAutomationHelper {
         if (desiredState == null) {
             // Just toggle once
             togglePattern.Toggle();
-        } else {
+        }
+        else {
             var target = desiredState.ToLower() switch {
                 "on" => ToggleState.On,
                 "off" => ToggleState.Off,
@@ -1259,7 +1264,8 @@ public class AutomationHelper : IAutomationHelper {
                         else
                             cellValues.Add(null);
                     }
-                } else {
+                }
+                else {
                     foreach (var cell in cells)
                         cellValues.Add(cell.Value);
                 }
@@ -1310,7 +1316,8 @@ public class AutomationHelper : IAutomationHelper {
                     else
                         cellValues.Add(null);
                 }
-            } else {
+            }
+            else {
                 foreach (var cell in cells)
                     cellValues.Add(cell.Name ?? cell.Properties.Name.ValueOrDefault);
             }
@@ -1349,7 +1356,8 @@ public class AutomationHelper : IAutomationHelper {
             var valuePattern = cell.Patterns.Value.PatternOrDefault;
             if (valuePattern != null && !valuePattern.IsReadOnly) {
                 valuePattern.SetValue(value);
-            } else {
+            }
+            else {
                 // Fall back: click cell to enter edit mode, then set value
                 cell.Click();
                 Thread.Sleep(200);
@@ -1427,8 +1435,10 @@ public class AutomationHelper : IAutomationHelper {
         return new Dictionary<string, object?> {
             ["windowState"] = state,
             ["boundingRectangle"] = new Dictionary<string, int> {
-                ["x"] = (int)rect.X, ["y"] = (int)rect.Y,
-                ["width"] = (int)rect.Width, ["height"] = (int)rect.Height
+                ["x"] = (int)rect.X,
+                ["y"] = (int)rect.Y,
+                ["width"] = (int)rect.Width,
+                ["height"] = (int)rect.Height
             }
         };
     }
@@ -1457,14 +1467,17 @@ public class AutomationHelper : IAutomationHelper {
                         ["isVisible"] = !win.IsOffscreen,
                         ["controlType"] = win.ControlType.ToString(),
                         ["boundingRectangle"] = new Dictionary<string, int> {
-                            ["x"] = (int)rect.X, ["y"] = (int)rect.Y,
-                            ["width"] = (int)rect.Width, ["height"] = (int)rect.Height
+                            ["x"] = (int)rect.X,
+                            ["y"] = (int)rect.Y,
+                            ["width"] = (int)rect.Width,
+                            ["height"] = (int)rect.Height
                         }
                     });
                 }
                 return 0;
             });
-        } else {
+        }
+        else {
             // Default desktop: use standard UIA tree
             var desktopElement = _automation.GetDesktop();
             var condition = new PropertyCondition(
@@ -1479,8 +1492,10 @@ public class AutomationHelper : IAutomationHelper {
                     ["isVisible"] = !win.IsOffscreen,
                     ["controlType"] = win.ControlType.ToString(),
                     ["boundingRectangle"] = new Dictionary<string, int> {
-                        ["x"] = (int)rect.X, ["y"] = (int)rect.Y,
-                        ["width"] = (int)rect.Width, ["height"] = (int)rect.Height
+                        ["x"] = (int)rect.X,
+                        ["y"] = (int)rect.Y,
+                        ["width"] = (int)rect.Width,
+                        ["height"] = (int)rect.Height
                     }
                 });
             }
@@ -1543,41 +1558,41 @@ public class AutomationHelper : IAutomationHelper {
 
         switch (eventType.ToLower()) {
             case "focus_changed": {
-                var initialFocused = _automation.FocusedElement();
-                var initialName = initialFocused?.Name ?? "";
-                var initialId = initialFocused?.AutomationId ?? "";
+                    var initialFocused = _automation.FocusedElement();
+                    var initialName = initialFocused?.Name ?? "";
+                    var initialId = initialFocused?.AutomationId ?? "";
 
-                while (stopwatch.ElapsedMilliseconds < timeoutMs) {
-                    await Task.Delay(100);
-                    try {
-                        var current = _automation.FocusedElement();
-                        var currentName = current?.Name ?? "";
-                        var currentId = current?.AutomationId ?? "";
-                        if (currentName != initialName || currentId != initialId)
-                            return (true, $"Focus changed to: {currentName} ({current?.ControlType})", stopwatch.ElapsedMilliseconds);
+                    while (stopwatch.ElapsedMilliseconds < timeoutMs) {
+                        await Task.Delay(100);
+                        try {
+                            var current = _automation.FocusedElement();
+                            var currentName = current?.Name ?? "";
+                            var currentId = current?.AutomationId ?? "";
+                            if (currentName != initialName || currentId != initialId)
+                                return (true, $"Focus changed to: {currentName} ({current?.ControlType})", stopwatch.ElapsedMilliseconds);
+                        }
+                        catch { /* element may be gone */ }
                     }
-                    catch { /* element may be gone */ }
+                    return (false, null, stopwatch.ElapsedMilliseconds);
                 }
-                return (false, null, stopwatch.ElapsedMilliseconds);
-            }
 
             case "structure_changed": {
-                var root = element ?? _automation.GetDesktop();
-                int initialCount;
-                try { initialCount = root.FindAllChildren().Length; }
-                catch { initialCount = 0; }
+                    var root = element ?? _automation.GetDesktop();
+                    int initialCount;
+                    try { initialCount = root.FindAllChildren().Length; }
+                    catch { initialCount = 0; }
 
-                while (stopwatch.ElapsedMilliseconds < timeoutMs) {
-                    await Task.Delay(100);
-                    try {
-                        var currentCount = root.FindAllChildren().Length;
-                        if (currentCount != initialCount)
-                            return (true, $"Child count changed from {initialCount} to {currentCount}", stopwatch.ElapsedMilliseconds);
+                    while (stopwatch.ElapsedMilliseconds < timeoutMs) {
+                        await Task.Delay(100);
+                        try {
+                            var currentCount = root.FindAllChildren().Length;
+                            if (currentCount != initialCount)
+                                return (true, $"Child count changed from {initialCount} to {currentCount}", stopwatch.ElapsedMilliseconds);
+                        }
+                        catch { /* element may be gone */ }
                     }
-                    catch { /* element may be gone */ }
+                    return (false, null, stopwatch.ElapsedMilliseconds);
                 }
-                return (false, null, stopwatch.ElapsedMilliseconds);
-            }
 
             case "property_changed":
                 // Property changes are better served by wait_for_condition
@@ -1607,7 +1622,8 @@ public class AutomationHelper : IAutomationHelper {
                 NativeMethods.SendContextMenuMessage(hwnd);
                 Thread.Sleep(300);
             }
-        } else {
+        }
+        else {
             // Default desktop: try mouse right-click (most reliable for visible windows)
             element.RightClick();
             Thread.Sleep(300);
@@ -1625,12 +1641,14 @@ public class AutomationHelper : IAutomationHelper {
                 var desktop = _automation!.GetDesktop();
                 return desktop.FindAllChildren(menuCondition);
             });
-        } else {
+        }
+        else {
             var desktop = _automation.GetDesktop();
             var stopwatch = Stopwatch.StartNew();
             while (stopwatch.ElapsedMilliseconds < 2000) {
                 menus = desktop.FindAllChildren(menuCondition);
-                if (menus.Length > 0) break;
+                if (menus.Length > 0)
+                    break;
                 Thread.Sleep(100);
             }
         }
@@ -1696,7 +1714,8 @@ public class AutomationHelper : IAutomationHelper {
             element.Focus();
             Thread.Sleep(500); // Wait for tooltip to appear
 
-            if (_automation == null) return null;
+            if (_automation == null)
+                return null;
             var desktop = _automation.GetDesktop();
             var tooltipCondition = new PropertyCondition(
                 _automation.PropertyLibrary.Element.ControlType,
