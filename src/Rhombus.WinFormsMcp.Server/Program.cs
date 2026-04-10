@@ -229,7 +229,7 @@ class AutomationServer : BackgroundService {
                 var requestId = GetRequestId(request);
                 var response = await ProcessRequest(request, requestId);
                 await writer.WriteLineAsync(JsonSerializer.Serialize(response));
-                await writer.FlushAsync();
+                await writer.FlushAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
                 break;
@@ -247,7 +247,7 @@ class AutomationServer : BackgroundService {
                     }
                 };
                 await writer.WriteLineAsync(JsonSerializer.Serialize(error));
-                await writer.FlushAsync();
+                await writer.FlushAsync(stoppingToken);
             }
         }
 
