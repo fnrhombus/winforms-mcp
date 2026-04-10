@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Rhombus.WinFormsMcp.Server;
 
 namespace Rhombus.WinFormsMcp.Tests;
@@ -10,7 +11,10 @@ public class McpServerOptionsTests {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(values)
             .Build();
-        return Program.BindOptions(new McpServerOptions(), config);
+        var options = new McpServerOptions();
+        var configurer = new McpServerOptionsConfiguration(config);
+        configurer.PostConfigure(Options.DefaultName, options);
+        return options;
     }
 
     [Test]
