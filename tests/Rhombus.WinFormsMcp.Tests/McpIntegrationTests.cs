@@ -10,24 +10,19 @@ namespace Rhombus.WinFormsMcp.Tests;
 /// </summary>
 [TestFixture]
 public class McpIntegrationTests {
-    private static readonly string ServerProjectPath = Path.GetFullPath(
-        Path.Combine(TestContext.CurrentContext.TestDirectory,
-            "..", "..", "..", "..", "..",
-            "src", "Rhombus.WinFormsMcp.Server", "Rhombus.WinFormsMcp.Server.csproj"));
-
     private Process? _serverProcess;
     private StreamWriter? _stdin;
     private StreamReader? _stdout;
 
     [SetUp]
     public void Setup() {
-        Assert.That(File.Exists(ServerProjectPath),
-            $"Server project not found at {ServerProjectPath}");
+        var serverExe = Path.Combine(TestContext.CurrentContext.TestDirectory, "winformsmcp.exe");
+        Assert.That(File.Exists(serverExe),
+            $"Server exe not found at {serverExe}");
 
         _serverProcess = new Process {
             StartInfo = new ProcessStartInfo {
-                FileName = "dotnet",
-                Arguments = $"run --project \"{ServerProjectPath}\" --no-build",
+                FileName = serverExe,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
