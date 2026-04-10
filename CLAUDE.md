@@ -130,6 +130,8 @@ This project follows a **dev/master branching strategy** with **Semantic Version
 
 **NEVER switch the branch of the root working directory.** The root checkout must stay on `dev` at all times. All feature/fix branch work must be done in git worktrees (`git worktree add` or `isolation: "worktree"` for agents). Switching the root checkout disrupts the working environment and risks losing uncommitted state.
 
+**Before creating a worktree**, always pull the latest changes: `git pull` — worktrees are created from the current HEAD, and an outdated dev branch will create outdated worktrees.
+
 ### Branch Strategy
 
 - **dev** - Integration branch
