@@ -82,20 +82,22 @@ jobs:
       id: changelog
       shell: pwsh
       run: |
-        # Find the previous release tag
-        $prevTag = git describe --tags --abbrev=0 HEAD~ 2>$null
+        # Find the previous release tag (skip the tag we just created)
+        $allTags = git tag --sort=-v:refname | Where-Object { $_ -match '^v\d' }
+        $currentTag = "v${{ steps.version.outputs.version }}"
+        $prevTag = ($allTags | Where-Object { $_ -ne $currentTag } | Select-Object -First 1)
         if (-not $prevTag) { $prevTag = (git rev-list --max-parents=0 HEAD) }
-        Write-Host "Generating changelog from $prevTag to HEAD"
+        Write-Host "Generating changelog from $prevTag to $currentTag"
 
-        # Get commits grouped by conventional commit type
-        $commits = git log "$prevTag..HEAD" --pretty=format:"%s" --no-merges | Where-Object { $_ }
+        # Get commits grouped by conventional commit type (first-parent to avoid duplicates from merges)
+        $commits = git log "$prevTag..$currentTag" --pretty=format:"%s" --no-merges --first-parent | Where-Object { $_ }
 
         $features = @(); $fixes = @(); $docs = @(); $other = @()
         foreach ($msg in $commits) {
           if ($msg -match '^feat:') { $features += $msg -replace '^feat:\s*', '' }
           elseif ($msg -match '^fix:') { $fixes += $msg -replace '^fix:\s*', '' }
           elseif ($msg -match '^docs:') { $docs += $msg -replace '^docs:\s*', '' }
-          elseif ($msg -notmatch '^chore: release version') { $other += $msg }
+          elseif ($msg -notmatch '^chore: (release version|merge dev|bump version)') { $other += $msg }
         }
 
         $body = ""
