@@ -136,7 +136,6 @@ class SessionManager : ISessionManager {
 /// </summary>
 class AutomationServer : BackgroundService {
     private readonly Dictionary<string, Func<JsonElement, Task<JsonElement>>> _tools;
-    private int _nextId = 1;
     private readonly ISessionManager _session;
     private readonly RendererProcessPool _rendererPool;
     private readonly ITelemetry _telemetry;
