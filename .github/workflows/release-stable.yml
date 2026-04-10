@@ -89,8 +89,8 @@ jobs:
         if (-not $prevTag) { $prevTag = (git rev-list --max-parents=0 HEAD) }
         Write-Host "Generating changelog from $prevTag to $currentTag"
 
-        # Get commits grouped by conventional commit type (first-parent to avoid duplicates from merges)
-        $commits = git log "$prevTag..$currentTag" --pretty=format:"%s" --no-merges --first-parent | Where-Object { $_ }
+        # Get commits grouped by conventional commit type (deduplicate by message to avoid merge duplication)
+        $commits = git log "$prevTag..$currentTag" --pretty=format:"%s" --no-merges | Sort-Object -Unique | Where-Object { $_ }
 
         $features = @(); $fixes = @(); $docs = @(); $other = @()
         foreach ($msg in $commits) {
