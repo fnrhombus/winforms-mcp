@@ -1,6 +1,6 @@
 {
   "name": "@fnrhombus/winforms-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0-beta",
   "description": "WinForms automation MCP server with headless UI automation capabilities",
   "main": "index.js",
   "bin": {
