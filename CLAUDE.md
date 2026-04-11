@@ -80,6 +80,14 @@ dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c 
 - **Protocol**: MCP with stdio transport, single-line JSON-RPC 2.0 messages
 - **Package Distribution**: NuGet (Rhombus.WinFormsMcp), NPM (@fnrhombus/winforms-mcp)
 
+### Code Organization
+
+**File-per-class rule:** One public class per file is strongly preferred. Multiple classes in a single file are only acceptable when:
+- The classes are tightly coupled (e.g., a public class and its direct helper)
+- The types are single-use (e.g., enums, markers, small value objects used nowhere else)
+
+**Monolithic files are not acceptable.** `src/Rhombus.WinFormsMcp.Server/Program.cs` is currently 1795 lines and violates this — it should be broken into separate files for `AutomationServer`, `SessionManager`, and other types. This should be refactored in a future cleanup task.
+
 ### MCP Tools Available
 
 The server implements 33 tools via JSON-RPC:
