@@ -74,6 +74,26 @@ Add to your MCP config and restart. Nothing else to install.
 
 That's it. The agent can now see and interact with any WinForms application on your machine.
 
+## Development Setup (for contributors)
+
+After cloning this repository, run the setup script to configure git hooks:
+
+**Bash/Linux/Mac:**
+```bash
+./scripts/setup-hooks.sh
+```
+
+**PowerShell (Windows):**
+```powershell
+./scripts/setup-hooks.ps1
+```
+
+This configures two git hooks:
+1. **commit-msg**: Validates commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) format (`feat:`, `fix:`, etc.)
+2. **pre-commit**: Runs `dotnet format` to automatically fix code style issues before each commit
+
+See [CLAUDE.md](CLAUDE.md) for detailed contribution guidelines.
+
 ## Tools
 
 | Category | Tools | Description |
