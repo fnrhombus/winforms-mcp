@@ -175,20 +175,32 @@ Only pick issues that are open, unlabelled or labelled `enhancement`/`bug`/`good
 
 1. **Write up the issue** in GitHub (bug or feature), with appropriate labels
 2. **Label the issue `in progress`** when starting work (`gh issue edit N --add-label "in progress"`)
-3. **Create a feature branch and worktree** from dev (e.g., `feature/42-add-widget`)
-4. **Do all work in the worktree**
+3. **Create a feature branch** from dev (e.g., `feature/42-add-widget`)
+4. **Do all work in a worktree** on that branch
 5. **Open a PR** against dev, referencing the issue
 6. **Merge the PR** into dev
 7. **Immediately clean up the worktree and branch** — do not leave worktrees behind
 
-**CRITICAL:** After merging a PR, immediately run:
 ```bash
+# Feature development (always via worktree + PR)
+git checkout dev
+git checkout -b feature/42-add-widget
+# ... make changes in worktree ...
+git push -u origin feature/42-add-widget
+gh pr create --base dev --title "feat: add widget" --body "Closes #42"
+
+# After PR is merged — clean up IMMEDIATELY (do this every time, no exceptions)
 git checkout dev && git pull
-git branch -d <branch-name>
+git branch -d feature/42-add-widget
 git worktree remove <worktree-path> --force
+
+# Release to production (when ready)
+./scripts/merge-to-master.ps1  # PowerShell
+# OR
+./scripts/merge-to-master.sh   # Bash
 ```
 
-Stale worktrees clutter the repo and prevent switching branches. Clean them up **immediately after merge** — every time, without exception.
+**CRITICAL: Stale worktrees prevent branch switching and clutter the repo. Clean up immediately after every merge — no exceptions.**
 
 ## Version Management
 
