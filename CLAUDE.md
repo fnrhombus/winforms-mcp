@@ -177,9 +177,10 @@ Only pick issues that are open, unlabelled or labelled `enhancement`/`bug`/`good
 2. **Label the issue `in progress`** when starting work (`gh issue edit N --add-label "in progress"`)
 3. **Create a feature branch** from dev (e.g., `feature/42-add-widget`)
 4. **Do all work in a worktree** on that branch
-5. **Open a PR** against dev, referencing the issue
-6. **Merge the PR** into dev
-7. **Immediately clean up the worktree and branch** — do not leave worktrees behind
+5. **Before opening a PR, sync with dev** — pull latest from dev into feature branch to catch conflicts early
+6. **Open a PR** against dev, referencing the issue
+7. **Merge the PR** into dev
+8. **Immediately clean up the worktree and branch** — do not leave worktrees behind
 
 ```bash
 # Feature development (always via worktree + PR)
@@ -187,6 +188,12 @@ git checkout dev
 git checkout -b feature/42-add-widget
 # ... make changes in worktree ...
 git push -u origin feature/42-add-widget
+
+# Before opening PR, sync with latest dev (in feature branch)
+git fetch origin
+git rebase origin/dev
+git push -f origin feature/42-add-widget
+
 gh pr create --base dev --title "feat: add widget" --body "Closes #42"
 
 # After PR is merged — clean up IMMEDIATELY (do this every time, no exceptions)
