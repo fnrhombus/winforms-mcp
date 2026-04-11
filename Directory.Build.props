@@ -2,4 +2,9 @@
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
+
+  <!-- Auto-configure git hooks on restore -->
+  <Target Name="ConfigureGitHooks" AfterTargets="Restore">
+    <Exec Command="git config core.hooksPath .githooks" ConsoleToMsBuild="true" ContinueOnError="true" />
+  </Target>
 </Project>

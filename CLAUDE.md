@@ -134,23 +134,13 @@ See `docs/HEADLESS_MODE.md` for the full technical reference aimed at AI agent c
 
 This project follows a **dev/master branching strategy** with **Semantic Versioning (SemVer)** according to https://semver.org/.
 
-### Setup (Required on First Clone)
+### Git Hooks (Auto-Configured)
 
-After cloning, run the setup script to configure git hooks:
+Git hooks are automatically configured on first `dotnet build` or `dotnet test`. Two hooks enforce project standards:
+- **commit-msg**: Validates commits follow [Conventional Commits](https://www.conventionalcommits.org/) format (`feat:`, `fix:`, etc.). Rejects non-compliant messages.
+- **pre-commit**: Runs `dotnet format` before each commit to ensure code style compliance. Rejects commits with style violations.
 
-```bash
-# Bash/Linux/Mac
-./scripts/setup-hooks.sh
-
-# PowerShell (Windows)
-./scripts/setup-hooks.ps1
-```
-
-This enables:
-- **commit-msg hook**: Validates all commits follow Conventional Commits format (`feat:`, `fix:`, etc.). Rejects commits that don't match.
-- **pre-commit hook**: Runs `dotnet format` before each commit to ensure code style compliance. If issues are found, fixes them and asks you to review and re-stage.
-
-Both hooks ensure commits meet project standards automatically.
+No manual setup required — hooks are configured automatically by `Directory.Build.props` on restore.
 
 ### Root Checkout
 
