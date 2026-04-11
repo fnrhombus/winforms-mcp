@@ -306,14 +306,15 @@ The merge script:
 
 ## Commit Guidelines
 
-While not strictly enforced, following conventional commits helps the version bump analyzer:
+**Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) format.** The GitHub Actions version bumping script parses these prefixes to auto-determine version bumps. Correct format is required for version management to work.
 
-- `feat:` - New features (likely MINOR bump)
-- `fix:` - Bug fixes (likely PATCH bump)
-- `BREAKING CHANGE:` - Breaking changes (likely MAJOR bump)
-- `chore:` - Maintenance tasks
-- `docs:` - Documentation changes
-- `test:` - Test additions/changes
+- `feat:` - New features → MINOR bump
+- `fix:` - Bug fixes → PATCH bump
+- `BREAKING CHANGE:` in message body - Breaking API changes → MAJOR bump
+- `chore:` - Maintenance tasks, non-functional changes
+- `docs:` - Documentation changes (no version bump)
+- `test:` - Test additions/changes (no version bump)
+- `refactor:`, `style:`, `perf:` - Non-functional changes (no version bump)
 
 ### Issue References
 
