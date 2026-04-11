@@ -218,9 +218,12 @@ Versions follow **Semantic Versioning (SemVer)**:
 
 ### Version Bumping
 
-- **Dev branch**: Claude Haiku AI agent analyzes commits to determine bump type (major/minor/patch)
+- **Dev branch**: GitHub Actions analyzes commit messages (conventional commits) to determine bump type
+  - `BREAKING CHANGE:` in commit → `major` bump
+  - `feat:` prefix → `minor` bump
+  - Default → `patch` bump
   - Versions have `-beta` suffix (e.g., 1.2.3-beta)
-  - Auto-incremented on every push to dev
+  - Auto-bumped on every push to dev via `.github/workflows/release-beta.yml`
 
 - **Master branch**: Version comes from dev, `-beta` suffix removed
   - Creates stable release (e.g., 1.2.3)
