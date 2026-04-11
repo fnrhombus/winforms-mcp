@@ -134,6 +134,16 @@ See `docs/HEADLESS_MODE.md` for the full technical reference aimed at AI agent c
 
 This project follows a **dev/master branching strategy** with **Semantic Versioning (SemVer)** according to https://semver.org/.
 
+### Setup (Required on First Clone)
+
+After cloning, configure git to use the project's hooks:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This enables the `commit-msg` hook which validates that all commits follow Conventional Commits format. The hook will reject commits that don't match the required format.
+
 ### Root Checkout
 
 **NEVER switch the branch of the root working directory.** The root checkout must stay on `dev` at all times. All feature/fix branch work must be done in git worktrees (`git worktree add` or `isolation: "worktree"` for agents). Switching the root checkout disrupts the working environment and risks losing uncommitted state.
