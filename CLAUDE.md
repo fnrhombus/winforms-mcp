@@ -136,13 +136,21 @@ This project follows a **dev/master branching strategy** with **Semantic Version
 
 ### Setup (Required on First Clone)
 
-After cloning, configure git to use the project's hooks:
+After cloning, run the setup script to configure git hooks:
 
 ```bash
-git config core.hooksPath .githooks
+# Bash/Linux/Mac
+./scripts/setup-hooks.sh
+
+# PowerShell (Windows)
+./scripts/setup-hooks.ps1
 ```
 
-This enables the `commit-msg` hook which validates that all commits follow Conventional Commits format. The hook will reject commits that don't match the required format.
+This enables:
+- **commit-msg hook**: Validates all commits follow Conventional Commits format (`feat:`, `fix:`, etc.). Rejects commits that don't match.
+- **pre-commit hook**: Runs `dotnet format` before each commit to ensure code style compliance. If issues are found, fixes them and asks you to review and re-stage.
+
+Both hooks ensure commits meet project standards automatically.
 
 ### Root Checkout
 
