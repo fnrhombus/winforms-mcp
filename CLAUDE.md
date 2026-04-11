@@ -188,7 +188,7 @@ Only pick issues that are open, unlabelled or labelled `enhancement`/`bug`/`good
 5. **Before opening a PR, sync with dev** — pull latest from dev into feature branch to catch conflicts early
 6. **Open a PR** against dev, referencing the issue
 7. **Merge the PR** into dev
-8. **Immediately clean up the worktree and branch** — do not leave worktrees behind
+8. **Immediately clean up the worktree and branch** — mandatory, before any other work
 
 ```bash
 # Feature development (always via worktree + PR)
@@ -204,16 +204,22 @@ git push -f origin feature/42-add-widget
 
 gh pr create --base dev --title "feat: add widget" --body "Closes #42"
 
-# After PR is merged — clean up IMMEDIATELY (do this every time, no exceptions)
+# After PR is merged — IMMEDIATELY clean up (GitHub auto-deletes remote branch)
 git checkout dev && git pull
 git branch -d feature/42-add-widget
 git worktree remove <worktree-path> --force
+
+# Verify cleanup is complete
+git worktree list  # Should only show root checkout
+git branch         # Should not contain worktree-* or feature/42-* branches
 
 # Release to production (when ready)
 ./scripts/merge-to-master.ps1  # PowerShell
 # OR
 ./scripts/merge-to-master.sh   # Bash
 ```
+
+**MANDATORY CLEANUP:** After every PR merge, delete the local branch and worktree immediately — before moving to the next task. GitHub auto-deletes the remote branch, but you must handle the local cleanup. This is non-negotiable.
 
 **CRITICAL: Stale worktrees prevent branch switching and clutter the repo. Clean up immediately after every merge — no exceptions.**
 
@@ -341,6 +347,12 @@ This enables automated changelog generation and traceability.
 - Issue references (`#N`) in commit messages become clickable links automatically
 
 This is why issue references in commits matter — they flow into the release notes for free.
+
+## Querying Microsoft Documentation
+
+You have access to MCP tools called `microsoft_docs_search`, `microsoft_docs_fetch`, and `microsoft_code_sample_search` — these tools allow you to search through and fetch Microsoft's latest official documentation and code samples, and that information might be more detailed or newer than what's in your training data set.
+
+When handling questions around how to work with native Microsoft technologies, such as C#, F#, ASP.NET Core, Microsoft.Extensions, NuGet, Entity Framework, the `dotnet` runtime — please use these tools for research purposes when dealing with specific / narrowly defined questions that may occur.
 
 ## Important Notes
 

@@ -13,7 +13,7 @@ namespace Rhombus.WinFormsMcp.RendererHost;
 /// </summary>
 class Program {
     [STAThread]
-    static int Main(string[] args) {
+    static int Main(string[] _) {
         try {
             // Signal ready
             var ready = JsonSerializer.Serialize(new { type = "ready", tfm = GetCurrentTfm() });

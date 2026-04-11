@@ -42,8 +42,8 @@ public class DesignSurfaceFormRenderer {
     private string? _projectDir;
 
     // Circular reference protection for recursive UserControl rendering (shared across threads)
-    private static readonly HashSet<string> _renderingStack = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly object _renderingStackLock = new();
+    private static readonly HashSet<string> RenderingStack = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly object RenderingStackLock = new();
 
     private static void EnsureVisualStyles() {
         if (_visualStylesInitialized)
@@ -971,8 +971,8 @@ public class DesignSurfaceFormRenderer {
             : typeName;
 
         // Circular reference protection
-        lock (_renderingStackLock) {
-            if (!_renderingStack.Add(shortName))
+        lock (RenderingStackLock) {
+            if (!RenderingStack.Add(shortName))
                 return null; // Already rendering this type — circular reference
         }
 
@@ -1012,8 +1012,8 @@ public class DesignSurfaceFormRenderer {
             return null;
         }
         finally {
-            lock (_renderingStackLock) {
-                _renderingStack.Remove(shortName);
+            lock (RenderingStackLock) {
+                RenderingStack.Remove(shortName);
             }
         }
     }

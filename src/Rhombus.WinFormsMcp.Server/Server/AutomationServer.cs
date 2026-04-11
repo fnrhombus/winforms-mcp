@@ -161,7 +161,7 @@ class AutomationServer : BackgroundService {
         return id.ValueKind == JsonValueKind.String ? (object)id.GetString()! : id.GetInt32();
     }
 
-    private Task ProcessNotification(JsonElement request) {
+    private Task ProcessNotification(JsonElement _) {
         // Notifications are fire-and-forget; no response allowed.
         // "initialized" is the only one we currently receive.
         return Task.CompletedTask;
