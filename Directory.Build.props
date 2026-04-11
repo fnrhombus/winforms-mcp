@@ -3,8 +3,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
-  <!-- Auto-configure git hooks on restore -->
-  <Target Name="ConfigureGitHooks" AfterTargets="Restore">
+  <!-- Auto-configure git hooks on restore (skip in CI) -->
+  <Target Name="ConfigureGitHooks" AfterTargets="Restore" Condition="'$(CI)' == '' AND '$(TF_BUILD)' == '' AND '$(GITHUB_ACTIONS)' == ''">
     <Exec Command="git config core.hooksPath .githooks" ConsoleToMsBuild="true" ContinueOnError="true" />
   </Target>
 </Project>
