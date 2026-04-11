@@ -1,0 +1,21 @@
+#!/bin/bash
+# Auto-format staged C# files before commit
+# Runs dotnet format on the entire solution to ensure consistent style
+
+echo "Formatting code with dotnet format..."
+
+# Run dotnet format (formats entire solution based on .editorconfig)
+dotnet format Rhombus.WinFormsMcp.sln --verify-no-changes --verbosity quiet
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "⚠️  Code formatting issues found. Running dotnet format to fix them..."
+  dotnet format Rhombus.WinFormsMcp.sln --verbosity quiet
+  echo ""
+  echo "✓ Code has been formatted. Please review changes and stage them:"
+  echo "  git add -A"
+  echo "  git commit ..."
+  exit 1
+fi
+
+exit 0
