@@ -86,7 +86,7 @@ dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c 
 - The classes are tightly coupled (e.g., a public class and its direct helper)
 - The types are single-use (e.g., enums, markers, small value objects used nowhere else)
 
-**Monolithic files are not acceptable.** `src/Rhombus.WinFormsMcp.Server/Program.cs` is currently 1795 lines and violates this — it should be broken into separate files for `AutomationServer`, `SessionManager`, and other types. This should be refactored in a future cleanup task.
+**Avoid monolithic files.** Keep files focused and navigable. If a file grows to contain multiple unrelated public classes or becomes difficult to navigate, it should be split.
 
 ### MCP Tools Available
 
