@@ -88,6 +88,29 @@ dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c 
 
 **Avoid monolithic files.** Keep files focused and navigable. If a file grows to contain multiple unrelated public classes or becomes difficult to navigate, it should be split.
 
+### Code Style and Formatting
+
+**Automated enforcement:** The project uses `.editorconfig` to enforce consistent style. Run `dotnet format` to fix style violations automatically.
+
+**Key style rules to follow when writing code:**
+
+- **Braces:** Always use braces for control blocks (`if`, `for`, `while`, etc.) — `csharp_prefer_braces = true`
+- **Namespaces:** Use block-scoped namespace declarations (`namespace Foo { }`) not file-scoped (`namespace Foo;`) — `csharp_style_namespace_declarations = block_scoped`
+- **Using directives:** Place `using` statements outside the namespace block; sort system directives first and separate groups
+- **Private fields:** Prefix with underscore (`_fieldName`) — enforced as warning
+- **Interfaces:** Prefix with `I` (`IInterface`) — enforced as suggestion
+- **Variable names:** PascalCase for types, methods, properties; camelCase for local variables and parameters
+- **Modifiers:** Order is `public`, `private`, `protected`, `internal`, `file`, `static`, `extern`, `new`, `virtual`, `abstract`, `sealed`, `override`, `readonly`, `unsafe`, `required`, `volatile`, `async`
+- **Single-line blocks:** Preserve as single line if possible (`if (x) return;` is allowed)
+- **Method/property formatting:** Use expression-bodied members for simple properties and lambdas, but not for constructors or methods with complex logic
+
+**When generating or extracting code:**
+1. Always include proper using statements
+2. Ensure closing braces are present and properly indented
+3. Follow the modifier order when declaring members
+4. Use `var` for local variable declarations (type inference preferred)
+5. Run `dotnet format` after generating multi-file changes to ensure consistency
+
 ### MCP Tools Available
 
 The server implements 33 tools via JSON-RPC:
