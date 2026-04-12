@@ -132,7 +132,7 @@ See `docs/HEADLESS_MODE.md` for the full technical reference aimed at AI agent c
 
 ## Git Workflow
 
-This project follows a **dev/master branching strategy** with **Semantic Versioning (SemVer)** according to https://semver.org/.
+This project follows a **dev/main branching strategy** with **Semantic Versioning (SemVer)** according to https://semver.org/.
 
 ### Git Hooks (Auto-Configured)
 
@@ -155,7 +155,7 @@ No manual setup required — hooks are configured automatically by `Directory.Bu
   - **No meaningful work directly on dev** — only trivial changes that don't have a GitHub issue
   - Triggers beta releases on push
 
-- **master** - Stable release branch
+- **main** - Stable release branch
   - Only receives merges from dev
   - Protected: no direct commits allowed
   - Triggers stable releases on push
@@ -214,9 +214,9 @@ git worktree list  # Should only show root checkout
 git branch         # Should not contain worktree-* or feature/42-* branches
 
 # Release to production (when ready)
-./scripts/merge-to-master.ps1  # PowerShell
+./scripts/merge-to-main.ps1  # PowerShell
 # OR
-./scripts/merge-to-master.sh   # Bash
+./scripts/merge-to-main.sh   # Bash
 ```
 
 **MANDATORY CLEANUP:** After every PR merge, delete the local branch and worktree immediately — before moving to the next task. GitHub auto-deletes the remote branch, but you must handle the local cleanup. This is non-negotiable.
@@ -288,7 +288,7 @@ Triggers on push to `dev` branch:
 5. Commit version bump back to dev
 
 ### Master Branch CI (.github/workflows/release-stable.yml)
-Triggers on push to `master` branch (merge from dev):
+Triggers on push to `main` branch (merge from dev):
 1. Remove `-beta` suffix from version
 2. Build and test
 3. Generate changelog from git log (grouped by conventional commit type)
@@ -300,22 +300,22 @@ Triggers on push to `master` branch (merge from dev):
 
 ```powershell
 # PowerShell (Windows)
-./scripts/merge-to-master.ps1          # Interactive, with CI check
-./scripts/merge-to-master.ps1 -Force   # Skip CI check (not recommended)
-./scripts/merge-to-master.ps1 -DryRun  # Preview without executing
+./scripts/merge-to-main.ps1          # Interactive, with CI check
+./scripts/merge-to-main.ps1 -Force   # Skip CI check (not recommended)
+./scripts/merge-to-main.ps1 -DryRun  # Preview without executing
 ```
 
 ```bash
 # Bash (Mac/Linux/WSL)
-./scripts/merge-to-master.sh           # Interactive, with CI check
-./scripts/merge-to-master.sh --force   # Skip CI check (not recommended)
-./scripts/merge-to-master.sh --dry-run # Preview without executing
+./scripts/merge-to-main.sh           # Interactive, with CI check
+./scripts/merge-to-main.sh --force   # Skip CI check (not recommended)
+./scripts/merge-to-main.sh --dry-run # Preview without executing
 ```
 
 The merge script:
 - Verifies dev branch CI is passing
 - Confirms version number
-- Merges dev to master
+- Merges dev to main
 - Pushes to trigger release workflow
 
 ## Commit Guidelines
