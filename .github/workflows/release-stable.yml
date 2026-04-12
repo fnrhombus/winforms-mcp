@@ -190,9 +190,8 @@ jobs:
 
     - name: Publish to NPM
       run: |
-        npm config set @fnrhombus:registry https://registry.npmjs.org/
-        npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
         cd npm
+        echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
         npm publish --access public || echo "NPM publish failed or already exists"
       if: env.NPM_TOKEN != ''
       env:
