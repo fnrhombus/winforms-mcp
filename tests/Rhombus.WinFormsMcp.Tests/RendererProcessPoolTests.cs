@@ -205,13 +205,11 @@ public class RendererProcessPoolTests {
 
     [Test]
     public async Task RenderAsync_Net8Host_ProducesValidPng() {
-        // Find the RendererHost build output
+        // Find the RendererHost build output, matching the active build configuration
         var serverDir = Path.GetDirectoryName(typeof(RendererProcessPool).Assembly.Location)!;
-        // Navigate from test output to source layout
-        // Test: tests/.../bin/Debug/net8.0-windows/
-        // Host: src/Rhombus.WinFormsMcp.RendererHost/bin/Debug/
         var repoRoot = FindRepoRoot(serverDir);
-        var hostBasePath = Path.Combine(repoRoot, "src", "Rhombus.WinFormsMcp.RendererHost", "bin", "Debug");
+        var config = BuildConfiguration;
+        var hostBasePath = Path.Combine(repoRoot, "src", "Rhombus.WinFormsMcp.RendererHost", "bin", config);
 
         if (!Directory.Exists(Path.Combine(hostBasePath, "net8.0-windows"))) {
             Assert.Ignore("RendererHost not built. Run: dotnet build src/Rhombus.WinFormsMcp.RendererHost");
@@ -252,7 +250,8 @@ namespace TestApp {
     [Test]
     public async Task RenderAsync_ProcessReuse_SecondCallFaster() {
         var repoRoot = FindRepoRoot(Path.GetDirectoryName(typeof(RendererProcessPool).Assembly.Location)!);
-        var hostBasePath = Path.Combine(repoRoot, "src", "Rhombus.WinFormsMcp.RendererHost", "bin", "Debug");
+        var config = BuildConfiguration;
+        var hostBasePath = Path.Combine(repoRoot, "src", "Rhombus.WinFormsMcp.RendererHost", "bin", config);
 
         if (!Directory.Exists(Path.Combine(hostBasePath, "net8.0-windows"))) {
             Assert.Ignore("RendererHost not built.");
@@ -304,6 +303,13 @@ namespace TestApp {
         }
         throw new DirectoryNotFoundException("Could not find repository root from " + startDir);
     }
+
+    private static string BuildConfiguration =>
+#if DEBUG
+        "Debug";
+#else
+        "Release";
+#endif
 
     #endregion
 }

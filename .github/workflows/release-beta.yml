@@ -3,11 +3,12 @@ name: Release Beta
 on:
   push:
     branches: [ dev ]
+  workflow_dispatch:
 
 jobs:
   release-beta:
     # Skip version-bump commits to avoid infinite loops
-    if: "!contains(github.event.head_commit.message, '[skip ci]') && !startsWith(github.event.head_commit.message, 'chore: bump version to')"
+    if: "github.event_name == 'workflow_dispatch' || (!contains(github.event.head_commit.message, '[skip ci]') && !startsWith(github.event.head_commit.message, 'chore: bump version to'))"
     runs-on: windows-latest
     permissions:
       contents: write
