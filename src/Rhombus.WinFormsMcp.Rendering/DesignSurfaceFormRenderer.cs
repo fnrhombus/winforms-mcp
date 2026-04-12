@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
@@ -192,6 +193,14 @@ public class DesignSurfaceFormRenderer {
 
         // Render
         var view = (Control)surface.View;
+
+        // Hide the ComponentTray — the DesignSurface places non-visual
+        // components (StatusStrip, MenuStrip, etc.) in a tray panel below
+        // the form, which covers docked controls and pollutes the output.
+        var tray = view.Controls.Cast<Control>()
+            .FirstOrDefault(c => c.GetType().Name == "ComponentTray");
+        if (tray != null)
+            tray.Visible = false;
 
         var width = _rootControl.Width > 0 ? _rootControl.Width : 300;
         var height = _rootControl.Height > 0 ? _rootControl.Height : 200;
