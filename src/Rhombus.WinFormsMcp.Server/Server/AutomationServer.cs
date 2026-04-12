@@ -37,59 +37,59 @@ class AutomationServer : BackgroundService {
         _tools = new Dictionary<string, Func<JsonElement, Task<JsonElement>>>
         {
             // Element Tools
-            { "find_element", FindElement },
-            { "click_element", ClickElement },
-            { "type_text", TypeText },
-            { "set_value", SetValue },
-            { "get_property", GetProperty },
+            { "winforms_find_element", FindElement },
+            { "winforms_click_element", ClickElement },
+            { "winforms_type_text", TypeText },
+            { "winforms_set_value", SetValue },
+            { "winforms_get_property", GetProperty },
 
             // Process Tools
-            { "launch_app", LaunchApp },
-            { "attach_to_process", AttachToProcess },
-            { "close_app", CloseApp },
-            { "get_process_status", GetProcessStatus },
+            { "winforms_launch_app", LaunchApp },
+            { "winforms_attach_to_process", AttachToProcess },
+            { "winforms_close_app", CloseApp },
+            { "winforms_get_process_status", GetProcessStatus },
 
             // Validation Tools
-            { "take_screenshot", TakeScreenshot },
-            { "element_exists", ElementExists },
-            { "wait_for_element", WaitForElement },
+            { "winforms_take_screenshot", TakeScreenshot },
+            { "winforms_element_exists", ElementExists },
+            { "winforms_wait_for_element", WaitForElement },
 
             // Interaction Tools
-            { "drag_drop", DragDrop },
-            { "send_keys", SendKeys },
-            { "select_item", SelectItem },
-            { "click_menu_item", ClickMenuItem },
+            { "winforms_drag_drop", DragDrop },
+            { "winforms_send_keys", SendKeys },
+            { "winforms_select_item", SelectItem },
+            { "winforms_click_menu_item", ClickMenuItem },
 
             // Form Preview Tools
-            { "render_form", RenderForm },
+            { "winforms_render_form", RenderForm },
 
             // Discovery Tools
-            { "get_element_tree", GetElementTree },
+            { "winforms_get_element_tree", GetElementTree },
 
             // Condition & Toggle Tools
-            { "wait_for_condition", WaitForCondition },
-            { "toggle_element", ToggleElement },
+            { "winforms_wait_for_condition", WaitForCondition },
+            { "winforms_toggle_element", ToggleElement },
 
             // Data & Scroll Tools
-            { "scroll_element", ScrollElement },
-            { "get_table_data", GetTableData },
-            { "set_table_cell", SetTableCell },
+            { "winforms_scroll_element", ScrollElement },
+            { "winforms_get_table_data", GetTableData },
+            { "winforms_set_table_cell", SetTableCell },
 
             // Window Management Tools
-            { "manage_window", ManageWindow },
-            { "list_windows", ListWindows },
-            { "get_focused_element", GetFocusedElement },
+            { "winforms_manage_window", ManageWindow },
+            { "winforms_list_windows", ListWindows },
+            { "winforms_get_focused_element", GetFocusedElement },
 
             // Event Tools
-            { "raise_event", RaiseEvent },
-            { "listen_for_event", ListenForEvent },
-            { "open_context_menu", OpenContextMenu },
+            { "winforms_raise_event", RaiseEvent },
+            { "winforms_listen_for_event", ListenForEvent },
+            { "winforms_open_context_menu", OpenContextMenu },
 
             // Polish Tools
-            { "get_clipboard", GetClipboard },
-            { "set_clipboard", SetClipboard },
-            { "read_tooltip", ReadTooltip },
-            { "find_elements", FindElements },
+            { "winforms_get_clipboard", GetClipboard },
+            { "winforms_set_clipboard", SetClipboard },
+            { "winforms_read_tooltip", ReadTooltip },
+            { "winforms_find_elements", FindElements },
         };
     }
 
@@ -275,8 +275,8 @@ class AutomationServer : BackgroundService {
         {
             new
             {
-                name = "find_element",
-                description = "Find a UI element by AutomationId, Name, ClassName, or ControlType",
+                name = "winforms_find_element",
+                description = "Find a UI element by AutomationId, Name, ClassName, or ControlType. Returns a cached element ID for use with other tools.",
                 inputSchema = new
                 {
                     type = "object",
@@ -292,8 +292,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "click_element",
-                description = "Click on a UI element",
+                name = "winforms_click_element",
+                description = "Click on a cached UI element. Supports single and double click.",
                 inputSchema = new
                 {
                     type = "object",
@@ -307,8 +307,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "type_text",
-                description = "Type text into a text field",
+                name = "winforms_type_text",
+                description = "Type text into a text field using keyboard simulation. Use winforms_set_value for hidden desktops.",
                 inputSchema = new
                 {
                     type = "object",
@@ -323,34 +323,24 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "get_property",
+                name = "winforms_get_property",
                 description = "Get a property or UIA pattern value from a cached UI element. " +
-                    "Supported property names: " +
-                    "name, automationId, className, controlType, isOffscreen, isEnabled, " +
-                    "value (or text) — reads ValuePattern.Value (falls back to Name), " +
-                    "isChecked (or toggleState) — reads TogglePattern.ToggleState, " +
-                    "isSelected — reads SelectionItemPattern.IsSelected, " +
-                    "selectedItem — reads first SelectionPattern.Selection item name, " +
-                    "items — JSON array of child item names, " +
-                    "itemCount — count of child items, " +
-                    "boundingRectangle — JSON {x, y, width, height}, " +
-                    "isExpanded — reads ExpandCollapsePattern state, " +
-                    "min / max / current — reads RangeValuePattern values (for sliders, NumericUpDown, etc.).",
+                    "Returns the property value, or an error listing all supported property names if the requested property is unknown.",
                 inputSchema = new
                 {
                     type = "object",
                     properties = new
                     {
                         elementId = new { type = "string", description = "Cached element ID (e.g. elem_1)" },
-                        propertyName = new { type = "string", description = "Property name to read (see tool description for supported names)" }
+                        propertyName = new { type = "string", description = "Property name to read" }
                     },
                     required = new[] { "elementId", "propertyName" }
                 }
             },
             new
             {
-                name = "launch_app",
-                description = "Launch a WinForms application",
+                name = "winforms_launch_app",
+                description = "Launch a WinForms application. Returns the process ID for use with other tools.",
                 inputSchema = new
                 {
                     type = "object",
@@ -365,33 +355,29 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "get_process_status",
-                description = "Get the current status of a launched process. Use after launch_app to verify the application started successfully, " +
-                    "detect crashes (hasExited + exitCode), check responsiveness (responding), or read stderr output for error diagnostics. " +
-                    "Returns isRunning, hasExited, exitCode (if exited), responding (Process.Responding), mainWindowTitle, and captured stderr.",
+                name = "winforms_get_process_status",
+                description = "Get the current status of a launched process including exit code, responsiveness, and stderr output.",
                 inputSchema = new
                 {
                     type = "object",
                     properties = new
                     {
-                        pid = new { type = "integer", description = "Process ID returned by launch_app or attach_to_process" }
+                        pid = new { type = "integer", description = "Process ID returned by winforms_launch_app or winforms_attach_to_process" }
                     },
                     required = new[] { "pid" }
                 }
             },
             new
             {
-                name = "take_screenshot",
-                description = "Take a screenshot of the application or element. Returns the image as base64 data that Claude can see directly. " +
-                    "Uses PrintWindow for capture, which works for both visible and headless (hidden desktop) processes. " +
-                    "Provide pid for the most reliable capture path. Optionally saves to disk if outputPath is provided.",
+                name = "winforms_take_screenshot",
+                description = "Take a screenshot of the application or element as base64 PNG. Works on both visible and headless desktops via PrintWindow.",
                 inputSchema = new
                 {
                     type = "object",
                     properties = new
                     {
                         pid = new { type = "integer", description = "Process ID — captures the process's main window via PrintWindow (recommended)" },
-                        outputPath = new { type = "string", description = "Path to save the screenshot (optional). If omitted, captures to a temp file, converts to base64, and deletes the temp file." },
+                        outputPath = new { type = "string", description = "Path to save the screenshot (optional). If omitted, returns base64 only." },
                         elementPath = new { type = "string", description = "Specific element to screenshot (optional)" }
                     }
                 }
@@ -399,15 +385,9 @@ class AutomationServer : BackgroundService {
             // ── Form Preview Tools ──
             new
             {
-                name = "render_form",
-                description = "Render a WinForms .Designer.cs file to a pixel-accurate PNG preview using .NET's DesignSurface — the same infrastructure Visual Studio uses for its WYSIWYG designer. " +
-                    "Works WITHOUT building the project. Automatically detects the project's target framework and renders in a matching out-of-process host (supports .NET Framework 4.x, .NET Core 3.x, and .NET 5–9+). " +
-                    "Returns the image as inline base64 so you can see the form layout directly. Results are cached by content hash for instant re-renders. " +
-                    "AUTHORING REQUIREMENTS: Forms must use the standard Visual Studio designer file convention — " +
-                    "a separate .Designer.cs file containing a partial class with InitializeComponent(), " +
-                    "fully-qualified type names (e.g., System.Windows.Forms.Button), 'this.' prefix for member access, " +
-                    "SuspendLayout()/ResumeLayout(false)/PerformLayout() calls, field declarations at the bottom, and a Dispose method with components container. " +
-                    "Do NOT put control creation in the .cs file — it belongs ONLY in .Designer.cs.",
+                name = "winforms_render_form",
+                description = "Render a WinForms .Designer.cs file to a pixel-accurate PNG preview without building the project. " +
+                    "Auto-detects target framework and returns base64 PNG. Results are cached by content hash.",
                 inputSchema = new
                 {
                     type = "object",
@@ -421,13 +401,9 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "select_item",
-                description = "Select an item in a combo box, list box, or similar selection control. " +
-                    "Handles the expand-find-select pattern automatically: expands the control (if collapsible), " +
-                    "finds the target item by text value or zero-based index, selects it via SelectionItemPattern " +
-                    "(or falls back to ScrollIntoView + click), and collapses the control. " +
-                    "Provide either 'value' (text match, case-insensitive) or 'index' (zero-based position). " +
-                    "Returns the text of the selected item.",
+                name = "winforms_select_item",
+                description = "Select an item in a combo box, list box, or similar selection control by text or index. " +
+                    "Handles expand/collapse automatically.",
                 inputSchema = new
                 {
                     type = "object",
@@ -442,13 +418,9 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "click_menu_item",
-                description = "Navigate and click a menu item in a menu bar or context menu. " +
-                    "Provide a menuPath array of menu item names forming the navigation path (e.g. [\"File\", \"Save As\"]). " +
-                    "For each level, the tool finds the menu item by name, expands it (via ExpandCollapsePattern or click), " +
-                    "waits for the submenu to appear, and then proceeds to the next level. The final item is invoked " +
-                    "(via InvokePattern) or clicked. Works with both MenuBar items and context menu items. " +
-                    "Optionally provide a pid to scope the search to a specific application window.",
+                name = "winforms_click_menu_item",
+                description = "Navigate and click a menu item by path (e.g. [\"File\", \"Save As\"]). " +
+                    "Works with menu bars and context menus.",
                 inputSchema = new
                 {
                     type = "object",
@@ -462,28 +434,26 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "get_element_tree",
-                description = "Get the UI automation element tree as structured JSON. Returns a recursive tree of elements with name, controlType, automationId, boundingRectangle, isEnabled, isOffscreen, and children. " +
-                    "Each discovered element is cached and assigned an elementId for subsequent tool calls (click_element, type_text, etc.). " +
-                    "Use this tool to discover the UI structure of a running application before interacting with specific elements.",
+                name = "winforms_get_element_tree",
+                description = "Get the UI element tree as structured JSON. Each element is cached with an elementId for subsequent tool calls. " +
+                    "Use this to discover UI structure before interacting with elements.",
                 inputSchema = new
                 {
                     type = "object",
                     properties = new
                     {
                         pid = new { type = "integer", description = "Process ID — uses the process main window as root" },
-                        elementId = new { type = "string", description = "Cached element ID to use as root (from a previous find_element or get_element_tree call)" },
+                        elementId = new { type = "string", description = "Cached element ID to use as root (from a previous find call)" },
                         depth = new { type = "integer", description = "Maximum depth to traverse (default 3)" },
                         maxElements = new { type = "integer", description = "Maximum total elements to include (default 50)" }
                     }
                 }
             },
-            // ── Previously undocumented tools ──
+            // ── Value & Process Tools ──
             new
             {
-                name = "set_value",
-                description = "Set a value on a UI element using UIA ValuePattern. Works on text boxes, combo boxes, and other value-holding controls. " +
-                    "Unlike type_text, this sets the value directly without simulating keystrokes — works on hidden desktops.",
+                name = "winforms_set_value",
+                description = "Set a value on a UI element via UIA ValuePattern. Works on hidden desktops (no keystroke simulation).",
                 inputSchema = new
                 {
                     type = "object",
@@ -497,10 +467,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "attach_to_process",
-                description = "Attach to a running process by PID or process name. Use this to automate an application that is already running " +
-                    "(e.g., an app launched outside the MCP server). Always attaches on the default (visible) desktop. " +
-                    "Provide either pid or processName (not both).",
+                name = "winforms_attach_to_process",
+                description = "Attach to an already-running process by PID or name. Always uses the default (visible) desktop.",
                 inputSchema = new
                 {
                     type = "object",
@@ -513,9 +481,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "close_app",
-                description = "Close a running application. By default sends WM_CLOSE for a graceful shutdown. " +
-                    "Use force=true to kill the process immediately (Process.Kill).",
+                name = "winforms_close_app",
+                description = "Close a running application gracefully (WM_CLOSE) or forcefully (Process.Kill).",
                 inputSchema = new
                 {
                     type = "object",
@@ -529,9 +496,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "element_exists",
-                description = "Quick boolean check for whether a UI element with the given AutomationId exists. " +
-                    "Uses a short 1-second timeout. Use this for fast existence checks before attempting interactions.",
+                name = "winforms_element_exists",
+                description = "Quick boolean check for whether a UI element exists by AutomationId (1-second timeout).",
                 inputSchema = new
                 {
                     type = "object",
@@ -544,10 +510,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "wait_for_element",
-                description = "Wait for a UI element to appear, polling at 100ms intervals. " +
-                    "Use this after actions that trigger async UI changes (e.g., opening a dialog, loading data). " +
-                    "Returns whether the element was found within the timeout period.",
+                name = "winforms_wait_for_element",
+                description = "Wait for a UI element to appear by AutomationId, polling at 100ms intervals.",
                 inputSchema = new
                 {
                     type = "object",
@@ -561,10 +525,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "drag_drop",
-                description = "Perform a drag-and-drop operation from one element to another. " +
-                    "Uses mouse simulation — only works on the default (visible) desktop, not on hidden desktops. " +
-                    "Both elements must be cached from a prior find_element or get_element_tree call.",
+                name = "winforms_drag_drop",
+                description = "Drag-and-drop from one element to another. Uses mouse simulation (visible desktop only).",
                 inputSchema = new
                 {
                     type = "object",
@@ -578,38 +540,32 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "send_keys",
-                description = "Send keyboard input to the application. Uses SendKeys syntax: " +
-                    "^ = Ctrl, % = Alt, + = Shift, {ENTER}, {TAB}, {ESC}, {DELETE}, {F1}-{F12}, etc. " +
-                    "Examples: \"^a\" (Ctrl+A), \"^c\" (Ctrl+C), \"%{F4}\" (Alt+F4), \"+{TAB}\" (Shift+Tab). " +
-                    "Uses input simulation — only works on the default (visible) desktop. " +
-                    "For text input on hidden desktops, use type_text or set_value instead.",
+                name = "winforms_send_keys",
+                description = "Send keyboard input using SendKeys syntax (^ = Ctrl, % = Alt, + = Shift). Visible desktop only.",
                 inputSchema = new
                 {
                     type = "object",
                     properties = new
                     {
-                        keys = new { type = "string", description = "Keys to send using SendKeys syntax" },
+                        keys = new { type = "string", description = "Keys to send using SendKeys syntax (e.g. \"^a\" for Ctrl+A, \"%{F4}\" for Alt+F4)" },
                         pid = new { type = "integer", description = "Optional process ID to focus before sending keys" }
                     },
                     required = new[] { "keys" }
                 }
             },
-            // ── Phase 1: Reliability & Async ──
+            // ── Condition & Toggle Tools ──
             new
             {
-                name = "wait_for_condition",
-                description = "Wait for a UI element's property to match a condition. Polls at 100ms intervals. " +
-                    "Use this after actions that trigger async changes — e.g., wait until a label shows 'Done', " +
-                    "a button becomes enabled, or a progress bar reaches a value. " +
-                    "Property names are the same as get_property (value, isEnabled, isChecked, name, etc.).",
+                name = "winforms_wait_for_condition",
+                description = "Wait for a UI element's property to match a value. Polls at 100ms intervals. " +
+                    "Property names are the same as winforms_get_property.",
                 inputSchema = new
                 {
                     type = "object",
                     properties = new
                     {
                         elementId = new { type = "string", description = "Cached element ID to poll" },
-                        propertyName = new { type = "string", description = "Property name to check (same names as get_property)" },
+                        propertyName = new { type = "string", description = "Property name to check (same names as winforms_get_property)" },
                         expectedValue = new { type = "string", description = "The value to wait for" },
                         comparison = new { type = "string", description = "Comparison type: equals (default), contains, not_equals, greater_than, less_than" },
                         timeoutMs = new { type = "integer", description = "Maximum wait time in milliseconds (default 10000)" }
@@ -619,10 +575,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "toggle_element",
-                description = "Toggle a checkbox, radio button, or toggle button using UIA TogglePattern. " +
-                    "Optionally specify a desired state (on/off/indeterminate) to toggle until that state is reached. " +
-                    "Works on hidden desktops. Returns the previous and current toggle states.",
+                name = "winforms_toggle_element",
+                description = "Toggle a checkbox, radio button, or toggle button via UIA TogglePattern. Works on hidden desktops.",
                 inputSchema = new
                 {
                     type = "object",
@@ -634,12 +588,11 @@ class AutomationServer : BackgroundService {
                     required = new[] { "elementId" }
                 }
             },
-            // ── Phase 2: Data-Heavy Apps ──
+            // ── Data & Scroll Tools ──
             new
             {
-                name = "scroll_element",
-                description = "Scroll within a scrollable control (ListBox, DataGridView, TreeView, Panel, etc.) using UIA ScrollPattern. " +
-                    "Works on hidden desktops. Returns the current scroll position percentages.",
+                name = "winforms_scroll_element",
+                description = "Scroll within a scrollable control using UIA ScrollPattern. Works on hidden desktops.",
                 inputSchema = new
                 {
                     type = "object",
@@ -655,10 +608,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "get_table_data",
-                description = "Read data from a DataGridView or other grid control. Returns structured JSON with headers, row count, " +
-                    "column count, and cell values. Supports pagination via startRow/rowCount for large grids. " +
-                    "Works with both WinForms DataGridView and generic UIA Grid controls.",
+                name = "winforms_get_table_data",
+                description = "Read data from a DataGridView or grid control. Supports pagination via startRow/rowCount.",
                 inputSchema = new
                 {
                     type = "object",
@@ -674,10 +625,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "set_table_cell",
-                description = "Set a cell value in a DataGridView or grid control. " +
-                    "Navigates to the cell and sets its value via ValuePattern, falling back to click-to-edit. " +
-                    "Returns the previous and new values.",
+                name = "winforms_set_table_cell",
+                description = "Set a cell value in a DataGridView or grid control. Returns the previous and new values.",
                 inputSchema = new
                 {
                     type = "object",
@@ -691,13 +640,11 @@ class AutomationServer : BackgroundService {
                     required = new[] { "elementId", "row", "column", "value" }
                 }
             },
-            // ── Phase 3: Window & Multi-Form Management ──
+            // ── Window Management Tools ──
             new
             {
-                name = "manage_window",
-                description = "Manage a window: maximize, minimize, restore, resize, move, or close. " +
-                    "Uses UIA WindowPattern and TransformPattern. Works on hidden desktops for state changes; " +
-                    "resize/move may have no visible effect on hidden desktops but the state is tracked.",
+                name = "winforms_manage_window",
+                description = "Manage a window: maximize, minimize, restore, resize, move, or close via UIA patterns.",
                 inputSchema = new
                 {
                     type = "object",
@@ -715,10 +662,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "list_windows",
-                description = "List all top-level windows for a process. Returns title, className, visibility, controlType, and bounding rectangle " +
-                    "for each window. Each window is cached with an elementId for use as parent in find_element or get_element_tree. " +
-                    "Useful for apps with multiple forms, dialogs, or MDI windows.",
+                name = "winforms_list_windows",
+                description = "List all top-level windows for a process. Each window is cached with an elementId.",
                 inputSchema = new
                 {
                     type = "object",
@@ -729,14 +674,11 @@ class AutomationServer : BackgroundService {
                     required = new[] { "pid" }
                 }
             },
-            // ── Phase 4: Event System & Context Menus ──
+            // ── Event Tools ──
             new
             {
-                name = "raise_event",
-                description = "Raise a UIA event on an element. Supported events: " +
-                    "invoke (click/activate), toggle (checkbox/toggle button), expand, collapse, " +
-                    "select (selection item), scroll_into_view. " +
-                    "Note: This triggers UIA patterns directly — it cannot raise arbitrary .NET events.",
+                name = "winforms_raise_event",
+                description = "Raise a UIA pattern event on an element (invoke, toggle, expand, collapse, select, scroll_into_view).",
                 inputSchema = new
                 {
                     type = "object",
@@ -750,10 +692,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "listen_for_event",
-                description = "Listen for a UIA event with a timeout. Registers an event handler and waits for it to fire. " +
-                    "Supported event types: focus_changed, structure_changed, property_changed. " +
-                    "Returns whether the event fired within the timeout period.",
+                name = "winforms_listen_for_event",
+                description = "Listen for a UIA event (focus_changed, structure_changed, property_changed) with a timeout.",
                 inputSchema = new
                 {
                     type = "object",
@@ -768,11 +708,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "open_context_menu",
-                description = "Open a context menu on an element. " +
-                    "On hidden desktops, uses WM_CONTEXTMENU message (works across desktops). " +
-                    "On visible desktops, uses mouse right-click. " +
-                    "Returns the context menu element cached for use with click_menu_item or find_element.",
+                name = "winforms_open_context_menu",
+                description = "Open a context menu on an element. Works on both visible and hidden desktops.",
                 inputSchema = new
                 {
                     type = "object",
@@ -785,9 +722,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "get_focused_element",
-                description = "Get the UI element that currently has keyboard focus. Returns the element's properties and caches it with an elementId " +
-                    "for subsequent interactions. Useful for debugging tab order, verifying focus after interactions, or understanding keyboard navigation.",
+                name = "winforms_get_focused_element",
+                description = "Get the UI element that currently has keyboard focus. Returns cached elementId for subsequent interactions.",
                 inputSchema = new
                 {
                     type = "object",
@@ -797,12 +733,11 @@ class AutomationServer : BackgroundService {
                     }
                 }
             },
-            // ── Phase 5: Polish & Edge Cases ──
+            // ── Clipboard & Misc Tools ──
             new
             {
-                name = "get_clipboard",
-                description = "Get the current text content of the Windows clipboard. " +
-                    "Runs on an STA thread for COM clipboard access.",
+                name = "winforms_get_clipboard",
+                description = "Get the current text content of the Windows clipboard.",
                 inputSchema = new
                 {
                     type = "object",
@@ -811,9 +746,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "set_clipboard",
-                description = "Set the Windows clipboard text content. " +
-                    "Runs on an STA thread for COM clipboard access.",
+                name = "winforms_set_clipboard",
+                description = "Set the Windows clipboard text content.",
                 inputSchema = new
                 {
                     type = "object",
@@ -826,10 +760,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "read_tooltip",
-                description = "Read tooltip or help text from a UI element. " +
-                    "Tries HelpText property first, then LegacyIAccessible description, " +
-                    "then focuses the element and searches for a ToolTip popup.",
+                name = "winforms_read_tooltip",
+                description = "Read tooltip or help text from a UI element.",
                 inputSchema = new
                 {
                     type = "object",
@@ -842,10 +774,8 @@ class AutomationServer : BackgroundService {
             },
             new
             {
-                name = "find_elements",
-                description = "Find ALL UI elements matching a search criterion (not just the first match). " +
-                    "Returns an array of matching elements, each cached with an elementId. " +
-                    "Useful for 'find all buttons', 'find all list items', etc.",
+                name = "winforms_find_elements",
+                description = "Find all UI elements matching a search criterion. Returns an array of cached element IDs.",
                 inputSchema = new
                 {
                     type = "object",
@@ -952,6 +882,25 @@ class AutomationServer : BackgroundService {
         }
     }
 
+    private static readonly string[] SupportedPropertyNames = {
+        "name", "automationId", "className", "controlType", "isOffscreen", "isEnabled",
+        "value", "text", "isChecked", "toggleState", "isSelected", "selectedItem",
+        "items", "itemCount", "boundingRectangle", "isExpanded", "min", "max", "current"
+    };
+
+    private static readonly string SupportedPropertyList =
+        "Supported property names: " +
+        "name, automationId, className, controlType, isOffscreen, isEnabled, " +
+        "value (or text) - reads ValuePattern.Value (falls back to Name), " +
+        "isChecked (or toggleState) - reads TogglePattern.ToggleState, " +
+        "isSelected - reads SelectionItemPattern.IsSelected, " +
+        "selectedItem - reads first SelectionPattern.Selection item name, " +
+        "items - JSON array of child item names, " +
+        "itemCount - count of child items, " +
+        "boundingRectangle - JSON {x, y, width, height}, " +
+        "isExpanded - reads ExpandCollapsePattern state, " +
+        "min / max / current - reads RangeValuePattern values (for sliders, NumericUpDown, etc.).";
+
     private Task<JsonElement> GetProperty(JsonElement args) {
         try {
             var elementId = GetStringArg(args, "elementId") ?? throw new ArgumentException("elementId is required");
@@ -961,12 +910,18 @@ class AutomationServer : BackgroundService {
             if (element == null)
                 return Task.FromResult(JsonDocument.Parse("{\"success\": false, \"error\": \"Element not found in session\"}").RootElement);
 
+            // Check if the property name is recognized before querying
+            if (!SupportedPropertyNames.Contains(propertyName.ToLower())) {
+                var json = $"{{\"success\": false, \"error\": \"Unknown property '{EscapeJson(propertyName)}'. {EscapeJson(SupportedPropertyList)}\"}}";
+                return Task.FromResult(JsonDocument.Parse(json).RootElement);
+            }
+
             var automation = _session.GetAutomation();
             var value = automation.GetProperty(element, propertyName);
 
             var valueJson = value == null ? "null" : $"\"{EscapeJson(value.ToString())}\"";
-            var json = $"{{\"success\": true, \"propertyName\": \"{propertyName}\", \"value\": {valueJson}}}";
-            return Task.FromResult(JsonDocument.Parse(json).RootElement);
+            var resultJson = $"{{\"success\": true, \"propertyName\": \"{propertyName}\", \"value\": {valueJson}}}";
+            return Task.FromResult(JsonDocument.Parse(resultJson).RootElement);
         }
         catch (Exception ex) {
             return Task.FromResult(JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement);
@@ -1152,6 +1107,13 @@ class AutomationServer : BackgroundService {
         }
     }
 
+    private const string RenderFormAuthoringHint =
+        "AUTHORING REQUIREMENTS: Forms must use the standard Visual Studio designer file convention - " +
+        "a separate .Designer.cs file containing a partial class with InitializeComponent(), " +
+        "fully-qualified type names (e.g., System.Windows.Forms.Button), 'this.' prefix for member access, " +
+        "SuspendLayout()/ResumeLayout(false)/PerformLayout() calls, field declarations at the bottom, and a Dispose method with components container. " +
+        "Do NOT put control creation in the .cs file - it belongs ONLY in .Designer.cs.";
+
     private async Task<JsonElement> RenderForm(JsonElement args) {
         try {
             var designerFilePath = GetStringArg(args, "designerFilePath") ?? throw new ArgumentException("designerFilePath is required");
@@ -1181,10 +1143,10 @@ class AutomationServer : BackgroundService {
             }
 
             var base64 = Convert.ToBase64String(pngBytes);
-            return JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\"}}").RootElement;
+            return JsonDocument.Parse($"{{\"success\": true, \"imageBase64\": \"{base64}\", \"hint\": \"{EscapeJson(RenderFormAuthoringHint)}\"}}").RootElement;
         }
         catch (Exception ex) {
-            return JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\"}}").RootElement;
+            return JsonDocument.Parse($"{{\"success\": false, \"error\": \"{EscapeJson(ex.Message)}\", \"hint\": \"{EscapeJson(RenderFormAuthoringHint)}\"}}").RootElement;
         }
     }
 

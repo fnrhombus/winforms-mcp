@@ -225,13 +225,13 @@ public class TakeScreenshotTests {
         // Find the take_screenshot tool
         JsonElement? screenshotTool = null;
         foreach (var tool in tools.EnumerateArray()) {
-            if (tool.GetProperty("name").GetString() == "take_screenshot") {
+            if (tool.GetProperty("name").GetString() == "winforms_take_screenshot") {
                 screenshotTool = tool;
                 break;
             }
         }
 
-        Assert.That(screenshotTool, Is.Not.Null, "take_screenshot tool should exist");
+        Assert.That(screenshotTool, Is.Not.Null, "winforms_take_screenshot tool should exist");
 
         var schema = screenshotTool!.Value.GetProperty("inputSchema");
 
