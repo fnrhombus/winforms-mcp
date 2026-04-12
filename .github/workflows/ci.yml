@@ -6,7 +6,7 @@ on:
     branches: [ dev ]
 
 jobs:
-  build-and-test:
+  build-test-coverage:
     runs-on: windows-latest
 
     steps:
