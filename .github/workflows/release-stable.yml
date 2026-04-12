@@ -188,15 +188,16 @@ jobs:
         asset_name: ${{ steps.dist.outputs.zip_path }}
         asset_content_type: application/zip
 
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        registry-url: 'https://registry.npmjs.org'
+
     - name: Publish to NPM
       run: |
         cd npm
-        echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
-        npm publish --access public || echo "NPM publish failed or already exists"
-      if: env.NPM_TOKEN != ''
-      env:
-        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      continue-on-error: true
+        npm publish --access public --provenance
 
     - name: NuGet login (OIDC)
       uses: NuGet/login@v1
