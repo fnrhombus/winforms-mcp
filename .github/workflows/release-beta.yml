@@ -5,6 +5,10 @@ on:
     branches: [ dev ]
   workflow_dispatch:
 
+concurrency:
+  group: release-beta
+  cancel-in-progress: true
+
 jobs:
   release-beta:
     # Skip version-bump commits to avoid infinite loops

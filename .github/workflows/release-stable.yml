@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+concurrency:
+  group: release-stable
+  cancel-in-progress: true
+
 jobs:
   release:
     runs-on: windows-2022
