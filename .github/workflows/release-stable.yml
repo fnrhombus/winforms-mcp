@@ -192,11 +192,10 @@ jobs:
       run: |
         cd npm
         echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
-        npm publish --access public || echo "NPM publish failed or already exists"
-      if: env.NPM_TOKEN != ''
+        npm publish --access public
       env:
         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      continue-on-error: true
+      if: env.NPM_TOKEN != ''
 
     - name: NuGet login (OIDC)
       uses: NuGet/login@v1
