@@ -36,7 +36,7 @@ One line in your MCP config. Now the agent can:
 The agent reads your `.Designer.cs`, calls `render_form`, and gets back this — no build, no running app:
 
 <p align="center">
-  <img src="docs/images/render-form-demo.png" alt="render_form output — Address Entry Form" width="400">
+  <img src="docs/images/render-form-demo.png" alt="render_form output — Login Form" width="400">
 </p>
 
 It can then edit the layout, re-render, and iterate — a full visual feedback loop with no IDE, no build, and no human in the loop.
