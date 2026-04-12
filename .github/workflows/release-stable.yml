@@ -196,6 +196,9 @@ jobs:
       env:
         NODE_AUTH_TOKEN: ""
 
+    - name: Update npm for OIDC support
+      run: npm install -g npm@latest
+
     - name: Publish to NPM
       run: |
         cd npm
