@@ -143,8 +143,10 @@ jobs:
         # Stage server binaries
         New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
         Copy-Item -Path "$serverBin/winformsmcp.exe" -Destination "$stagingDir/" -Force
-        Get-ChildItem -Path $serverBin -Filter "*.dll" | ForEach-Object {
-          Copy-Item -Path $_.FullName -Destination "$stagingDir/" -Force
+        foreach ($ext in @("*.dll", "*.json")) {
+          Get-ChildItem -Path $serverBin -Filter $ext | ForEach-Object {
+            Copy-Item -Path $_.FullName -Destination "$stagingDir/" -Force
+          }
         }
 
         # Stage RendererHost binaries (one subfolder per TFM)
