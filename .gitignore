@@ -63,6 +63,7 @@ Thumbs.db
 *.jpeg
 
 # Allow committed doc images
+!docs/images/*.png/
 !docs/images/*.png
 
 # NPM
