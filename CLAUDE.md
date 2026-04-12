@@ -188,7 +188,8 @@ Only pick issues that are open, unlabelled or labelled `enhancement`/`bug`/`good
 5. **Before opening a PR, sync with dev** — pull latest from dev into feature branch to catch conflicts early
 6. **Open a PR** against dev, referencing the issue
 7. **Merge the PR** into dev
-8. **Immediately clean up the worktree and branch** — mandatory, before any other work
+8. **Close the issue and remove the `in progress` label** (`gh issue close N` + `gh issue edit N --remove-label "in progress"`)
+9. **Immediately clean up the worktree and branch** — mandatory, before any other work
 
 ```bash
 # Feature development (always via worktree + PR)
