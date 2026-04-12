@@ -127,40 +127,7 @@ jobs:
     - name: Create NuGet package
       run: dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c Release -p:Version=${{ steps.bump.outputs.new_version }}
 
-    - name: Create NPM distribution
-      shell: pwsh
-      run: |
-        $serverBin = "src/Rhombus.WinFormsMcp.Server/bin/Release/net8.0-windows"
-        $hostBin   = "src/Rhombus.WinFormsMcp.RendererHost/bin/Release"
-
-        # Stage server binaries
-        New-Item -ItemType Directory -Path "npm/dist" -Force | Out-Null
-        Copy-Item -Path "$serverBin/winformsmcp.exe" -Destination "npm/dist/" -Force
-        Get-ChildItem -Path $serverBin -Filter "*.dll" | ForEach-Object {
-          Copy-Item -Path $_.FullName -Destination "npm/dist/" -Force
-        }
-
-        # Stage RendererHost binaries (one subfolder per TFM)
-        foreach ($tfm in @("net48", "netcoreapp3.1", "net8.0-windows")) {
-          $src = "$hostBin/$tfm"
-          $dest = "npm/dist/rendererhost/$tfm"
-          if (Test-Path $src) {
-            New-Item -ItemType Directory -Path $dest -Force | Out-Null
-            Copy-Item -Path "$src/*" -Destination $dest -Recurse -Force
-            Write-Host "Copied RendererHost/$tfm -> $dest"
-          } else {
-            Write-Warning "RendererHost build output not found: $src"
-          }
-        }
-
-    - name: Publish beta to NPM
-      run: |
-        cd npm
-        echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
-        npm publish --access public --tag beta
-      env:
-        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      if: env.NPM_TOKEN != ''
+    # NPM beta publishing disabled — only stable releases publish to npm
 
     - name: NuGet login (OIDC)
       uses: NuGet/login@v1
