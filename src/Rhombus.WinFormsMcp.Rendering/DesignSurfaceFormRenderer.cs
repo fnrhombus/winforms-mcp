@@ -205,18 +205,28 @@ public class DesignSurfaceFormRenderer {
         width = Math.Max(width, 100);
         height = Math.Max(height, 100);
 
-        // The DesignSurface view paints form chrome (title bar, borders) and
-        // scrollbar gutters inside the view's client area. To prevent clipping,
-        // set the view's client area to the Form's full Size (client + chrome)
-        // plus scrollbar gutter dimensions.
-        if (_rootControl is Form chromeForm) {
-            if (!chromeForm.IsHandleCreated)
-                _ = chromeForm.Handle;
-            view.ClientSize = new Size(
-                chromeForm.Size.Width + SystemInformation.VerticalScrollBarWidth,
-                chromeForm.Size.Height + SystemInformation.HorizontalScrollBarHeight);
+        // Disable scrollbars — they are meaningless in a static preview
+        // and cause gutter space / scrollbar arrows in the rendered image.
+        if (_rootControl is Form chromeForm)
+            chromeForm.AutoScroll = false;
+        if (view is ScrollableControl scrollableView)
+            scrollableView.AutoScroll = false;
+
+        // The DesignSurface view paints form chrome (title bar, borders)
+        // inside its client area. Make the view oversized so the
+        // DesignSurface never shows scrollbars, then crop to exact bounds.
+        int formW, formH;
+        if (_rootControl is Form sizedForm) {
+            if (!sizedForm.IsHandleCreated)
+                _ = sizedForm.Handle;
+            formW = sizedForm.Size.Width;
+            formH = sizedForm.Size.Height;
+            // Oversize the view to guarantee no scrollbars appear
+            view.ClientSize = new Size(formW + 100, formH + 100);
         }
         else {
+            formW = width;
+            formH = height;
             view.ClientSize = new Size(width, height);
         }
 
@@ -225,13 +235,44 @@ public class DesignSurfaceFormRenderer {
             _ = view.Handle;
         }
 
+        // Render the oversized view to bitmap
         var bmpWidth = view.ClientSize.Width;
         var bmpHeight = view.ClientSize.Height;
-        using var bitmap = new Bitmap(bmpWidth, bmpHeight);
-        view.DrawToBitmap(bitmap, new Rectangle(0, 0, bmpWidth, bmpHeight));
+        using var fullBitmap = new Bitmap(bmpWidth, bmpHeight);
+        view.DrawToBitmap(fullBitmap, new Rectangle(0, 0, bmpWidth, bmpHeight));
+
+        // Crop to just the form. The DesignSurface places the form at a
+        // small offset (typically 1px) from the view's origin.
+        Bitmap bitmap;
+        if (_rootControl is Form) {
+            // Scan for the form's top-left corner: find the first non-background pixel
+            var bgColor = fullBitmap.GetPixel(0, 0);
+            int cropX = 0, cropY = 0;
+            for (int x = 0; x < Math.Min(20, bmpWidth); x++) {
+                if (fullBitmap.GetPixel(x, Math.Min(10, bmpHeight - 1)) != bgColor) {
+                    cropX = x;
+                    break;
+                }
+            }
+            for (int y = 0; y < Math.Min(20, bmpHeight); y++) {
+                if (fullBitmap.GetPixel(Math.Min(10, bmpWidth - 1), y) != bgColor) {
+                    cropY = y;
+                    break;
+                }
+            }
+            int cropW = Math.Min(formW, bmpWidth - cropX);
+            int cropH = Math.Min(formH, bmpHeight - cropY);
+            bitmap = fullBitmap.Clone(
+                new Rectangle(cropX, cropY, cropW, cropH),
+                fullBitmap.PixelFormat);
+        }
+        else {
+            bitmap = (Bitmap)fullBitmap.Clone();
+        }
 
         using var ms = new MemoryStream();
         bitmap.Save(ms, ImageFormat.Png);
+        bitmap.Dispose();
         return ms.ToArray();
     }
 
