@@ -215,3 +215,12 @@ jobs:
           throw "No .nupkg file found"
         }
       shell: pwsh
+
+    - name: Sync plugin repo version
+      if: secrets.PLUGIN_REPO_TOKEN != ''
+      run: |
+        gh api repos/fnrhombus/winforms-mcp-plugin/dispatches \
+          -f event_type=release \
+          -f "client_payload[version]=${{ steps.version.outputs.version }}"
+      env:
+        GH_TOKEN: ${{ secrets.PLUGIN_REPO_TOKEN }}
