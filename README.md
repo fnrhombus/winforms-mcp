@@ -74,6 +74,10 @@ Add to your MCP config and restart. Nothing else to install.
 
 That's it. The agent can now see and interact with any WinForms application on your machine.
 
+## Contributing
+
+See [CLAUDE.md](CLAUDE.md) for development guidelines. Git hooks (commit message validation and code formatting) are automatically configured on the first `dotnet build` or `dotnet test`.
+
 ## Tools
 
 | Category | Tools | Description |

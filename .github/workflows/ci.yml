@@ -20,6 +20,9 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore Rhombus.WinFormsMcp.sln
 
+    - name: Verify code formatting
+      run: dotnet format Rhombus.WinFormsMcp.sln --verify-no-changes --verbosity quiet
+
     - name: Build solution
       run: dotnet build Rhombus.WinFormsMcp.sln --configuration Release --no-restore
 

@@ -80,6 +80,14 @@ dotnet pack src/Rhombus.WinFormsMcp.Server/Rhombus.WinFormsMcp.Server.csproj -c 
 - **Protocol**: MCP with stdio transport, single-line JSON-RPC 2.0 messages
 - **Package Distribution**: NuGet (Rhombus.WinFormsMcp), NPM (@fnrhombus/winforms-mcp)
 
+### Code Organization
+
+**File-per-class rule:** One public class per file is strongly preferred. Multiple classes in a single file are only acceptable when:
+- The classes are tightly coupled (e.g., a public class and its direct helper)
+- The types are single-use (e.g., enums, markers, small value objects used nowhere else)
+
+**Avoid monolithic files.** Keep files focused and navigable. If a file grows to contain multiple unrelated public classes or becomes difficult to navigate, it should be split.
+
 ### MCP Tools Available
 
 The server implements 33 tools via JSON-RPC:
@@ -124,7 +132,15 @@ See `docs/HEADLESS_MODE.md` for the full technical reference aimed at AI agent c
 
 ## Git Workflow
 
-This project follows a **dev/master branching strategy** with **Semantic Versioning (SemVer)** according to https://semver.org/.
+This project follows a **dev/main branching strategy** with **Semantic Versioning (SemVer)** according to https://semver.org/.
+
+### Git Hooks (Auto-Configured)
+
+Git hooks are automatically configured on first `dotnet build` or `dotnet test`. Two hooks enforce project standards:
+- **commit-msg**: Validates commits follow [Conventional Commits](https://www.conventionalcommits.org/) format (`feat:`, `fix:`, etc.). Rejects non-compliant messages.
+- **pre-commit**: Runs `dotnet format` before each commit to ensure code style compliance. Rejects commits with style violations.
+
+No manual setup required — hooks are configured automatically by `Directory.Build.props` on restore.
 
 ### Root Checkout
 
@@ -139,7 +155,7 @@ This project follows a **dev/master branching strategy** with **Semantic Version
   - **No meaningful work directly on dev** — only trivial changes that don't have a GitHub issue
   - Triggers beta releases on push
 
-- **master** - Stable release branch
+- **main** - Stable release branch
   - Only receives merges from dev
   - Protected: no direct commits allowed
   - Triggers stable releases on push
@@ -169,9 +185,10 @@ Only pick issues that are open, unlabelled or labelled `enhancement`/`bug`/`good
 2. **Label the issue `in progress`** when starting work (`gh issue edit N --add-label "in progress"`)
 3. **Create a feature branch** from dev (e.g., `feature/42-add-widget`)
 4. **Do all work in a worktree** on that branch
-5. **Open a PR** against dev, referencing the issue
-6. **Merge the PR** into dev
-7. **Clean up** after merge — remote branch is auto-deleted by GitHub; locally delete the branch and remove the worktree
+5. **Before opening a PR, sync with dev** — pull latest from dev into feature branch to catch conflicts early
+6. **Open a PR** against dev, referencing the issue
+7. **Merge the PR** into dev
+8. **Immediately clean up the worktree and branch** — mandatory, before any other work
 
 ```bash
 # Feature development (always via worktree + PR)
@@ -179,18 +196,32 @@ git checkout dev
 git checkout -b feature/42-add-widget
 # ... make changes in worktree ...
 git push -u origin feature/42-add-widget
+
+# Before opening PR, sync with latest dev (in feature branch)
+git fetch origin
+git rebase origin/dev
+git push -f origin feature/42-add-widget
+
 gh pr create --base dev --title "feat: add widget" --body "Closes #42"
 
-# After PR is merged — clean up local branch and worktree
+# After PR is merged — IMMEDIATELY clean up (GitHub auto-deletes remote branch)
 git checkout dev && git pull
 git branch -d feature/42-add-widget
-git worktree prune
+git worktree remove <worktree-path> --force
+
+# Verify cleanup is complete
+git worktree list  # Should only show root checkout
+git branch         # Should not contain worktree-* or feature/42-* branches
 
 # Release to production (when ready)
-./scripts/merge-to-master.ps1  # PowerShell
+./scripts/merge-to-main.ps1  # PowerShell
 # OR
-./scripts/merge-to-master.sh   # Bash
+./scripts/merge-to-main.sh   # Bash
 ```
+
+**MANDATORY CLEANUP:** After every PR merge, delete the local branch and worktree immediately — before moving to the next task. GitHub auto-deletes the remote branch, but you must handle the local cleanup. This is non-negotiable.
+
+**CRITICAL: Stale worktrees prevent branch switching and clutter the repo. Clean up immediately after every merge — no exceptions.**
 
 ## Version Management
 
@@ -201,9 +232,12 @@ Versions follow **Semantic Versioning (SemVer)**:
 
 ### Version Bumping
 
-- **Dev branch**: Claude Haiku AI agent analyzes commits to determine bump type (major/minor/patch)
+- **Dev branch**: GitHub Actions analyzes commit messages (conventional commits) to determine bump type
+  - `BREAKING CHANGE:` in commit → `major` bump
+  - `feat:` prefix → `minor` bump
+  - Default → `patch` bump
   - Versions have `-beta` suffix (e.g., 1.2.3-beta)
-  - Auto-incremented on every push to dev
+  - Auto-bumped on every push to dev via `.github/workflows/release-beta.yml`
 
 - **Master branch**: Version comes from dev, `-beta` suffix removed
   - Creates stable release (e.g., 1.2.3)
@@ -254,7 +288,7 @@ Triggers on push to `dev` branch:
 5. Commit version bump back to dev
 
 ### Master Branch CI (.github/workflows/release-stable.yml)
-Triggers on push to `master` branch (merge from dev):
+Triggers on push to `main` branch (merge from dev):
 1. Remove `-beta` suffix from version
 2. Build and test
 3. Generate changelog from git log (grouped by conventional commit type)
@@ -266,34 +300,35 @@ Triggers on push to `master` branch (merge from dev):
 
 ```powershell
 # PowerShell (Windows)
-./scripts/merge-to-master.ps1          # Interactive, with CI check
-./scripts/merge-to-master.ps1 -Force   # Skip CI check (not recommended)
-./scripts/merge-to-master.ps1 -DryRun  # Preview without executing
+./scripts/merge-to-main.ps1          # Interactive, with CI check
+./scripts/merge-to-main.ps1 -Force   # Skip CI check (not recommended)
+./scripts/merge-to-main.ps1 -DryRun  # Preview without executing
 ```
 
 ```bash
 # Bash (Mac/Linux/WSL)
-./scripts/merge-to-master.sh           # Interactive, with CI check
-./scripts/merge-to-master.sh --force   # Skip CI check (not recommended)
-./scripts/merge-to-master.sh --dry-run # Preview without executing
+./scripts/merge-to-main.sh           # Interactive, with CI check
+./scripts/merge-to-main.sh --force   # Skip CI check (not recommended)
+./scripts/merge-to-main.sh --dry-run # Preview without executing
 ```
 
 The merge script:
 - Verifies dev branch CI is passing
 - Confirms version number
-- Merges dev to master
+- Merges dev to main
 - Pushes to trigger release workflow
 
 ## Commit Guidelines
 
-While not strictly enforced, following conventional commits helps the version bump analyzer:
+**Commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) format.** The GitHub Actions version bumping script parses these prefixes to auto-determine version bumps. Correct format is required for version management to work.
 
-- `feat:` - New features (likely MINOR bump)
-- `fix:` - Bug fixes (likely PATCH bump)
-- `BREAKING CHANGE:` - Breaking changes (likely MAJOR bump)
-- `chore:` - Maintenance tasks
-- `docs:` - Documentation changes
-- `test:` - Test additions/changes
+- `feat:` - New features → MINOR bump
+- `fix:` - Bug fixes → PATCH bump
+- `BREAKING CHANGE:` in message body - Breaking API changes → MAJOR bump
+- `chore:` - Maintenance tasks, non-functional changes
+- `docs:` - Documentation changes (no version bump)
+- `test:` - Test additions/changes (no version bump)
+- `refactor:`, `style:`, `perf:` - Non-functional changes (no version bump)
 
 ### Issue References
 
@@ -312,6 +347,16 @@ This enables automated changelog generation and traceability.
 - Issue references (`#N`) in commit messages become clickable links automatically
 
 This is why issue references in commits matter — they flow into the release notes for free.
+
+## Querying Microsoft Documentation
+
+You have access to MCP tools called `microsoft_docs_search`, `microsoft_docs_fetch`, and `microsoft_code_sample_search` — these tools allow you to search through and fetch Microsoft's latest official documentation and code samples, and that information might be more detailed or newer than what's in your training data set.
+
+When handling questions around how to work with native Microsoft technologies, such as C#, F#, ASP.NET Core, Microsoft.Extensions, NuGet, Entity Framework, the `dotnet` runtime — please use these tools for research purposes when dealing with specific / narrowly defined questions that may occur.
+
+## Plugin Repo
+
+The Claude Code plugin is in a separate repo: [`fnrhombus/winforms-mcp-plugin`](https://github.com/fnrhombus/winforms-mcp-plugin). The plugin uses `npx -y @fnrhombus/winforms-mcp` which always fetches the latest version at runtime, so nothing in the plugin repo needs updating on release. **README syncing is manual** — when this repo's README changes, the plugin repo's README must be updated to match (same content, but with `/plugin install` instead of MCP JSON config, and relative doc links replaced with absolute URLs to this repo). See the plugin repo's CLAUDE.md for the exact diff pattern.
 
 ## Important Notes
 

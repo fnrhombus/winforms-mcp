@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "claude-md-management@claude-plugins-official": true,
+    "microsoft-docs@claude-plugins-official": true
+  }
+}

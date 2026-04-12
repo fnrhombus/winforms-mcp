@@ -1,12 +1,12 @@
 #!/usr/bin/env pwsh
 #
-# Setup branch protection rules for master branch
+# Setup branch protection rules for main branch
 # Requires GitHub CLI (gh) to be installed and authenticated
 #
 
 param(
     [string]$Repository = "fnrhombus/winforms-mcp",
-    [string]$Branch = "master"
+    [string]$Branch = "main"
 )
 
 $ErrorActionPreference = "Stop"
@@ -110,13 +110,14 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "✓ Branch protection rules applied successfully!" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Master branch is now protected with:" -ForegroundColor Cyan
+    Write-Host "Main branch is now protected with:" -ForegroundColor Cyan
     Write-Host "  ✓ Required CI status checks" -ForegroundColor Green
     Write-Host "  ✓ Linear history requirement" -ForegroundColor Green
     Write-Host "  ✓ Force push protection" -ForegroundColor Green
     Write-Host "  ✓ Deletion protection" -ForegroundColor Green
     Write-Host ""
     Write-Host "Only merges from dev branch (with passing CI) are allowed." -ForegroundColor Yellow
+
     Write-Host ""
 } else {
     Write-Error "Failed to apply branch protection rules"

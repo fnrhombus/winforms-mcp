@@ -1,0 +1,50 @@
+#!/bin/bash
+# Validate commit message follows Conventional Commits format
+# https://www.conventionalcommits.org/
+
+commit_msg=$(cat "$1")
+
+# Skip validation for merge commits
+if [[ $commit_msg =~ ^Merge ]]; then
+  exit 0
+fi
+
+# Skip validation for commits with [skip ci]
+if [[ $commit_msg =~ \[skip\ ci\] ]]; then
+  exit 0
+fi
+
+# Extract first line (subject)
+subject=$(echo "$commit_msg" | head -n1)
+
+# Valid prefixes: feat, fix, chore, docs, test, refactor, style, perf, ci, build, revert
+if [[ ! $subject =~ ^(feat|fix|chore|docs|test|refactor|style|perf|ci|build|revert)(\(.+\))?:\ .{1,} ]]; then
+  echo "❌ Commit message does not follow Conventional Commits format"
+  echo ""
+  echo "Expected format: <type>(<scope>): <description>"
+  echo ""
+  echo "Valid types:"
+  echo "  feat:     New features (triggers MINOR version bump)"
+  echo "  fix:      Bug fixes (triggers PATCH version bump)"
+  echo "  chore:    Maintenance, dependencies"
+  echo "  docs:     Documentation changes"
+  echo "  test:     Test additions/changes"
+  echo "  refactor: Code refactoring"
+  echo "  style:    Code style changes (formatting, semicolons, etc)"
+  echo "  perf:     Performance improvements"
+  echo "  ci:       CI/CD changes"
+  echo "  build:    Build system changes"
+  echo "  revert:   Revert previous commit"
+  echo ""
+  echo "Examples:"
+  echo "  feat: add new automation tool"
+  echo "  fix: resolve element caching race condition"
+  echo "  feat(renderer): support custom controls"
+  echo "  docs: update headless mode guide"
+  echo ""
+  echo "Your commit message:"
+  echo "  $subject"
+  exit 1
+fi
+
+exit 0

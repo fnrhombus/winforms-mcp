@@ -1,9 +1,9 @@
 #!/usr/bin/env pwsh
 #
-# Merge dev branch to master for stable release
+# Merge dev branch to main for stable release
 # This script:
 # 1. Verifies dev branch CI is passing
-# 2. Merges dev to master
+# 2. Merges dev to main
 # 3. Pushes to trigger release workflow
 #
 
@@ -70,7 +70,7 @@ if ($ciStatus.Count -eq 0) {
     Write-Host "  Status: $($ciStatus[0].status)" -ForegroundColor Red
     Write-Host "  Conclusion: $($ciStatus[0].conclusion)" -ForegroundColor Red
     if (-not $Force) {
-        Write-Error "Fix CI failures before merging to master. Use -Force to override (not recommended)."
+        Write-Error "Fix CI failures before merging to main. Use -Force to override (not recommended)."
         exit 1
     }
     Write-Warning "Proceeding anyway due to -Force flag"
@@ -94,7 +94,7 @@ Write-Host ""
 
 # Confirm merge
 if (-not $DryRun) {
-    $confirm = Read-Host "Proceed with merge to master? (yes/no)"
+    $confirm = Read-Host "Proceed with merge to main? (yes/no)"
     if ($confirm -ne "yes") {
         Write-Host "Merge cancelled." -ForegroundColor Yellow
         exit 0
@@ -104,49 +104,49 @@ if (-not $DryRun) {
 if ($DryRun) {
     Write-Host ""
     Write-Host "DRY RUN - Would perform the following:" -ForegroundColor Yellow
-    Write-Host "  1. Switch to master branch" -ForegroundColor Gray
-    Write-Host "  2. Pull latest master" -ForegroundColor Gray
-    Write-Host "  3. Merge dev into master" -ForegroundColor Gray
-    Write-Host "  4. Push to origin/master" -ForegroundColor Gray
+    Write-Host "  1. Switch to main branch" -ForegroundColor Gray
+    Write-Host "  2. Pull latest main" -ForegroundColor Gray
+    Write-Host "  3. Merge dev into main" -ForegroundColor Gray
+    Write-Host "  4. Push to origin/main" -ForegroundColor Gray
     Write-Host "  5. Trigger release workflow" -ForegroundColor Gray
     Write-Host ""
     exit 0
 }
 
-# Switch to master
-Write-Host "Switching to master branch..." -ForegroundColor Yellow
-git checkout master
+# Switch to main
+Write-Host "Switching to main branch..." -ForegroundColor Yellow
+git checkout main
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to switch to master branch"
+    Write-Error "Failed to switch to main branch"
     exit 1
 }
 
-# Pull latest master
-Write-Host "Pulling latest master..." -ForegroundColor Yellow
-git pull origin master
+# Pull latest main
+Write-Host "Pulling latest main..." -ForegroundColor Yellow
+git pull origin main
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to pull latest master"
+    Write-Error "Failed to pull latest main"
     exit 1
 }
 
-# Merge dev into master
-Write-Host "Merging dev into master..." -ForegroundColor Yellow
-git merge dev --no-ff -m "chore: merge dev to master for release $($version -replace '-beta$', '')"
+# Merge dev into main
+Write-Host "Merging dev into main..." -ForegroundColor Yellow
+git merge dev --no-ff -m "chore: merge dev to main for release $($version -replace '-beta$', '')"
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Merge failed! Please resolve conflicts manually."
     exit 1
 }
 
-# Push to master
-Write-Host "Pushing to master..." -ForegroundColor Yellow
-git push origin master
+# Push to main
+Write-Host "Pushing to main..." -ForegroundColor Yellow
+git push origin main
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Failed to push to master"
+    Write-Error "Failed to push to main"
     exit 1
 }
 
 Write-Host ""
-Write-Host "✓ Successfully merged dev to master!" -ForegroundColor Green
+Write-Host "✓ Successfully merged dev to main!" -ForegroundColor Green
 Write-Host ""
 Write-Host "The release workflow will now:" -ForegroundColor Cyan
 Write-Host "  1. Remove -beta suffix from version" -ForegroundColor Gray

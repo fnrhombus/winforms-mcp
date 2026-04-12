@@ -1,9 +1,9 @@
 #!/bin/bash
 #
-# Merge dev branch to master for stable release
+# Merge dev branch to main for stable release
 # This script:
 # 1. Verifies dev branch CI is passing
-# 2. Merges dev to master
+# 2. Merges dev to main
 # 3. Pushes to trigger release workflow
 #
 
@@ -88,7 +88,7 @@ else
         echo "  Status: $CI_STATUS"
         echo "  Conclusion: $CI_CONCLUSION"
         if [ "$FORCE" != "true" ]; then
-            echo "ERROR: Fix CI failures before merging to master."
+            echo "ERROR: Fix CI failures before merging to main."
             echo "Use --force to override (not recommended)."
             exit 1
         fi
@@ -118,39 +118,39 @@ echo ""
 if [ "$DRY_RUN" == "true" ]; then
     echo ""
     echo "DRY RUN - Would perform the following:"
-    echo "  1. Switch to master branch"
-    echo "  2. Pull latest master"
-    echo "  3. Merge dev into master"
-    echo "  4. Push to origin/master"
+    echo "  1. Switch to main branch"
+    echo "  2. Pull latest main"
+    echo "  3. Merge dev into main"
+    echo "  4. Push to origin/main"
     echo "  5. Trigger release workflow"
     echo ""
     exit 0
 fi
 
-read -p "Proceed with merge to master? (yes/no): " CONFIRM
+read -p "Proceed with merge to main? (yes/no): " CONFIRM
 if [ "$CONFIRM" != "yes" ]; then
     echo "Merge cancelled."
     exit 0
 fi
 
-# Switch to master
-echo "Switching to master branch..."
-git checkout master
+# Switch to main
+echo "Switching to main branch..."
+git checkout main
 
-# Pull latest master
-echo "Pulling latest master..."
-git pull origin master
+# Pull latest main
+echo "Pulling latest main..."
+git pull origin main
 
-# Merge dev into master
-echo "Merging dev into master..."
-git merge dev --no-ff -m "chore: merge dev to master for release $STABLE_VERSION"
+# Merge dev into main
+echo "Merging dev into main..."
+git merge dev --no-ff -m "chore: merge dev to main for release $STABLE_VERSION"
 
-# Push to master
-echo "Pushing to master..."
-git push origin master
+# Push to main
+echo "Pushing to main..."
+git push origin main
 
 echo ""
-echo "✓ Successfully merged dev to master!"
+echo "✓ Successfully merged dev to main!"
 echo ""
 echo "The release workflow will now:"
 echo "  1. Remove -beta suffix from version"

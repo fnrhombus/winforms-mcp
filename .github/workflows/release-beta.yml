@@ -40,8 +40,8 @@ jobs:
       id: bump-type
       shell: pwsh
       run: |
-        $commits = git log --oneline --no-merges origin/master..HEAD 2>$null
-        Write-Host "Commits since master:`n$commits"
+        $commits = git log --oneline --no-merges origin/main..HEAD 2>$null
+        Write-Host "Commits since main:`n$commits"
 
         $bumpType = "patch"
         foreach ($line in ($commits -split "`n")) {

@@ -11,24 +11,6 @@ using Microsoft.ApplicationInsights.Extensibility;
 namespace Rhombus.WinFormsMcp.Server;
 
 /// <summary>
-/// Interface for telemetry tracking.
-/// </summary>
-interface ITelemetry {
-    void TrackToolCall(string toolName, TimeSpan duration);
-    void TrackException(Exception ex);
-    void Flush();
-}
-
-/// <summary>
-/// No-op telemetry implementation used when telemetry is opted out.
-/// </summary>
-class NullTelemetry : ITelemetry {
-    public void TrackToolCall(string toolName, TimeSpan duration) { }
-    public void TrackException(Exception ex) { }
-    public void Flush() { }
-}
-
-/// <summary>
 /// Application Insights telemetry implementation.
 /// Each server process gets a unique session ID so User Flows can visualize
 /// tool-chaining patterns. An operation sequence counter orders events within
@@ -66,31 +48,31 @@ class Telemetry : ITelemetry {
     public void Flush() {
         _client.Flush();
     }
-}
 
-/// <summary>
-/// Strips or hashes PII fields before telemetry leaves the process.
-/// Machine name is hashed; user/account IDs are replaced with the session ID
-/// so events correlate within a session but can't identify a person.
-/// </summary>
-class StripPiiInitializer : ITelemetryInitializer {
-    private readonly string _sessionId;
-    private readonly string _hashedMachine;
+    /// <summary>
+    /// Strips or hashes PII fields before telemetry leaves the process.
+    /// Machine name is hashed; user/account IDs are replaced with the session ID
+    /// so events correlate within a session but can't identify a person.
+    /// </summary>
+    private class StripPiiInitializer : ITelemetryInitializer {
+        private readonly string _sessionId;
+        private readonly string _hashedMachine;
 
-    public StripPiiInitializer(string sessionId) {
-        _sessionId = sessionId;
-        _hashedMachine = HashString(Environment.MachineName);
-    }
+        public StripPiiInitializer(string sessionId) {
+            _sessionId = sessionId;
+            _hashedMachine = HashString(System.Environment.MachineName);
+        }
 
-    public void Initialize(Microsoft.ApplicationInsights.Channel.ITelemetry telemetry) {
-        telemetry.Context.User.Id = _sessionId;
-        telemetry.Context.User.AccountId = null;
-        telemetry.Context.Device.Id = _hashedMachine;
-        telemetry.Context.Cloud.RoleInstance = _hashedMachine;
-    }
+        public void Initialize(Microsoft.ApplicationInsights.Channel.ITelemetry telemetry) {
+            telemetry.Context.User.Id = _sessionId;
+            telemetry.Context.User.AccountId = null;
+            telemetry.Context.Device.Id = _hashedMachine;
+            telemetry.Context.Cloud.RoleInstance = _hashedMachine;
+        }
 
-    private static string HashString(string input) {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(bytes)[..12].ToLowerInvariant();
+        private static string HashString(string input) {
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+            return Convert.ToHexString(bytes)[..12].ToLowerInvariant();
+        }
     }
 }

@@ -2,7 +2,7 @@ name: Release Stable
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:

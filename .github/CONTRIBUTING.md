@@ -22,7 +22,7 @@ dotnet test Rhombus.WinFormsMcp.sln
 ## Branching Strategy
 
 - **dev** -- active development branch. All PRs should target `dev`.
-- **master** -- stable releases only. Never commit directly to master.
+- **main** -- stable releases only. Never commit directly to main.
 - **feature/** -- optional feature branches for multi-commit work. Branch from `dev`, merge back to `dev`.
 
 ## Submitting a Pull Request
