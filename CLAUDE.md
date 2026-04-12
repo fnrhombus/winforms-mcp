@@ -295,7 +295,6 @@ Triggers on push to `master` branch (merge from dev):
 4. Create GitHub release with auto-generated changelog
 5. Publish stable version to NuGet and NPM
 6. Tag with version number
-7. Dispatch `release` event to `fnrhombus/winforms-mcp-plugin` to sync version and trigger marketplace rebuild (requires `PLUGIN_REPO_TOKEN` secret)
 
 ### Merge Script Usage
 
@@ -357,7 +356,7 @@ When handling questions around how to work with native Microsoft technologies, s
 
 ## Plugin Repo
 
-The Claude Code plugin is in a separate repo: [`fnrhombus/winforms-mcp-plugin`](https://github.com/fnrhombus/winforms-mcp-plugin). Version syncing is automated via `repository_dispatch` from `release-stable.yml`. **README syncing is manual** — when this repo's README changes, the plugin repo's README must be updated to match (same content, but with `/plugin install` instead of MCP JSON config, and relative doc links replaced with absolute URLs to this repo). See the plugin repo's CLAUDE.md for the exact diff pattern.
+The Claude Code plugin is in a separate repo: [`fnrhombus/winforms-mcp-plugin`](https://github.com/fnrhombus/winforms-mcp-plugin). The plugin uses `npx -y @fnrhombus/winforms-mcp` which always fetches the latest version at runtime, so nothing in the plugin repo needs updating on release. **README syncing is manual** — when this repo's README changes, the plugin repo's README must be updated to match (same content, but with `/plugin install` instead of MCP JSON config, and relative doc links replaced with absolute URLs to this repo). See the plugin repo's CLAUDE.md for the exact diff pattern.
 
 ## Important Notes
 
