@@ -241,30 +241,57 @@ public class DesignSurfaceFormRenderer {
         using var fullBitmap = new Bitmap(bmpWidth, bmpHeight);
         view.DrawToBitmap(fullBitmap, new Rectangle(0, 0, bmpWidth, bmpHeight));
 
-        // Crop to just the form. The DesignSurface places the form at a
-        // small offset (typically 1px) from the view's origin.
+        // Crop to just the form by scanning all four edges for the
+        // content bounding box. This avoids relying on Form.Size which
+        // can disagree with actual rendered pixels.
         Bitmap bitmap;
         if (_rootControl is Form) {
-            // Scan for the form's top-left corner: find the first non-background pixel
             var bgColor = fullBitmap.GetPixel(0, 0);
-            int cropX = 0, cropY = 0;
-            for (int x = 0; x < Math.Min(20, bmpWidth); x++) {
-                if (fullBitmap.GetPixel(x, Math.Min(10, bmpHeight - 1)) != bgColor) {
-                    cropX = x;
-                    break;
+            int left = 0, top = 0, right = bmpWidth - 1, bottom = bmpHeight - 1;
+
+            // Scan from left
+            for (int x = 0; x < bmpWidth; x++) {
+                bool found = false;
+                for (int y = 0; y < bmpHeight; y += 4) {
+                    if (fullBitmap.GetPixel(x, y) != bgColor) { found = true; break; }
                 }
+                if (found) { left = x; break; }
             }
-            for (int y = 0; y < Math.Min(20, bmpHeight); y++) {
-                if (fullBitmap.GetPixel(Math.Min(10, bmpWidth - 1), y) != bgColor) {
-                    cropY = y;
-                    break;
+            // Scan from top
+            for (int y = 0; y < bmpHeight; y++) {
+                bool found = false;
+                for (int x = left; x < bmpWidth; x += 4) {
+                    if (fullBitmap.GetPixel(x, y) != bgColor) { found = true; break; }
                 }
+                if (found) { top = y; break; }
             }
-            int cropW = Math.Min(formW, bmpWidth - cropX);
-            int cropH = Math.Min(formH, bmpHeight - cropY);
-            bitmap = fullBitmap.Clone(
-                new Rectangle(cropX, cropY, cropW, cropH),
-                fullBitmap.PixelFormat);
+            // Scan from right
+            for (int x = bmpWidth - 1; x >= left; x--) {
+                bool found = false;
+                for (int y = top; y < bmpHeight; y += 4) {
+                    if (fullBitmap.GetPixel(x, y) != bgColor) { found = true; break; }
+                }
+                if (found) { right = x; break; }
+            }
+            // Scan from bottom
+            for (int y = bmpHeight - 1; y >= top; y--) {
+                bool found = false;
+                for (int x = left; x <= right; x += 4) {
+                    if (fullBitmap.GetPixel(x, y) != bgColor) { found = true; break; }
+                }
+                if (found) { bottom = y; break; }
+            }
+
+            int cropW = right - left + 1;
+            int cropH = bottom - top + 1;
+            if (cropW > 0 && cropH > 0) {
+                bitmap = fullBitmap.Clone(
+                    new Rectangle(left, top, cropW, cropH),
+                    fullBitmap.PixelFormat);
+            }
+            else {
+                bitmap = (Bitmap)fullBitmap.Clone();
+            }
         }
         else {
             bitmap = (Bitmap)fullBitmap.Clone();
