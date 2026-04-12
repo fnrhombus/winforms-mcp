@@ -5,6 +5,10 @@ on:
   push:
     branches: [ dev ]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-test-coverage:
     runs-on: windows-latest
