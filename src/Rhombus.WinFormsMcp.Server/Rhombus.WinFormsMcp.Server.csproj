@@ -9,7 +9,7 @@
     <AssemblyName>winformsmcp</AssemblyName>
     <!-- NuGet Package Configuration -->
     <PackageId>Rhombus.WinFormsMcp</PackageId>
-    <Version>1.3.3-beta</Version>
+    <Version>1.4.0-beta</Version>
     <Authors>butler.software</Authors>
     <Company>butler.software</Company>
     <Product>Rhombus.WinFormsMcp</Product>
