@@ -356,7 +356,7 @@ When handling questions around how to work with native Microsoft technologies, s
 
 ## Plugin Repo
 
-The Claude Code plugin is in a separate repo: [`fnrhombus/winforms-mcp-plugin`](https://github.com/fnrhombus/winforms-mcp-plugin). The plugin uses `npx -y @fnrhombus/winforms-mcp` which always fetches the latest version at runtime, so nothing in the plugin repo needs updating on release. **README syncing is manual** — when this repo's README changes, the plugin repo's README must be updated to match (same content, but with `/plugin install` instead of MCP JSON config, and relative doc links replaced with absolute URLs to this repo). See the plugin repo's CLAUDE.md for the exact diff pattern.
+The Claude Code plugin is in a separate repo: [`fnrhombus/winforms-mcp-plugin`](https://github.com/fnrhombus/winforms-mcp-plugin). The plugin repo is just a manifest wrapper — its README links back here for all docs/issues. The plugin uses `npx -y @fnrhombus/winforms-mcp` which always fetches the latest version at runtime, so nothing in the plugin repo needs updating on release.
 
 ## Important Notes
 
