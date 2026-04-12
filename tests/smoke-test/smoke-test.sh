@@ -34,7 +34,7 @@ send '{"jsonrpc":"2.0","method":"notifications/initialized"}'
 
 # 2. Launch notepad
 echo "[2/5] Launch notepad (headless)..."
-send '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"launch_app","arguments":{"path":"notepad.exe"}}}'
+send '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"winforms_launch_app","arguments":{"path":"notepad.exe"}}}'
 R=$(recv)
 PID=$(echo "$R" | grep -oP '(pid|\\u0022pid\\u0022):\s*\K[0-9]+' || echo "")
 if [ -n "$PID" ]; then
@@ -52,7 +52,7 @@ OUTFILE="$(cygpath -w "$(pwd)/tests/smoke-test/headless-notepad.png" 2>/dev/null
 # Simplify: just use a known absolute Windows path
 OUTFILE="C:\\\\dev\\\\WinFormsMcp\\\\tests\\\\smoke-test\\\\headless-notepad.png"
 rm -f "$OUTFILE"
-send "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"take_screenshot\",\"arguments\":{\"pid\":$PID,\"outputPath\":\"$OUTFILE\"}}}"
+send "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"winforms_take_screenshot\",\"arguments\":{\"pid\":$PID,\"outputPath\":\"$OUTFILE\"}}}"
 # Screenshot response can be 400KB+ base64, need longer timeout
 R=""
 read -t 30 -r R <&${SERVER[0]} || true
@@ -75,7 +75,7 @@ fi
 
 # 4. Close
 echo "[4/5] Close notepad..."
-send "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"close_app\",\"arguments\":{\"pid\":$PID,\"force\":true}}}"
+send "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"winforms_close_app\",\"arguments\":{\"pid\":$PID,\"force\":true}}}"
 R=$(recv)
 echo "$R" | grep -q 'success' && ok "Notepad closed" || fail "Close failed: $(echo "$R" | head -c 200)"
 
