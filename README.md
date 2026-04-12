@@ -36,7 +36,7 @@ One line in your MCP config. Now the agent can:
 The agent reads your `.Designer.cs`, calls `render_form`, and gets back this — no build, no running app:
 
 <p align="center">
-  <img src="docs/images/render-form-demo.png" alt="render_form output — Login Form" width="400">
+  <img src="https://raw.githubusercontent.com/wiki/fnrhombus/winforms-mcp/render-form-demo.png" alt="render_form output — Login Form" width="400">
 </p>
 
 It can then edit the layout, re-render, and iterate — a full visual feedback loop with no IDE, no build, and no human in the loop.
@@ -131,8 +131,8 @@ Set `HEADLESS=true` to launch apps on a hidden Windows desktop (`CreateDesktop` 
 
 ## Documentation
 
-- [Examples](docs/EXAMPLES.md) — common workflows and patterns
-- [Headless Mode](docs/HEADLESS_MODE.md) — hidden desktop architecture and tool compatibility
+- [Examples](https://github.com/fnrhombus/winforms-mcp/wiki/Examples) — common workflows and patterns
+- [Headless Mode](https://github.com/fnrhombus/winforms-mcp/wiki/Headless-Mode) — hidden desktop architecture and tool compatibility
 
 ## Contributing
 
