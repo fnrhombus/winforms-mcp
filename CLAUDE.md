@@ -121,7 +121,7 @@ When `HEADLESS=true`, the server creates a hidden desktop via `CreateDesktop("Mc
 - **`send_keys`/`drag_drop`:** Only work on the default desktop (input simulation targets the active desktop's input queue)
 - **Mixed sessions:** `attach_to_process` always uses the default desktop; `launch_app` uses the hidden desktop. Desktop routing is per-process, per-call.
 
-See `docs/HEADLESS_MODE.md` for the full technical reference aimed at AI agent consumers.
+See the [Headless Mode wiki page](https://github.com/fnrhombus/winforms-mcp/wiki/Headless-Mode) for the full technical reference aimed at AI agent consumers.
 
 ### Error Handling
 
