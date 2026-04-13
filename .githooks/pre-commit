@@ -1,21 +1,32 @@
 #!/bin/bash
 # Auto-format staged C# files before commit
-# Runs dotnet format on the entire solution to ensure consistent style
+
+# Get staged .cs files only
+STAGED_CS_FILES=$(git diff --cached --name-only --diff-filter=ACM -- '*.cs')
+
+if [ -z "$STAGED_CS_FILES" ]; then
+  exit 0
+fi
+
+# Stash staged .cs files as a backup, then restore them for formatting
+git stash push -m "pre-commit backup" -q -- $STAGED_CS_FILES
+git stash apply -q
 
 echo "Formatting code with dotnet format..."
 
-# Run dotnet format (formats entire solution based on .editorconfig)
-dotnet format Rhombus.WinFormsMcp.sln --verify-no-changes --verbosity quiet
+dotnet format Rhombus.WinFormsMcp.sln --verbosity quiet --include $STAGED_CS_FILES
 
 if [ $? -ne 0 ]; then
-  echo ""
-  echo "⚠️  Code formatting issues found. Running dotnet format to fix them..."
-  dotnet format Rhombus.WinFormsMcp.sln --verbosity quiet
-  echo ""
-  echo "✓ Code has been formatted. Please review changes and stage them:"
-  echo "  git add -A"
-  echo "  git commit ..."
+  echo "⚠️  dotnet format failed, restoring original state"
+  git checkout stash@{0} -- $STAGED_CS_FILES
+  git stash drop -q
   exit 1
 fi
+
+# Re-stage any files that were reformatted
+git add $STAGED_CS_FILES
+
+# Success — drop the backup stash
+git stash drop -q
 
 exit 0
