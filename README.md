@@ -26,20 +26,10 @@ One line in your MCP config. Now the agent can:
 
 | | |
 |---|---|
-| **See forms without building** | `render_form` turns any `.Designer.cs` into a pixel-accurate PNG — the same rendering pipeline Visual Studio uses |
+| **See forms without building** | `render_form` gives the agent a designer — the exact same rendering pipeline Visual Studio uses. Edit, re-render, iterate with no build and no human in the loop |
 | **Drive running apps** | Launch processes, find elements by name/type/ID, click, type, drag-drop, take screenshots |
 | **Work in the background** | Headless mode runs apps on a hidden desktop — zero focus stealing, zero disruption |
 | **Target any framework** | .NET Framework 4.x, .NET Core 3.x, .NET 5–9+. Auto-detected from your `.csproj` |
-
-### `render_form` in action
-
-The agent reads your `.Designer.cs`, calls `render_form`, and gets back this — no build, no running app:
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/wiki/fnrhombus/winforms-mcp/render-form-demo.png" alt="render_form output — Login Form" width="400">
-</p>
-
-It can then edit the layout, re-render, and iterate — a full visual feedback loop with no IDE, no build, and no human in the loop.
 
 ## Quick start
 
@@ -74,10 +64,6 @@ Add to your MCP config and restart. Nothing else to install.
 
 That's it. The agent can now see and interact with any WinForms application on your machine.
 
-## Contributing
-
-See [CLAUDE.md](CLAUDE.md) for development guidelines. Git hooks (commit message validation and code formatting) are automatically configured on the first `dotnet build` or `dotnet test`.
-
 ## Tools
 
 | Category | Tools | Description |
@@ -89,7 +75,7 @@ See [CLAUDE.md](CLAUDE.md) for development guidelines. Git hooks (commit message
 
 ## Cross-framework rendering
 
-`render_form` detects your project's target framework and dispatches to a matching out-of-process host:
+`render_form` detects your project's target framework and dispatches to a matching out-of-process host — the same rendering pipeline Visual Studio uses, so custom controls and third-party components resolve correctly.
 
 | Your project targets | Renderer host |
 |---|---|
@@ -97,7 +83,7 @@ See [CLAUDE.md](CLAUDE.md) for development guidelines. Git hooks (commit message
 | .NET Core 3.x | `netcoreapp3.1` |
 | .NET 5, 6, 7, 8, 9+ | `net8.0-windows` |
 
-Custom controls, third-party components, and framework-specific APIs all resolve correctly. Override with the `TFM` environment variable if needed.
+Framework-specific APIs resolve correctly too. Override with the `TFM` environment variable if needed.
 
 ## Headless mode
 
@@ -136,7 +122,7 @@ Set `HEADLESS=true` to launch apps on a hidden Windows desktop (`CreateDesktop` 
 
 ## Contributing
 
-Contributions welcome! See [issues](https://github.com/fnrhombus/winforms-mcp/issues) for open items.
+Contributions welcome — see [issues](https://github.com/fnrhombus/winforms-mcp/issues) for open items. Git hooks for commit validation and code formatting are configured automatically on first build.
 
 ## Support
 
