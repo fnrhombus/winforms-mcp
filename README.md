@@ -33,9 +33,14 @@ One line in your MCP config. Now the agent can:
 
 ## Quick start
 
-Add to your MCP config and restart. Nothing else to install.
+**Claude Code plugin** (easiest):
 
-**npx** (requires Node.js):
+```
+/plugin marketplace add fnrhombus/winforms-mcp-plugin
+/plugin install winforms-mcp@fnrhombus-winforms-mcp-plugin
+```
+
+**MCP config with npx** (requires Node.js):
 
 ```json
 {
