@@ -36,8 +36,8 @@ One line in your MCP config. Now the agent can:
 **Claude Code plugin** (easiest):
 
 ```
-/plugin marketplace add fnrhombus/winforms-mcp-plugin
-/plugin install winforms-mcp@fnrhombus-winforms-mcp-plugin
+/plugin marketplace add fnrhombus/claude-plugins
+/plugin install winforms-mcp@claude-plugins
 ```
 
 **MCP config with npx** (requires Node.js):
